@@ -177,7 +177,7 @@ u32 do_move(Position* pos, u32* m) {
 
 
   pos->stm ^= 1;
-  if(check_illegal && in_check(pos, pos->stm)) {
+  if(check_illegal && checkers(pos, pos->stm)) {
     undo_move(pos, m);
     return 0;
   }

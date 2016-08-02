@@ -149,15 +149,6 @@ inline u64 checkers(Position* pos, u32 by_color) {
        | (pos->bb[KING] & pos->bb[by_color] & k_atks[sq]));
 }
 
-inline u64 in_check(Position* pos, u32 by_color) {
-  const u32 sq = pos->king_sq[!by_color];
-  return (((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
-       || ((pos->bb[ROOK] | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
-       || (pos->bb[KNIGHT] & pos->bb[by_color] & n_atks[sq])
-       || (pos->bb[PAWN] & pos->bb[by_color] & p_atks[!by_color][sq])
-       || (pos->bb[KING] & pos->bb[by_color] & k_atks[sq]));
-}
-
 inline void move_str(u32 move, char str[5]) {
   u32 from = from_sq(move),
       to   = to_sq(move);
