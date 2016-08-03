@@ -6,6 +6,18 @@
 #include "bitboard.h"
 #include "magicmoves.h"
 
+typedef struct Stats_s {
+
+  // Hash table stats
+  u64 hash_stores;
+  u64 hash_probes;
+  u64 hash_hits;
+
+  // Search tree stats
+  u64 total_nodes;
+
+} Stats;
+
 typedef struct Movelist_s {
   
   u32  moves[218];
@@ -22,6 +34,10 @@ typedef struct State_s {
   u64      ep_sq_bb;
   HashKey  pos_key;
   Movelist list;
+
+#if (STATS == 0)
+  Stats    stats;
+#endif
 
 } State;
 
