@@ -77,10 +77,9 @@ void undo_move(Position* pos, u32* m) {
 }
 
 u32 do_move(Position* pos, u32* m) {
-  State* curr       = pos->state;
-  ++pos->ply;
-  ++pos->state;
-  State* next       = curr + 1;
+  State** tmp       = &pos->state;
+  State* curr       = *tmp;
+  State* next       = ++*tmp;
   next->pos_key     = curr->pos_key;
   next->fifty_moves = curr->fifty_moves + 1;
   next->ep_sq_bb    = 0ULL;
@@ -176,6 +175,7 @@ u32 do_move(Position* pos, u32* m) {
   }
 
 
+  ++pos->ply;
   pos->stm ^= 1;
   if(check_illegal && checkers(pos, pos->stm)) {
     undo_move(pos, m);
