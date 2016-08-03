@@ -35,7 +35,7 @@ typedef struct State_s {
   HashKey  pos_key;
   Movelist list;
 
-#if (STATS == 0)
+#ifdef STATS
   Stats    stats;
 #endif
 
