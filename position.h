@@ -35,10 +35,6 @@ typedef struct State_s {
   HashKey  pos_key;
   Movelist list;
 
-#ifdef STATS
-  Stats    stats;
-#endif
-
 } State;
 
 typedef struct Position_s {
@@ -50,6 +46,10 @@ typedef struct Position_s {
   u32      board[64];
   State*   state;
   State    state_list[MAX_PLY];
+
+#ifdef STATS
+  Stats    stats;
+#endif
 
 } Position;
 
