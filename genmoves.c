@@ -19,37 +19,68 @@ void extract_moves(u32 from, u64 atks, Movelist* list) {
 void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list) {
   const u32 c = pos->stm;
   u32 blocking_sq, blocker;
-  u64 blockers_poss, pawn_block_poss,
-      pawns_bb            = pos->bb[PAWN] & pos->bb[c];
-  const u64 inlcusion_mask = ~(pawns_bb | pos->bb[KING] | pos->state->pinned_bb),
+  u64 blockers_poss, pawn_block_poss;
+  const u64 pawns_bb       = pos->bb[PAWN] & pos->bb[c],
+            inlcusion_mask = ~(pawns_bb | pos->bb[KING] | pos->state->pinned_bb),
             vacancy_mask   = ~pos->bb[FULL];
-  while(blocking_poss_bb) {
-    blocking_sq       = bitscan(blocking_poss_bb);
-    blocking_poss_bb &= blocking_poss_bb - 1;
+  if(c == WHITE) {
+    while(blocking_poss_bb) {
+      blocking_sq       = bitscan(blocking_poss_bb);
+      blockers_poss     = atkers_to_sq(pos, blocking_sq, c) & inlcusion_mask;
+      blocking_poss_bb &= blocking_poss_bb - 1;
+      pawn_block_poss   = pawn_shift(BB(blocking_sq), !c);
 
-    pawn_block_poss   = pawn_shift(BB(blocking_sq), !c);
-    if(pawn_block_poss & pawns_bb) {
-      blocker = bitscan(pawn_block_poss);
-      if(blocking_sq < 8 || blocking_sq > 55) {
-        add_move(move_prom(blocker, blocking_sq, TO_QUEEN), list);
-        add_move(move_prom(blocker, blocking_sq, TO_KNIGHT), list);
+      if(pawn_block_poss & pawns_bb) {
+        blocker = bitscan(pawn_block_poss);
+        if(blocking_sq > 55) {
+          add_move(move_prom(blocker, blocking_sq, TO_QUEEN), list);
+          add_move(move_prom(blocker, blocking_sq, TO_KNIGHT), list);
 
-        add_move(move_prom(blocker, blocking_sq, TO_ROOK), list);
-        add_move(move_prom(blocker, blocking_sq, TO_BISHOP), list);
+          add_move(move_prom(blocker, blocking_sq, TO_ROOK), list);
+          add_move(move_prom(blocker, blocking_sq, TO_BISHOP), list);
+        }
+        else
+          add_move(move_normal(blocker, blocking_sq), list);
       }
-      else
-        add_move(move_normal(blocker, blocking_sq), list);
-    }
-    else if((( c == WHITE && rank_of(blocking_sq) == RANK_4)
-            || (c == BLACK && rank_of(blocking_sq) == RANK_5))
-              && (pawn_block_poss & vacancy_mask)
-              && (pawn_block_poss = pawn_shift(pawn_block_poss, !c) & pawns_bb))
-      add_move(move_normal(bitscan(pawn_block_poss), blocking_sq), list);
+      else if(     (rank_of(blocking_sq) == RANK_4)
+                && (pawn_block_poss & vacancy_mask)
+                && (pawn_block_poss = pawn_shift(pawn_block_poss, !c) & pawns_bb))
+        add_move(move_normal(bitscan(pawn_block_poss), blocking_sq), list);
 
-    blockers_poss = atkers_to_sq(pos, blocking_sq, c) & inlcusion_mask;
-    while(blockers_poss) {
-      add_move(move_normal(bitscan(blockers_poss), blocking_sq), list);
-      blockers_poss &= blockers_poss - 1;
+      while(blockers_poss) {
+        add_move(move_normal(bitscan(blockers_poss), blocking_sq), list);
+        blockers_poss &= blockers_poss - 1;
+      }
+    }
+  }
+  else {
+    while(blocking_poss_bb) {
+      blocking_sq       = bitscan(blocking_poss_bb);
+      blockers_poss     = atkers_to_sq(pos, blocking_sq, c) & inlcusion_mask;
+      blocking_poss_bb &= blocking_poss_bb - 1;
+      pawn_block_poss   = pawn_shift(BB(blocking_sq), !c);
+
+      if(pawn_block_poss & pawns_bb) {
+        blocker = bitscan(pawn_block_poss);
+        if(blocking_sq < 8) {
+          add_move(move_prom(blocker, blocking_sq, TO_QUEEN), list);
+          add_move(move_prom(blocker, blocking_sq, TO_KNIGHT), list);
+
+          add_move(move_prom(blocker, blocking_sq, TO_ROOK), list);
+          add_move(move_prom(blocker, blocking_sq, TO_BISHOP), list);
+        }
+        else
+          add_move(move_normal(blocker, blocking_sq), list);
+      }
+      else if(     (rank_of(blocking_sq) == RANK_5)
+                && (pawn_block_poss & vacancy_mask)
+                && (pawn_block_poss = pawn_shift(pawn_block_poss, !c) & pawns_bb))
+        add_move(move_normal(bitscan(pawn_block_poss), blocking_sq), list);
+
+      while(blockers_poss) {
+        add_move(move_normal(bitscan(blockers_poss), blocking_sq), list);
+        blockers_poss &= blockers_poss - 1;
+      }
     }
   }
 }
@@ -78,7 +109,7 @@ void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list) {
     while(atkers_bb) {
       atker      = bitscan(atkers_bb);
       atkers_bb &= atkers_bb - 1;
-      if(   (BB(atker) & pawns_bb)
+      if(    (BB(atker) & pawns_bb)
           && (checker < 8 || checker > 55)) {
         add_move(move_prom(atker, checker, TO_QUEEN), list);
         add_move(move_prom(atker, checker, TO_KNIGHT), list);
