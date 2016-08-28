@@ -27,10 +27,9 @@ void undo_move(Position* pos, u32* m) {
     {
       const u32 pt = piece_type(pos->board[to]);
       move_piece_no_key(pos, to, from, pt, c);
+      const u32 captured_pt = cap_type(*m);
       if(pt == KING)
         pos->king_sq[c] = from;
-
-      const u32 captured_pt = cap_type(*m);
       if(captured_pt)
         put_piece_no_key(pos, to, captured_pt, !c);
     }
@@ -45,6 +44,7 @@ void undo_move(Position* pos, u32* m) {
     {
       move_piece_no_key(pos, to, from, KING, c);
       pos->king_sq[c] = from;
+
       switch(to) {
       case C1:
         move_piece_no_key(pos, D1, A1, ROOK, c);
@@ -77,19 +77,19 @@ void undo_move(Position* pos, u32* m) {
 }
 
 u32 do_move(Position* pos, u32* m) {
-  State** tmp       = &pos->state;
-  State* curr       = *tmp;
-  State* next       = ++*tmp;
+  State** const tmp        = &pos->state;
+  State const * const curr = *tmp;
+  State* const next        = ++*tmp;
+
   next->pos_key     = curr->pos_key;
   next->fifty_moves = curr->fifty_moves + 1;
   next->ep_sq_bb    = 0ULL;
 
   u32 check_illegal = 0;
-
   const u32 from = from_sq(*m),
-            to   = to_sq(*m),
-            c    = pos->stm,
-            mt   = move_type(*m);
+            to = to_sq(*m),
+            c  = pos->stm,
+            mt = move_type(*m);
 
   if(curr->ep_sq_bb)
     next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
@@ -102,27 +102,25 @@ u32 do_move(Position* pos, u32* m) {
       if(captured_pt) {
         remove_piece(pos, to, captured_pt, !c);
         *m |= captured_pt << CAP_TYPE_SHIFT;
+        move_piece(pos, from, to, pt, c);
         next->fifty_moves = 0;
+        goto next;
       }
-      else {
-        if(pt == PAWN) {
-          if(c == WHITE && to == from + 16) {
-            const u32 ep_sq = from + 8;
-            next->pos_key  ^= psq_keys[0][0][ep_sq];
-            next->ep_sq_bb  = BB(ep_sq);
-          }
-          else if(c == BLACK && to == from - 16) {
-            const u32 ep_sq = from - 8;
-            next->pos_key  ^= psq_keys[0][0][ep_sq];
-            next->ep_sq_bb  = BB(ep_sq);
-          }
-
-          next->fifty_moves = 0;
+      else if(pt == PAWN) {
+        if(c == WHITE && to == from + 16) {
+          next->ep_sq_bb  = BB(from + 8);
+          next->pos_key  ^= psq_keys[0][0][from + 8];
         }
+        else if(c == BLACK && to == from - 16) {
+          next->ep_sq_bb  = BB(from - 8);
+          next->pos_key  ^= psq_keys[0][0][from - 8];
+        }
+
+        next->fifty_moves = 0;
       }
 
       move_piece(pos, from, to, pt, c);
-
+next:
       if(pt == KING) {
         pos->king_sq[c] = to;
         check_illegal = 1;
@@ -140,8 +138,8 @@ u32 do_move(Position* pos, u32* m) {
   case CASTLE:
     {
       move_piece(pos, from, to, KING, c);
-
       pos->king_sq[c] = to;
+
       switch(to) {
       case C1:
         move_piece(pos, A1, D1, ROOK, c);
