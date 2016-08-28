@@ -15,7 +15,6 @@ char* fen6 = "8/8/8/K7/1R3p1k/8/6P1/8 w - - 1 1";
 char* fen7 = "8/8/8/K7/7k/1R3p2/6P1/8 w - - 1 1";
 
 int main() {
-  // Initialization
   init_genrand64(time(0));
   init_zobrist_keys();
   initmagicmoves();
@@ -24,7 +23,6 @@ int main() {
 
   Position pos;
   set_pos(&pos, fen1);
-  print_board(&pos);
 
   u64 count;
   u32 d;
@@ -32,37 +30,6 @@ int main() {
     count = perft(&pos, d);
     printf("perft(%d) = %10llu\n", d, count);
   }
-  /*printf("cr=%d\n", pos.state->castling_rights);
-  printf("stm=%d\n", pos.stm);
-  u32 move = move_normal(E2, E4);
-  do_move(&pos, &move);
-  move = move_normal(F7, F5);
-  do_move(&pos, &move);
-  move = move_normal(E4, F5);
-  do_move(&pos, &move);
-  undo_move(&pos, &move);
-  for(int i = 0; i != 10; ++i)
-    print_bb(pos.bb[i]);
-  printf("ep=%d\n", pos.state->ep_sq);
-  printf("cr=%d\n", pos.state->castling_rights);
-
-  Movelist list;
-  list.end = list.moves;
-  gen_quiets(&pos, &list);
-  gen_captures(&pos, &list);
-  for(u32* move = list.moves; move != list.end; ++move)
-    printf("from=%d, to=%d\n", from_sq(*move), to_sq(*move));*/
-
-  /*u128 x = rand_u128();
-  for(int i = 0; i != 128; ++i) {
-    if(i && !(i & 15))
-      printf("\n");
-    if(x & ((u128)1 << i))
-      printf("X ");
-    else
-      printf("- ");
-  }
-  printf("\n");*/
 
   return 0;
 }
