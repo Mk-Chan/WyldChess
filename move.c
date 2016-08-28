@@ -84,15 +84,15 @@ u32 do_move(Position* pos, u32* m) {
   next->fifty_moves = curr->fifty_moves + 1;
   next->ep_sq_bb    = 0ULL;
 
-  const u32 from    = from_sq(*m);
-  u32 check_illegal = (BB(from) & curr->pinned_bb) > 0;
+  u32 check_illegal = 0;
+
+  const u32 from = from_sq(*m),
+            to   = to_sq(*m),
+            c    = pos->stm,
+            mt   = move_type(*m);
 
   if(curr->ep_sq_bb)
     next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
-
-  const u32 to = to_sq(*m),
-            c  = pos->stm,
-            mt = move_type(*m);
 
   switch(mt) {
   case NORMAL:
@@ -177,22 +177,17 @@ u32 do_move(Position* pos, u32* m) {
 
   ++pos->ply;
   pos->stm ^= 1;
-  if(check_illegal && checkers(pos, pos->stm)) {
+
+  next->pos_key ^= castle_keys[curr->castling_rights];
+  next->castling_rights = (curr->castling_rights & castle_perms[from]) & castle_perms[to];
+  next->pos_key ^= castle_keys[next->castling_rights];
+  next->pos_key ^= stm_key;
+
+  if(    (check_illegal || (BB(from) & curr->pinned_bb) > 0)
+      && checkers(pos, pos->stm)) {
     undo_move(pos, m);
     return 0;
   }
-
-  static u32 castle_mask[2] = { (WKC | WQC), (BKC | BQC)  };
-  // Needs to be better thought out...
-  if(1 || curr->castling_rights & castle_mask[c]) {
-    next->pos_key ^= castle_keys[curr->castling_rights];
-    next->castling_rights = (curr->castling_rights & castle_perms[from]) & castle_perms[to];
-    next->pos_key ^= castle_keys[next->castling_rights];
-  }
-  else
-    next->castling_rights = curr->castling_rights;
-
-  next->pos_key ^= stm_key;
 
   return 1;
 }
