@@ -101,10 +101,10 @@ u32 do_move(Position* pos, u32* m) {
                 captured_pt = piece_type(pos->board[to]);
       if(captured_pt) {
         remove_piece(pos, to, captured_pt, !c);
-        *m |= captured_pt << CAP_TYPE_SHIFT;
         move_piece(pos, from, to, pt, c);
+        *m |= captured_pt << CAP_TYPE_SHIFT;
         next->fifty_moves = 0;
-        goto next;
+        goto king_check;
       }
       else if(pt == PAWN) {
         if(c == WHITE && to == from + 16) {
@@ -120,7 +120,7 @@ u32 do_move(Position* pos, u32* m) {
       }
 
       move_piece(pos, from, to, pt, c);
-next:
+king_check:
       if(pt == KING) {
         pos->king_sq[c] = to;
         check_illegal = 1;
