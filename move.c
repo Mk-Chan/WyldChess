@@ -27,10 +27,9 @@ void undo_move(Position* pos, u32* m) {
     {
       const u32 pt = piece_type(pos->board[to]);
       move_piece_no_key(pos, to, from, pt, c);
+      const u32 captured_pt = cap_type(*m);
       if(pt == KING)
         pos->king_sq[c] = from;
-
-      const u32 captured_pt = cap_type(*m);
       if(captured_pt)
         put_piece_no_key(pos, to, captured_pt, !c);
     }
@@ -45,6 +44,7 @@ void undo_move(Position* pos, u32* m) {
     {
       move_piece_no_key(pos, to, from, KING, c);
       pos->king_sq[c] = from;
+
       switch(to) {
       case C1:
         move_piece_no_key(pos, D1, A1, ROOK, c);
@@ -84,15 +84,14 @@ u32 do_move(Position* pos, u32* m) {
   next->fifty_moves = curr->fifty_moves + 1;
   next->ep_sq_bb    = 0ULL;
 
+  u32 check_illegal = 0;
   const u32 from    = from_sq(*m);
-  u32 check_illegal = (BB(from) & curr->pinned_bb) > 0;
-
-  if(curr->ep_sq_bb)
-    next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
-
   const u32 to = to_sq(*m),
             c  = pos->stm,
             mt = move_type(*m);
+
+  if(curr->ep_sq_bb)
+    next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
 
   switch(mt) {
   case NORMAL:
@@ -104,28 +103,23 @@ u32 do_move(Position* pos, u32* m) {
         *m |= captured_pt << CAP_TYPE_SHIFT;
         next->fifty_moves = 0;
       }
-      else {
-        if(pt == PAWN) {
-          if(c == WHITE && to == from + 16) {
-            const u32 ep_sq = from + 8;
-            next->pos_key  ^= psq_keys[0][0][ep_sq];
-            next->ep_sq_bb  = BB(ep_sq);
-          }
-          else if(c == BLACK && to == from - 16) {
-            const u32 ep_sq = from - 8;
-            next->pos_key  ^= psq_keys[0][0][ep_sq];
-            next->ep_sq_bb  = BB(ep_sq);
-          }
-
-          next->fifty_moves = 0;
-        }
-      }
-
       move_piece(pos, from, to, pt, c);
 
       if(pt == KING) {
         pos->king_sq[c] = to;
         check_illegal = 1;
+      }
+      else if(pt == PAWN) {
+        if(c == WHITE && to == from + 16) {
+          next->ep_sq_bb  = BB(from + 8);
+          next->pos_key  ^= psq_keys[0][0][from + 8];
+        }
+        else if(c == BLACK && to == from - 16) {
+          next->ep_sq_bb  = BB(from - 8);
+          next->pos_key  ^= psq_keys[0][0][from - 8];
+        }
+
+        next->fifty_moves = 0;
       }
     }
     break;
@@ -140,8 +134,8 @@ u32 do_move(Position* pos, u32* m) {
   case CASTLE:
     {
       move_piece(pos, from, to, KING, c);
-
       pos->king_sq[c] = to;
+
       switch(to) {
       case C1:
         move_piece(pos, A1, D1, ROOK, c);
@@ -177,22 +171,17 @@ u32 do_move(Position* pos, u32* m) {
 
   ++pos->ply;
   pos->stm ^= 1;
-  if(check_illegal && checkers(pos, pos->stm)) {
+
+  next->pos_key ^= castle_keys[curr->castling_rights];
+  next->castling_rights = (curr->castling_rights & castle_perms[from]) & castle_perms[to];
+  next->pos_key ^= castle_keys[next->castling_rights];
+  next->pos_key ^= stm_key;
+
+  if(    (check_illegal || (BB(from) & curr->pinned_bb) > 0)
+      && checkers(pos, pos->stm)) {
     undo_move(pos, m);
     return 0;
   }
-
-  static u32 castle_mask[2] = { (WKC | WQC), (BKC | BQC)  };
-  // Needs to be better thought out...
-  if(1 || curr->castling_rights & castle_mask[c]) {
-    next->pos_key ^= castle_keys[curr->castling_rights];
-    next->castling_rights = (curr->castling_rights & castle_perms[from]) & castle_perms[to];
-    next->pos_key ^= castle_keys[next->castling_rights];
-  }
-  else
-    next->castling_rights = curr->castling_rights;
-
-  next->pos_key ^= stm_key;
 
   return 1;
 }
