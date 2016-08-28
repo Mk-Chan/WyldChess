@@ -77,16 +77,17 @@ void undo_move(Position* pos, u32* m) {
 }
 
 u32 do_move(Position* pos, u32* m) {
-  State** tmp       = &pos->state;
-  State* curr       = *tmp;
-  State* next       = ++*tmp;
+  State** const tmp        = &pos->state;
+  State const * const curr = *tmp;
+  State* const next        = ++*tmp;
+
   next->pos_key     = curr->pos_key;
   next->fifty_moves = curr->fifty_moves + 1;
   next->ep_sq_bb    = 0ULL;
 
   u32 check_illegal = 0;
-  const u32 from    = from_sq(*m);
-  const u32 to = to_sq(*m),
+  const u32 from = from_sq(*m),
+            to = to_sq(*m),
             c  = pos->stm,
             mt = move_type(*m);
 
