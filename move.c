@@ -97,9 +97,10 @@ u32 do_move(Position* pos, u32* m) {
   switch(mt) {
   case NORMAL:
     {
-      const u32 pt          = piece_type(pos->board[from]),
-                captured_pt = piece_type(pos->board[to]);
+      const u32 pt    = piece_type(pos->board[from]);
+      u32 captured_pt = pos->board[to];
       if(captured_pt) {
+        captured_pt = piece_type(captured_pt);
         remove_piece(pos, to, captured_pt, !c);
         *m |= captured_pt << CAP_TYPE_SHIFT;
         next->fifty_moves = 0;
@@ -158,8 +159,9 @@ u32 do_move(Position* pos, u32* m) {
     break;
   default:
     {
-      const u32 captured_pt = piece_type(pos->board[to]);
+      u32 captured_pt = pos->board[to];
       if(captured_pt) {
+        captured_pt = piece_type(captured_pt);
         remove_piece(pos, to, captured_pt, !c);
         *m |= captured_pt << CAP_TYPE_SHIFT;
         next->fifty_moves = 0;
