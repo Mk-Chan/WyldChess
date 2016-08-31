@@ -95,19 +95,19 @@ void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list) {
 void gen_check_evasions(Position* pos, Movelist* list) {
   const u32 c     = pos->stm,
         ksq       = pos->king_sq[c];
-  const u64 k_bb  = BB(ksq);
+  //const u64 k_bb  = BB(ksq);
   u64 checkers_bb = pos->state->checkers_bb;
   u64 evasions_bb = k_atks[ksq] & ~pos->bb[c];
 
   u32 sq;
-  pos->bb[FULL] ^= k_bb;
+  //pos->bb[FULL] ^= k_bb;
   while(evasions_bb) {
     sq = bitscan(evasions_bb);
     evasions_bb &= evasions_bb - 1;
     if(!atkers_to_sq(pos, sq, !c))
       add_move(move_normal(ksq, sq), list);
   }
-  pos->bb[FULL] ^= k_bb;
+  //pos->bb[FULL] ^= k_bb;
 
   if(checkers_bb & (checkers_bb - 1))
     return;

@@ -105,6 +105,13 @@ enum CaptureType {
 #define rank_of(sq) (sq >> 3)
 #define file_of(sq) (sq & 7)
 
+#define cancel_white_castle(cr) ((cr) & 0b1100)
+#define cancel_black_castle(cr) ((cr) & 0b0011)
+#define cancel_wkc(cr) ((cr) & 0b1110)
+#define cancel_wqc(cr) ((cr) & 0b1101)
+#define cancel_bkc(cr) ((cr) & 0b1011)
+#define cancel_bqc(cr) ((cr) & 0b0111)
+
 #define from_sq(m)    (m & 0x3f)
 #define to_sq(m)      ((m >> 6) & 0x3f)
 #define move_type(m)  (m & MOVE_TYPE_MASK)

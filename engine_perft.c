@@ -28,7 +28,7 @@ static inline void store(State* s, u64 nodes, u32 depth) {
 u64 total, hits, stores;
 
 u64 perft(Position* pos, u32 depth) {
-  /*u32 use_pft = 0 && (depth > 1 && pos->ply >= 3);
+  u32 use_pft = (depth > 1 && pos->ply >= 3);
   if(use_pft && !pos->ply) {
     total  = 0ULL;
     hits   = 0ULL;
@@ -50,7 +50,7 @@ u64 perft(Position* pos, u32 depth) {
       ++hits;
       return pe->nodes;
     }
-  }*/
+  }
 
   Movelist* list = &pos->state->list;
   list->end = list->moves;
@@ -80,14 +80,14 @@ u64 perft(Position* pos, u32 depth) {
     }
   }
 
-  /*if(use_pft) {
+  if(use_pft) {
     store(pos->state, count, depth);
     ++stores;
   }
 
   if(!pos->ply) {
     printf("stores=%llu, probes=%llu, hits=%llu\n", stores, total, hits);
-  }*/
+  }
 
   return count;
 }
