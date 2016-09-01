@@ -18,7 +18,6 @@ int main() {
 
   Position pos;
   set_pos(&pos, fen1);
-  print_board(&pos);
 
   u64 count;
   u32 d;
