@@ -1,14 +1,14 @@
 #ifndef DEF_H
 #define DEF_H
 
-#define BB(x) (1ULL << (x))
+#define BB(x)   (1ULL << (x))
 #define MAX_PLY (128)
 
 #define MOVE_TYPE_SHIFT (12)
-#define PROM_TYPE_SHIFT (14)
-#define CAP_TYPE_SHIFT  (17)
+#define PROM_TYPE_SHIFT (15)
+#define CAP_TYPE_SHIFT  (18)
 
-#define MOVE_TYPE_MASK (3 << MOVE_TYPE_SHIFT) 
+#define MOVE_TYPE_MASK (7 << MOVE_TYPE_SHIFT)
 #define PROM_TYPE_MASK (7 << PROM_TYPE_SHIFT)
 #define CAP_TYPE_MASK  (7 << CAP_TYPE_SHIFT)
 
@@ -78,9 +78,10 @@ enum CastlingRights {
 
 enum MoveType {
   NORMAL,
-  CASTLE    = 1 << MOVE_TYPE_SHIFT,
-  ENPASSANT = 2 << MOVE_TYPE_SHIFT,
-  PROMOTION = 3 << MOVE_TYPE_SHIFT
+  CASTLE      = 1 << MOVE_TYPE_SHIFT,
+  ENPASSANT   = 2 << MOVE_TYPE_SHIFT,
+  PROMOTION   = 3 << MOVE_TYPE_SHIFT,
+  DOUBLE_PUSH = 4 << MOVE_TYPE_SHIFT
 };
 
 enum PromotionType {
@@ -121,10 +122,11 @@ enum CaptureType {
 #define popcnt(bb)  (__builtin_popcountll(bb))
 #define bitscan(bb) (__builtin_ffsll(bb) - 1)
 
-#define move_normal(from, to)     (from | (to << 6) | NORMAL)
-#define move_castle(from, to)     (from | (to << 6) | CASTLE)
-#define move_ep(from, to)         (from | (to << 6) | ENPASSANT)
-#define move_prom(from, to, prom) (from | (to << 6) | PROMOTION | prom)
-#define move(from, to, mt, prom)  (from | (to << 6) | mt | prom)
+#define move_normal(from, to)      (from | (to << 6) | NORMAL)
+#define move_double_push(from, to) (from | (to << 6) | DOUBLE_PUSH)
+#define move_castle(from, to)      (from | (to << 6) | CASTLE)
+#define move_ep(from, to)          (from | (to << 6) | ENPASSANT)
+#define move_prom(from, to, prom)  (from | (to << 6) | PROMOTION | prom)
+#define move(from, to, mt, prom)   (from | (to << 6) | mt | prom)
 
 #endif

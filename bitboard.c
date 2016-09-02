@@ -29,14 +29,14 @@ void init_atks() {
     n_atks[sq] = 0ULL;
     p_atks[WHITE][sq] = 0ULL;
     p_atks[BLACK][sq] = 0ULL;
-    
+
     for(off = 0; off != 8; ++off) {
       ksq = sq + king_offsets[off];
-      if(    ksq <= H8 
+      if(    ksq <= H8
           && ksq >= A1
           && file_diff(sq, ksq) <= 1)
         k_atks[sq] |= BB(ksq);
-      
+
       nsq = sq + knight_offsets[off];
       if(    nsq <= H8
           && nsq >= A1
@@ -53,7 +53,7 @@ void init_atks() {
           p_atks[c][sq] |= BB(psq);
       }
     }
-    
+
     b_pseudo_atks[sq] = Bmagic(sq, 0ULL);
     r_pseudo_atks[sq] = Rmagic(sq, 0ULL);
     q_pseudo_atks[sq] = Qmagic(sq, 0ULL);

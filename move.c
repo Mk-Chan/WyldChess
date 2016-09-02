@@ -23,6 +23,11 @@ void undo_move(Position* pos, u32* m) {
         put_piece_no_key(pos, to, captured_pt, !c);
     }
     break;
+	case DOUBLE_PUSH:
+		{
+      move_piece_no_key(pos, to, from, PAWN, c);
+		}
+		break;
   case ENPASSANT:
     {
       put_piece_no_key(pos, (c == WHITE ? to - 8 : to + 8), PAWN, !c);
@@ -97,27 +102,15 @@ u32 do_move(Position* pos, u32* m) {
   case NORMAL:
     {
       const u32 pt    = piece_type(pos->board[from]);
-      u32 captured_pt = pos->board[to];
-      if(captured_pt) {
-        captured_pt = piece_type(captured_pt);
+			if(!pos->board[to])
+				move_piece(pos, from, to, pt, c);
+			else {
+        const u32 captured_pt = piece_type(pos->board[to]);
         remove_piece(pos, to, captured_pt, !c);
+				move_piece(pos, from, to, pt, c);
         *m |= captured_pt << CAP_TYPE_SHIFT;
         next->fifty_moves = 0;
       }
-      else if(pt == PAWN) {
-        if(c == WHITE && to == from + 16) {
-          next->ep_sq_bb  = BB(from + 8);
-          next->pos_key  ^= psq_keys[0][0][from + 8];
-        }
-        else if(c == BLACK && to == from - 16) {
-          next->ep_sq_bb  = BB(from - 8);
-          next->pos_key  ^= psq_keys[0][0][from - 8];
-        }
-
-        next->fifty_moves = 0;
-      }
-
-      move_piece(pos, from, to, pt, c);
 
       if(pt == KING) {
         pos->king_sq[c] = to;
@@ -125,6 +118,20 @@ u32 do_move(Position* pos, u32* m) {
       }
     }
     break;
+	case DOUBLE_PUSH:
+		{
+			move_piece(pos, from, to, PAWN, c);
+			next->fifty_moves = 0;
+			if(c == WHITE) {
+				next->ep_sq_bb  = BB(from + 8);
+				next->pos_key  ^= psq_keys[0][0][from + 8];
+			}
+			else if(c == BLACK) {
+				next->ep_sq_bb  = BB(from - 8);
+				next->pos_key  ^= psq_keys[0][0][from - 8];
+			}
+			break;
+		}
   case ENPASSANT:
     {
       move_piece(pos, from, to, PAWN, c);

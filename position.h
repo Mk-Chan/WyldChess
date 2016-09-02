@@ -19,7 +19,7 @@ typedef struct Stats_s {
 } Stats;
 
 typedef struct Movelist_s {
-  
+
   u32  moves[218];
   u32* end;
 
@@ -121,7 +121,7 @@ inline void set_pinned(Position* pos, u32 to_color) {
 
   u32 sq;
   u64 bb,
-      pinners_bb = ((pos->bb[ROOK] | pos->bb[QUEEN]) 
+      pinners_bb = ((pos->bb[ROOK] | pos->bb[QUEEN])
                    & pos->bb[!to_color]
                    & r_pseudo_atks[ksq])
                  | ((pos->bb[BISHOP] | pos->bb[QUEEN])

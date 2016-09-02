@@ -81,7 +81,7 @@ const U64 magicmoves_r_magics[64]=
 	C64(0x0001000204080011), C64(0x0001000204000801), C64(0x0001000082000401), C64(0x0001FFFAABFAD1A2)
 };
 const U64 magicmoves_r_mask[64]=
-{	
+{
 	C64(0x000101010101017E), C64(0x000202020202027C), C64(0x000404040404047A), C64(0x0008080808080876),
 	C64(0x001010101010106E), C64(0x002020202020205E), C64(0x004040404040403E), C64(0x008080808080807E),
 	C64(0x0001010101017E00), C64(0x0002020202027C00), C64(0x0004040404047A00), C64(0x0008080808087600),
@@ -228,7 +228,7 @@ U64 initmagicmoves_Rmoves(const int square, const U64 occ)
 	U64 ret=0;
 	U64 bit;
 	U64 rowbits=(((U64)0xFF)<<(8*(square/8)));
-	
+
 	bit=(((U64)(1))<<square);
 	do
 	{
@@ -264,7 +264,7 @@ U64 initmagicmoves_Bmoves(const int square, const U64 occ)
 	U64 bit;
 	U64 bit2;
 	U64 rowbits=(((U64)0xFF)<<(8*(square/8)));
-	
+
 	bit=(((U64)(1))<<square);
 	bit2=bit;
 	do

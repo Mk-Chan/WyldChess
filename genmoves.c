@@ -2,6 +2,8 @@
 #include "position.h"
 #include "magicmoves.h"
 
+// TODO: Unroll piece type loops
+
 static inline void add_move(u32 m, Movelist* list) {
   *list->end = m;
   ++list->end;
@@ -20,7 +22,7 @@ void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list) {
   const u32 c = pos->stm;
   u32 blocking_sq, blocker;
   u64 blockers_poss, pawn_block_poss,
-      pawns_bb            = pos->bb[PAWN] & pos->bb[c];
+      pawns_bb             = pos->bb[PAWN] & pos->bb[c];
   const u64 inlcusion_mask = ~(pawns_bb | pos->bb[KING] | pos->state->pinned_bb),
             vacancy_mask   = ~pos->bb[FULL];
   while(blocking_poss_bb) {
@@ -33,18 +35,17 @@ void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list) {
       if(blocking_sq < 8 || blocking_sq > 55) {
         add_move(move_prom(blocker, blocking_sq, TO_QUEEN), list);
         add_move(move_prom(blocker, blocking_sq, TO_KNIGHT), list);
-
         add_move(move_prom(blocker, blocking_sq, TO_ROOK), list);
         add_move(move_prom(blocker, blocking_sq, TO_BISHOP), list);
       }
       else
         add_move(move_normal(blocker, blocking_sq), list);
     }
-    else if((( c == WHITE && rank_of(blocking_sq) == RANK_4)
+    else if((  (c == WHITE && rank_of(blocking_sq) == RANK_4)
             || (c == BLACK && rank_of(blocking_sq) == RANK_5))
               && (pawn_block_poss & vacancy_mask)
               && (pawn_block_poss = pawn_shift(pawn_block_poss, !c) & pawns_bb))
-      add_move(move_normal(bitscan(pawn_block_poss), blocking_sq), list);
+      add_move(move_double_push(bitscan(pawn_block_poss), blocking_sq), list);
 
     blockers_poss = atkers_to_sq(pos, blocking_sq, c) & inlcusion_mask;
     while(blockers_poss) {
@@ -82,7 +83,6 @@ void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list) {
           && (checker < 8 || checker > 55)) {
         add_move(move_prom(atker, checker, TO_QUEEN), list);
         add_move(move_prom(atker, checker, TO_KNIGHT), list);
-
         add_move(move_prom(atker, checker, TO_ROOK), list);
         add_move(move_prom(atker, checker, TO_BISHOP), list);
       }
@@ -144,7 +144,6 @@ void gen_pawn_captures(Position* pos, Movelist* list) {
       if(to < 8 || to > 55) {
         add_move(move_prom(from, to, TO_QUEEN), list);
         add_move(move_prom(from, to, TO_KNIGHT), list);
-
         add_move(move_prom(from, to, TO_ROOK), list);
         add_move(move_prom(from, to, TO_BISHOP), list);
       }
@@ -173,6 +172,35 @@ void gen_captures(Position* pos, Movelist* list) {
   }
   from = pos->king_sq[c];
   extract_moves(from, k_atks[from] & pos->bb[!c], list);
+}
+
+void gen_pawn_quiets(Position* pos, Movelist* list) {
+  const u32 c = pos->stm;
+  u32 single_push, from;
+  const u64 vacancy_mask = ~pos->bb[FULL];
+  u64 pawns_bb           = pos->bb[PAWN] & pos->bb[c];
+  while(pawns_bb) {
+    from        = bitscan(pawns_bb);
+    pawns_bb   &= pawns_bb - 1;
+    single_push = (c == WHITE ? from + 8 : from - 8);
+    if(BB(single_push) & vacancy_mask) {
+      if(single_push < 8 || single_push > 55) {
+        add_move(move_prom(from, single_push, TO_QUEEN), list);
+        add_move(move_prom(from, single_push, TO_KNIGHT), list);
+        add_move(move_prom(from, single_push, TO_ROOK), list);
+        add_move(move_prom(from, single_push, TO_BISHOP), list);
+      }
+      else {
+        add_move(move_normal(from, single_push), list);
+        if(    (c == WHITE && rank_of(from) == RANK_2)
+            || (c == BLACK && rank_of(from) == RANK_7)) {
+          const u32 double_push = (c == WHITE ? single_push + 8 : single_push - 8);
+          if(BB(double_push) & vacancy_mask)
+            add_move(move_double_push(from, double_push), list);
+        }
+      }
+    }
+  }
 }
 
 void gen_castling(Position* pos, Movelist* list) {
@@ -206,36 +234,6 @@ void gen_castling(Position* pos, Movelist* list) {
       && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][0], !c))
       && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][1], !c)))
     add_move(move_castle(castling_king_sqs[c][1][0], castling_king_sqs[c][1][1]), list);
-}
-
-void gen_pawn_quiets(Position* pos, Movelist* list) {
-  const u32 c = pos->stm;
-  u32 single_push, from;
-  const u64 vacancy_mask = ~pos->bb[FULL];
-  u64 pawns_bb           = pos->bb[PAWN] & pos->bb[c];
-  while(pawns_bb) {
-    from        = bitscan(pawns_bb);
-    pawns_bb   &= pawns_bb - 1;
-    single_push = (c == WHITE ? from + 8 : from - 8);
-    if(BB(single_push) & vacancy_mask) {
-      if(single_push < 8 || single_push > 55) {
-        add_move(move_prom(from, single_push, TO_QUEEN), list);
-        add_move(move_prom(from, single_push, TO_KNIGHT), list);
-
-        add_move(move_prom(from, single_push, TO_ROOK), list);
-        add_move(move_prom(from, single_push, TO_BISHOP), list);
-      }
-      else {
-        add_move(move_normal(from, single_push), list);
-        if(    (c == WHITE && rank_of(from) == RANK_2)
-            || (c == BLACK && rank_of(from) == RANK_7)) {
-          const u32 double_push = (c == WHITE ? single_push + 8 : single_push - 8);
-          if(BB(double_push) & vacancy_mask)
-            add_move(move_normal(from, double_push), list);
-        }
-      }
-    }
-  }
 }
 
 void gen_quiets(Position* pos, Movelist* list) {
