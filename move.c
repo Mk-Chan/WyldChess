@@ -188,7 +188,7 @@ u32 do_move(Position* pos, u32* m)
 		                ^ castle_keys[curr->castling_rights]
 		                ^ castle_keys[next->castling_rights];
 
-	if(  (check_illegal || (BB(from) & curr->pinned_bb) > 0)
+	if ( (check_illegal || (BB(from) & curr->pinned_bb) > 0)
 	   && checkers(pos, pos->stm)) {
 		undo_move(pos, m);
 		return 0;
