@@ -12,6 +12,9 @@ extern u64 q_pseudo_atks[64];
 extern u64 dirn_sqs[64][64];
 extern u64 intervening_sqs[64][64];
 
+extern u64 rank_mask[8];
+extern u64 file_mask[8];
+
 extern void init_atks();
 extern void init_intervening_sqs();
 extern void print_bb(u64 bb);
