@@ -125,6 +125,8 @@ static inline char get_char_from_piece(int piece) {
 	case KING:
 		x = 'K';
 		break;
+	default:
+		return -1;
 	}
 
 	if (piece_color(piece) == BLACK)
