@@ -8,12 +8,9 @@
 
 typedef struct Stats_s {
 
-	// Hash table stats
 	u64 hash_stores;
 	u64 hash_probes;
 	u64 hash_hits;
-
-	// Search tree stats
 	u64 total_nodes;
 
 } Stats;
