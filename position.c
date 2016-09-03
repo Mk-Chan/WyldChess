@@ -44,6 +44,7 @@ void init_pos(Position* pos) {
 	pos->state->fifty_moves     = 0;
 	pos->state->castling_rights = 0;
 	pos->state->ep_sq_bb        = 0ULL;
+	pos->state->piece_psq_eval  = 0;
 }
 
 void set_pos(Position* pos, char* fen) {

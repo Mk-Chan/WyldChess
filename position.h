@@ -5,15 +5,13 @@
 #include "random.h"
 #include "bitboard.h"
 #include "magicmoves.h"
+#include "eval.h"
 
 typedef struct Stats_s {
 
-	// Hash table stats
 	u64 hash_stores;
 	u64 hash_probes;
 	u64 hash_hits;
-
-	// Search tree stats
 	u64 total_nodes;
 
 } Stats;
@@ -27,6 +25,7 @@ typedef struct Movelist_s {
 
 typedef struct State_s {
 
+	u32      piece_psq_eval;
 	u32      castling_rights;
 	u32      fifty_moves;
 	u64      pinned_bb;
@@ -95,6 +94,7 @@ inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c) {
 	pos->bb[pt]         |= set;
 	pos->board[sq]       = make_piece(pt, c);
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
+	pos->state->piece_psq_eval += c == WHITE ? piece_val[pt] : -piece_val[pt];
 }
 
 inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c) {
@@ -104,6 +104,7 @@ inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c) {
 	pos->bb[pt]         ^= clr;
 	pos->board[sq]       = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
+	pos->state->piece_psq_eval += c == WHITE ? -piece_val[pt] : piece_val[pt];
 }
 
 inline u64 pawn_shift(u64 bb, u32 c) {
@@ -208,5 +209,6 @@ extern void gen_captures(Position* pos, Movelist* list);
 extern void gen_check_evasions(Position* pos, Movelist* list);
 
 extern u64 perft(Position* pos, u32 depth);
+extern int evaluate(Position* const pos);
 
 #endif
