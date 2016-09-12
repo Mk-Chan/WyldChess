@@ -25,26 +25,27 @@ typedef struct Movelist_s {
 
 typedef struct State_s {
 
-	u32      piece_psq_eval;
+	int      piece_psq_eval[2];
 	u32      castling_rights;
 	u32      fifty_moves;
 	u64      pinned_bb;
 	u64      checkers_bb;
 	u64      ep_sq_bb;
 	HashKey  pos_key;
-	Movelist list;
 
 } State;
 
 typedef struct Position_s {
 
+	u32      hist_size;
 	u32      ply;
 	u32      stm;
 	u64      bb[10];
 	u32      king_sq[2];
 	u32      board[64];
 	State*   state;
-	State    state_list[MAX_PLY];
+	State    hist[MAX_MOVES + MAX_PLY];
+	Movelist list[MAX_PLY];
 
 #ifdef STATS
 	Stats    stats;
@@ -52,7 +53,8 @@ typedef struct Position_s {
 
 } Position;
 
-inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c) {
+inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
+{
 	u64 from_to          = BB(from) ^ BB(to);
 	pos->bb[FULL]       ^= from_to;
 	pos->bb[c]          ^= from_to;
@@ -61,7 +63,8 @@ inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c) {
 	pos->board[from]     = 0;
 }
 
-inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c) {
+inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
+{
 	u64 set              = BB(sq);
 	pos->bb[FULL]       |= set;
 	pos->bb[c]          |= set;
@@ -69,7 +72,8 @@ inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c) {
 	pos->board[sq]       = make_piece(pt, c);
 }
 
-inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c) {
+inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
+{
 	u64 clr              = BB(sq);
 	pos->bb[FULL]       ^= clr;
 	pos->bb[c]          ^= clr;
@@ -77,7 +81,8 @@ inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c) {
 	pos->board[sq]       = 0;
 }
 
-inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c) {
+inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
+{
 	u64 from_to          = BB(from) ^ BB(to);
 	pos->bb[FULL]       ^= from_to;
 	pos->bb[c]          ^= from_to;
@@ -85,38 +90,86 @@ inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c) {
 	pos->board[to]       = pos->board[from];
 	pos->board[from]     = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][from] ^ psq_keys[c][pt][to];
+	if (c == WHITE)
+		pos->state->piece_psq_eval[WHITE] += psq_val[pt][to] - psq_val[pt][from];
+	else
+		pos->state->piece_psq_eval[BLACK] += psq_val[pt][to ^ 56] - psq_val[pt][from ^ 56];
 }
 
-inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c) {
+inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
+{
 	u64 set              = BB(sq);
 	pos->bb[FULL]       |= set;
 	pos->bb[c]          |= set;
 	pos->bb[pt]         |= set;
 	pos->board[sq]       = make_piece(pt, c);
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
-	pos->state->piece_psq_eval += c == WHITE ? piece_val[pt] : -piece_val[pt];
+	if (c == WHITE)
+		pos->state->piece_psq_eval[WHITE] += piece_val[pt] + psq_val[pt][sq];
+	else
+		pos->state->piece_psq_eval[BLACK] += piece_val[pt] + psq_val[pt][sq ^ 56];
 }
 
-inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c) {
+inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
+{
 	u64 clr              = BB(sq);
 	pos->bb[FULL]       ^= clr;
 	pos->bb[c]          ^= clr;
 	pos->bb[pt]         ^= clr;
 	pos->board[sq]       = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
-	pos->state->piece_psq_eval += c == WHITE ? -piece_val[pt] : piece_val[pt];
+	pos->state->piece_psq_eval[c] -= piece_val[pt] + psq_val[pt][sq];
+	if (c == WHITE)
+		pos->state->piece_psq_eval[WHITE] -= piece_val[pt] + psq_val[pt][sq];
+	else
+		pos->state->piece_psq_eval[BLACK] -= piece_val[pt] + psq_val[pt][sq ^ 56];
 }
 
-inline u64 pawn_shift(u64 bb, u32 c) {
+inline u64 pawn_shift(u64 bb, u32 c)
+{
 	return (c == WHITE ? bb << 8 : bb >> 8);
 }
 
-inline u64 pawn_double_shift(u64 bb, u32 c) {
+inline u64 pawn_double_shift(u64 bb, u32 c)
+{
 	return (c == WHITE ? bb << 16 : bb >> 16);
 }
 
-inline void set_pinned(Position* pos, u32 to_color) {
-	const int ksq = pos->king_sq[to_color];
+inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
+{
+	switch (pt) {
+	case KNIGHT: return n_atks[sq];
+	case BISHOP: return Bmagic(sq, occupancy);
+	case ROOK:   return Rmagic(sq, occupancy);
+	case QUEEN:  return Qmagic(sq, occupancy);
+	case KING:   return k_atks[sq];
+	default:     return -1;
+	}
+}
+
+inline u64 atkers_to_sq(Position* pos, u32 sq, u32 by_color)
+{
+	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
+		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
+		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
+}
+
+inline u64 checkers(Position* pos, u32 by_color)
+{
+	const u32 sq = pos->king_sq[!by_color];
+	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
+		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
+		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
+}
+
+inline void set_pinned(Position* pos)
+{
+	u32 const  to_color  = pos->stm,
+	           ksq       = pos->king_sq[to_color];
 	u64* const pinned_bb = &pos->state->pinned_bb;
 	          *pinned_bb = 0ULL;
 
@@ -137,41 +190,41 @@ inline void set_pinned(Position* pos, u32 to_color) {
 	}
 }
 
-inline u64 get_atks(u32 sq, u32 pt, u64 occupancy) {
-	switch (pt) {
-	case KNIGHT: return n_atks[sq];
-	case BISHOP: return Bmagic(sq, occupancy);
-	case ROOK:   return Rmagic(sq, occupancy);
-	case QUEEN:  return Qmagic(sq, occupancy);
-	case KING:   return k_atks[sq];
-	default:     return -1;
-	}
+inline void set_checkers(Position* pos)
+{
+	pos->state->checkers_bb = checkers(pos, !pos->stm);
 }
 
-inline u64 atkers_to_sq(Position* pos, u32 sq, u32 by_color) {
-	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
-		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
-		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
-		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
-		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
-}
+extern u32 initial_stm;
+extern void print_board(Position* pos);
 
-inline u64 checkers(Position* pos, u32 by_color) {
-	const u32 sq = pos->king_sq[!by_color];
-	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
-		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
-		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
-		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
-		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
-}
+extern void cecp_loop();
 
-inline void move_str(u32 move, char str[5]) {
+extern void init_pos(Position* pos);
+extern void set_pos(Position* pos, char* fen);
+
+extern void undo_move(Position* const pos, u32* m);
+extern u32  do_move(Position* const pos, u32* m);
+extern u32  do_usermove(Position* const pos, u32 m);
+
+extern void gen_quiets(Position* pos, Movelist* list);
+extern void gen_captures(Position* pos, Movelist* list);
+
+extern void gen_check_evasions(Position* pos, Movelist* list);
+
+extern u64 perft(Position* pos, u32 depth);
+
+extern int evaluate(Position* const pos);
+
+inline char* move_str(u32 move)
+{
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
-	str[0] = file_of(from) + 'a';
-	str[1] = rank_of(from) + '1';
-	str[2] = file_of(to) + 'a';
-	str[3] = rank_of(to) + '1';
+	char* str = malloc(sizeof(char) * 6);
+	str[0]    = file_of(from) + 'a';
+	str[1]    = rank_of(from) + '1';
+	str[2]    = file_of(to)   + 'a';
+	str[3]    = rank_of(to)   + '1';
 	if (move_type(move) == PROMOTION) {
 		const u32 prom = prom_type(move);
 		switch (prom) {
@@ -190,25 +243,56 @@ inline void move_str(u32 move, char str[5]) {
 		}
 	}
 	else {
-		str[4] = 0;
+		str[4] = '\0';
 	}
+	str[5] = '\0';
+	return str;
 }
 
-extern u32 initial_stm;
-extern void print_board(Position* pos);
-
-extern void init_pos(Position* pos);
-extern void set_pos(Position* pos, char* fen);
-
-extern u32  do_move(Position* pos, u32* m);
-extern void undo_move(Position* pos, u32* m);
-
-extern void gen_quiets(Position* pos, Movelist* list);
-extern void gen_captures(Position* pos, Movelist* list);
-
-extern void gen_check_evasions(Position* pos, Movelist* list);
-
-extern u64 perft(Position* pos, u32 depth);
-extern int evaluate(Position* const pos);
+inline int parse_move(Position* pos, char* str)
+{
+	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
+	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
+	char prom = str[4];
+	Movelist* list = pos->list;
+	list->end      = list->moves;
+	set_pinned(pos);
+	set_checkers(pos);
+	if (pos->state->checkers_bb) {
+		gen_check_evasions(pos, list);
+	} else {
+		gen_quiets(pos, list);
+		gen_captures(pos, list);
+	}
+	for(u32* move = list->moves; move != list->end; ++move) {
+		if (   from_sq(*move) == from
+		    && to_sq(*move) == to) {
+			if (    piece_type(pos->board[from]) == PAWN
+			    && (to > 56 || to < 8)) {
+				switch (prom_type(*move)) {
+				case QUEEN:
+					if (prom == 'q')
+						return *move;
+					break;
+				case KNIGHT:
+					if (prom == 'n')
+						return *move;
+					break;
+				case BISHOP:
+					if (prom == 'b')
+						return *move;
+					break;
+				case ROOK:
+					if (prom == 'r')
+						return *move;
+					break;
+				}
+			} else {
+				return *move;
+			}
+		}
+	}
+	return 0;
+}
 
 #endif

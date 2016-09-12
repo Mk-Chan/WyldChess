@@ -1,7 +1,7 @@
 #include "defs.h"
 #include "position.h"
 
-void undo_move(Position* pos, u32* m)
+void undo_move(Position* const pos, u32* m)
 {
 	--pos->ply;
 	--pos->state;
@@ -71,7 +71,7 @@ void undo_move(Position* pos, u32* m)
 	}
 }
 
-u32 do_move(Position* pos, u32* m)
+u32 do_move(Position* const pos, u32* m)
 {
 	static u32 const castle_perms[64] = {
 		13, 15, 15, 15, 12, 15, 15, 14,
@@ -88,9 +88,11 @@ u32 do_move(Position* pos, u32* m)
 	State const * const curr = *tmp;
 	State* const next        = ++*tmp;
 
-	next->pos_key     = curr->pos_key;
-	next->fifty_moves = curr->fifty_moves + 1;
-	next->ep_sq_bb    = 0ULL;
+	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
+	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
+	next->pos_key               = curr->pos_key;
+	next->fifty_moves           = curr->fifty_moves + 1;
+	next->ep_sq_bb              = 0ULL;
 
 	u32 check_illegal = 0;
 	u32 const from    = from_sq(*m),
@@ -183,7 +185,7 @@ u32 do_move(Position* pos, u32* m)
 	++pos->ply;
 	pos->stm ^= 1;
 
-	next->castling_rights = (curr->castling_rights & castle_perms[from]) & castle_perms[to];
+	next->castling_rights =  (curr->castling_rights & castle_perms[from]) & castle_perms[to];
 	next->pos_key        ^=   stm_key
 		                ^ castle_keys[curr->castling_rights]
 		                ^ castle_keys[next->castling_rights];
@@ -194,5 +196,13 @@ u32 do_move(Position* pos, u32* m)
 		return 0;
 	}
 
+	return 1;
+}
+
+u32 do_usermove(Position* const pos, u32 move) {
+	if (!do_move(pos, &move))
+		return 0;
+	pos->ply = 0;
+	++pos->hist_size;
 	return 1;
 }

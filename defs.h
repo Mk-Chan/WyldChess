@@ -1,8 +1,16 @@
 #ifndef DEF_H
 #define DEF_H
 
-#define BB(x)   (1ULL << (x))
-#define MAX_PLY (128)
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+#define MAX_MOVES (2048)
+#define MAX_PLY   (128)
+#define BB(x)     (1ULL << (x))
+#define INFINITY  (30000)
+#define MATE_VAL  (50000)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
@@ -89,14 +97,6 @@ enum PromotionType {
 	TO_BISHOP = BISHOP << PROM_TYPE_SHIFT,
 	TO_ROOK   = ROOK   << PROM_TYPE_SHIFT,
 	TO_QUEEN  = QUEEN  << PROM_TYPE_SHIFT
-};
-
-enum CaptureType {
-	PAWN_CAP   = PAWN   << CAP_TYPE_SHIFT,
-	KNIGHT_CAP = KNIGHT << CAP_TYPE_SHIFT,
-	BISHOP_CAP = BISHOP << CAP_TYPE_SHIFT,
-	ROOK_CAP   = ROOK   << CAP_TYPE_SHIFT,
-	QUEEN_CAP  = QUEEN  << CAP_TYPE_SHIFT
 };
 
 #define make_piece(pt, c)  (pt | (c << 3))

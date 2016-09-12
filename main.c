@@ -1,14 +1,9 @@
-#include <stdio.h>
 #include <time.h>
-#include "defs.h"
-#include "bitboard.h"
 #include "magicmoves.h"
 #include "position.h"
 #include "random.h"
-#include "eval.h"
-
-char* fen1 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-char* fen2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+#include "tt.h"
+#include "engine.h"
 
 int main()
 {
@@ -17,12 +12,28 @@ int main()
 	initmagicmoves();
 	init_atks();
 	init_intervening_sqs();
-	Position pos;
+	tt_init(&tt, 100000);
+	cecp_loop();
+	tt_destroy(&tt);
+	/*Position pos;
+	init_pos(&pos);
 	set_pos(&pos, fen1);
-	printf("Eval = %d\n", evaluate(&pos));
+	u32 move = move_normal(D2, D4);
+	do_usermove(&pos, move);
+	move = move_normal(D7, D5);
+	do_usermove(&pos, move);
+	move = move_normal(B1, C3);
+	do_usermove(&pos, move);
+	move = move_normal(B8, C6);
+	do_usermove(&pos, move);
+	printf("Searching:\n");
+	print_board(&pos);
+	begin_search(&pos);
+	printf("Done!\n");*/
+	//printf("Eval = %d\n", evaluate(&pos));
 	/*u64 count;
 	u32 d;
-	for(d = 1; d <= 6; ++d) {
+	for (d = 1; d <= 6; ++d) {
 	  count = perft(&pos, d);
 	  printf("perft(%d) = %10llu\n", d, count);
 	}*/

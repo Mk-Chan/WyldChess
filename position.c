@@ -36,19 +36,38 @@ void init_pos(Position* pos) {
 		pos->board[i] = 0;
 	for (i = 0; i != 10; ++i)
 		pos->bb[i] = 0ULL;
-	pos->ply                    = 0;
-	pos->stm                    = WHITE;
-	pos->state                  = pos->state_list;
-	pos->state->pos_key         = 0ULL;
-	pos->state->pinned_bb       = 0ULL;
-	pos->state->fifty_moves     = 0;
-	pos->state->castling_rights = 0;
-	pos->state->ep_sq_bb        = 0ULL;
-	pos->state->piece_psq_eval  = 0;
+	pos->ply                          = 0;
+	pos->hist_size                    = 0;
+	pos->stm                          = WHITE;
+	pos->state                        = pos->hist;
+	pos->state->pos_key               = 0ULL;
+	pos->state->pinned_bb             = 0ULL;
+	pos->state->fifty_moves           = 0;
+	pos->state->castling_rights       = 0;
+	pos->state->ep_sq_bb              = 0ULL;
+	pos->state->piece_psq_eval[WHITE] = 0;
+	pos->state->piece_psq_eval[BLACK] = 0;
+}
+
+void clear_pos(Position* pos) {
+	u32 i;
+	for (i = 0; i != 64; ++i)
+		pos->board[i] = 0;
+	for (i = 0; i != 10; ++i)
+		pos->bb[i] = 0ULL;
+	pos->ply                          = 0;
+	pos->state->pos_key               = 0ULL;
+	pos->state->pinned_bb             = 0ULL;
+	pos->state->fifty_moves           = 0;
+	pos->state->castling_rights       = 0;
+	pos->state->ep_sq_bb              = 0ULL;
+	pos->state->checkers_bb           = 0ULL;
+	pos->state->piece_psq_eval[WHITE] = 0;
+	pos->state->piece_psq_eval[BLACK] = 0;
 }
 
 void set_pos(Position* pos, char* fen) {
-	init_pos(pos);
+	clear_pos(pos);
 	u32 piece, pt, sq, pc,
 	    tsq   = 0,
 	    index = 0;
@@ -94,17 +113,12 @@ void set_pos(Position* pos, char* fen) {
 
 	++index;
 	u32 x = 0;
-	while ((c = fen[index++] != '\0' && c != ' '))
+	while ((c = fen[index++]) != ' ')
 		x = x * 10 + (c - '0');
 	pos->state->fifty_moves = x;
-
-	// Ignoring full game moves for now
-
-	set_pinned(pos, pos->stm);
-	pos->state->checkers_bb = checkers(pos, !pos->stm);
 }
 
-static inline char get_char_from_piece(int piece) {
+static inline char get_char_from_piece(u32 piece) {
 	char x;
 	int pt = piece_type(piece);
 	switch (pt) {

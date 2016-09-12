@@ -55,10 +55,10 @@ u64 perft(Position* pos, u32 depth)
 		}
 	}
 
-	Movelist* list = &pos->state->list;
+	Movelist* list = pos->list + pos->ply;
 	list->end = list->moves;
-	set_pinned(pos, pos->stm);
-	pos->state->checkers_bb  = checkers(pos, !pos->stm);
+	set_pinned(pos);
+	set_checkers(pos);
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
 	}
