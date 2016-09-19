@@ -35,11 +35,13 @@ u64 file_mask[8] = {
 	0x8080808080808080ULL
 };
 
-static inline int file_diff(int sq1, int sq2) {
+static inline int file_diff(int sq1, int sq2)
+{
 	return abs((sq1 % 8) - (sq2 % 8));
 }
 
-void init_atks() {
+void init_atks()
+{
 	static int king_offsets[8] = { -9, -8, -7, -1, 1, 7, 8, 9 };
 	static int knight_offsets[8] = { -17, -15, -10, -6, 6, 10, 15, 17 };
 	static int pawn_offsets[2][2] = { { 7, 9 }, { -9, -7 } };
@@ -82,7 +84,8 @@ void init_atks() {
 	}
 }
 
-void init_intervening_sqs() {
+void init_intervening_sqs()
+{
 	int i, j, high, low;
 	for (i = 0; i < 64; i++) {
 		for (j = 0; j < 64; j++) {
@@ -120,7 +123,8 @@ void init_intervening_sqs() {
 	}
 }
 
-void print_bb(u64 bb) {
+void print_bb(u64 bb)
+{
 	printf("Bitboard:\n");
 	int sq = 0;
 	for (; sq != 64; ++sq) {

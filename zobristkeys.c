@@ -4,7 +4,8 @@ HashKey psq_keys[2][8][64];
 HashKey castle_keys[16];
 HashKey stm_key;
 
-void init_zobrist_keys() {
+void init_zobrist_keys()
+{
 	int i, j, k;
 	for (i = 0; i != 2; ++i)
 		for (j = 0; j != 8; ++j)

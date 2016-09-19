@@ -2,7 +2,8 @@
 #include "position.h"
 #include "random.h"
 
-static inline u32 get_piece_from_char(char c) {
+static inline u32 get_piece_from_char(char c)
+{
 	switch (c) {
 	case 'p': return BP;
 	case 'r': return BR;
@@ -20,7 +21,8 @@ static inline u32 get_piece_from_char(char c) {
 	}
 }
 
-static inline u32 get_cr_from_char(char c) {
+static inline u32 get_cr_from_char(char c)
+{
 	switch (c) {
 	case 'K': return WKC;
 	case 'Q': return WQC;
@@ -30,7 +32,8 @@ static inline u32 get_cr_from_char(char c) {
 	}
 }
 
-void init_pos(Position* pos) {
+void init_pos(Position* pos)
+{
 	u32 i;
 	for (i = 0; i != 64; ++i)
 		pos->board[i] = 0;
@@ -49,7 +52,8 @@ void init_pos(Position* pos) {
 	pos->state->piece_psq_eval[BLACK] = 0;
 }
 
-void clear_pos(Position* pos) {
+void clear_pos(Position* pos)
+{
 	u32 i;
 	for (i = 0; i != 64; ++i)
 		pos->board[i] = 0;
@@ -66,7 +70,8 @@ void clear_pos(Position* pos) {
 	pos->state->piece_psq_eval[BLACK] = 0;
 }
 
-void set_pos(Position* pos, char* fen) {
+void set_pos(Position* pos, char* fen)
+{
 	clear_pos(pos);
 	u32 piece, pt, sq, pc,
 	    tsq   = 0,
@@ -118,7 +123,8 @@ void set_pos(Position* pos, char* fen) {
 	pos->state->fifty_moves = x;
 }
 
-static inline char get_char_from_piece(u32 piece) {
+static inline char get_char_from_piece(u32 piece)
+{
 	char x;
 	int pt = piece_type(piece);
 	switch (pt) {
@@ -149,7 +155,8 @@ static inline char get_char_from_piece(u32 piece) {
 	return x;
 }
 
-void print_board(Position* pos) {
+void print_board(Position* pos)
+{
 	printf("Board:\n");
 	int i, piece;
 	for (i = 0; i != 64; ++i) {
