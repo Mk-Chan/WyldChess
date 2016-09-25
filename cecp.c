@@ -272,7 +272,7 @@ void cecp_loop()
 		} else if (!strncmp(input, "st", 2)) {
 
 			// Seconds per move
-			ctlr.time_left  = curr_time() + (1000 * atoi(input + 3));
+			ctlr.time_left  = 1000 * atoi(input + 3);
 			ctlr.moves_left = 1;
 			ctlr.increment  = 0;
 
