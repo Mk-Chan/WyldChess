@@ -40,27 +40,11 @@ inline void tt_destroy(TT* tt)
 	free(tt->table);
 }
 
-inline void tt_store_exact(TT* tt, u64 score, u64 depth, u64 move, u64 key)
+inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
 {
 	u32 index    = key < tt->size ? key : key % tt->size;
 	Entry* entry = tt->table + index;
-	entry->data  = move | FLAG_EXACT | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
-	entry->key   = key ^ entry->data;
-}
-
-inline void tt_store_lower(TT* tt, u64 score, u64 depth, u64 move, u64 key)
-{
-	u32 index    = key < tt->size ? key : key % tt->size;
-	Entry* entry = tt->table + index;
-	entry->data  = move | FLAG_LOWER | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
-	entry->key   = key ^ entry->data;
-}
-
-inline void tt_store_upper(TT* tt, u64 score, u64 depth, u64 move, u64 key)
-{
-	u32 index    = key < tt->size ? key : key % tt->size;
-	Entry* entry = tt->table + index;
-	entry->data  = move | FLAG_UPPER | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
+	entry->data  = move | flag | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
 	entry->key   = key ^ entry->data;
 }
 

@@ -3,14 +3,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
 #define MAX_MOVES (2048)
 #define MAX_PLY   (128)
 #define BB(x)     (1ULL << (x))
 #define INFINITY  (30000)
-#define MATE_VAL  (50000)
+#define MATE_VAL  (INFINITY - MAX_PLY)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)

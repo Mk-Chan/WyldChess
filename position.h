@@ -9,6 +9,8 @@
 
 typedef struct Stats_s {
 
+	u64 first_beta_cutoffs;
+	u64 beta_cutoffs;
 	u64 hash_stores;
 	u64 hash_probes;
 	u64 hash_hits;
@@ -55,30 +57,30 @@ typedef struct Position_s {
 
 inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
-	u64 from_to          = BB(from) ^ BB(to);
-	pos->bb[FULL]       ^= from_to;
-	pos->bb[c]          ^= from_to;
-	pos->bb[pt]         ^= from_to;
-	pos->board[to]       = pos->board[from];
-	pos->board[from]     = 0;
+	u64 from_to       = BB(from) ^ BB(to);
+	pos->bb[FULL]    ^= from_to;
+	pos->bb[c]       ^= from_to;
+	pos->bb[pt]      ^= from_to;
+	pos->board[to]    = pos->board[from];
+	pos->board[from]  = 0;
 }
 
 inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 {
-	u64 set              = BB(sq);
-	pos->bb[FULL]       |= set;
-	pos->bb[c]          |= set;
-	pos->bb[pt]         |= set;
-	pos->board[sq]       = make_piece(pt, c);
+	u64 set         = BB(sq);
+	pos->bb[FULL]  |= set;
+	pos->bb[c]     |= set;
+	pos->bb[pt]    |= set;
+	pos->board[sq]  = make_piece(pt, c);
 }
 
 inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 {
-	u64 clr              = BB(sq);
-	pos->bb[FULL]       ^= clr;
-	pos->bb[c]          ^= clr;
-	pos->bb[pt]         ^= clr;
-	pos->board[sq]       = 0;
+	u64 clr         = BB(sq);
+	pos->bb[FULL]  ^= clr;
+	pos->bb[c]     ^= clr;
+	pos->bb[pt]    ^= clr;
+	pos->board[sq]  = 0;
 }
 
 inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
@@ -118,7 +120,6 @@ inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->bb[pt]         ^= clr;
 	pos->board[sq]       = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
-	pos->state->piece_psq_eval[c] -= piece_val[pt] + psq_val[pt][sq];
 	if (c == WHITE)
 		pos->state->piece_psq_eval[WHITE] -= piece_val[pt] + psq_val[pt][sq];
 	else
@@ -216,11 +217,10 @@ extern u64 perft(Position* pos, u32 depth);
 
 extern int evaluate(Position* const pos);
 
-inline char* move_str(u32 move)
+inline void move_str(u32 move, char str[6])
 {
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
-	char* str = malloc(sizeof(char) * 6);
 	str[0]    = file_of(from) + 'a';
 	str[1]    = rank_of(from) + '1';
 	str[2]    = file_of(to)   + 'a';
@@ -246,7 +246,6 @@ inline char* move_str(u32 move)
 		str[4] = '\0';
 	}
 	str[5] = '\0';
-	return str;
 }
 
 inline int parse_move(Position* pos, char* str)

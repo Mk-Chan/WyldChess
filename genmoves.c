@@ -8,7 +8,7 @@ static inline void add_move(u32 m, Movelist* list)
 	++list->end;
 }
 
-void extract_moves(u32 from, u64 atks, Movelist* list)
+static void extract_moves(u32 from, u64 atks, Movelist* list)
 {
 	u32 to;
 	while (atks) {
@@ -18,7 +18,7 @@ void extract_moves(u32 from, u64 atks, Movelist* list)
 	}
 }
 
-void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list)
+static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list)
 {
 	u64 blockers_poss, pawn_block_poss;
 	u32 blocking_sq, blocker;
@@ -54,7 +54,7 @@ void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list)
 	}
 }
 
-void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
+static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 {
 	u64 atkers_bb;
 	u32 checker, atker;
@@ -120,7 +120,7 @@ void gen_check_evasions(Position* pos, Movelist* list)
 		gen_check_blocks(pos, blocking_poss_bb, list);
 }
 
-void gen_pawn_captures(Position* pos, Movelist* list)
+static void gen_pawn_captures(Position* pos, Movelist* list)
 {
 	u64 cap_candidates;
 	u32 from, to;
@@ -175,7 +175,7 @@ void gen_captures(Position* pos, Movelist* list)
 	extract_moves(from, k_atks[from] & enemy_mask, list);
 }
 
-void gen_pawn_quiets(Position* pos, Movelist* list)
+static void gen_pawn_quiets(Position* pos, Movelist* list)
 {
 	u64 single_push, from;
 	u32 const c            = pos->stm;
@@ -210,7 +210,7 @@ void gen_pawn_quiets(Position* pos, Movelist* list)
 	}
 }
 
-void gen_castling(Position* pos, Movelist* list)
+static void gen_castling(Position* pos, Movelist* list)
 {
 	static u32 const castling_poss[2][2] = {
 		{ WKC, WQC },
