@@ -1,12 +1,18 @@
 #include "engine.h"
 #include "tt.h"
 #include "timer.h"
+#include "eval.h"
 
-static inline void swap_moves(u32* move_1, u32* move_2)
+static inline int mvv_lva(Position const * const pos, u32 const * const m)
+{
+	return piece_val[piece_type(pos->board[to_sq(*m)])] - piece_type(pos->board[to_sq(*m)]);
+}
+
+static inline void swap_moves(u32* const move_1, u32* const move_2)
 {
 	u32 move_tmp = *move_1;
-	*move_1  = *move_2;
-	*move_2  = move_tmp;
+	*move_1      = *move_2;
+	*move_2      = move_tmp;
 }
 
 static int stopped(Engine* const engine)
@@ -59,19 +65,39 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 	list->end      = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	if (pos->state->checkers_bb)
+	u32* caps;
+	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
-	else
+		caps = list->end;
+	} else {
 		gen_captures(pos, list);
+		caps = list->moves;
+	}
 
+	// Order captures by MVV-LVA
+	u32* i;
+	u32* j;
+	for (i = caps + 1; i < list->end; ++i)
+		for (j = i; j > caps; --j)
+			if (mvv_lva(pos, j) > mvv_lva(pos, j - 1))
+				swap_moves(j, j - 1);
+
+	u32 legal = 0;
 	for (u32* move = list->moves; move != list->end; ++move) {
 		if (!do_move(pos, move))
 			continue;
+		++legal;
 		val = -qsearch(engine, -beta, -alpha);
 		undo_move(pos, move);
 		if (val > alpha) {
-			if (val >= beta)
+			if (val >= beta) {
+#ifdef STATS
+				if (legal == 1)
+					++pos->stats.first_beta_cutoffs;
+				++pos->stats.beta_cutoffs;
+#endif
 				return beta;
+			}
 			alpha = val;
 		}
 	}
@@ -99,8 +125,14 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 	}
 
 	Entry entry = tt_probe(&tt, pos->state->pos_key);
+#ifdef STATS
+	++pos->stats.hash_probes;
+#endif
 	if (  (entry.key ^ entry.data) == pos->state->pos_key
 	    && DEPTH(entry.data) >= depth) {
+#ifdef STATS
+		++pos->stats.hash_hits;
+#endif
 		int val  = SCORE(entry.data);
 		u64 flag = FLAG(entry.data);
 
@@ -118,27 +150,50 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 	    best_val    = -INFINITY,
 	    legal_moves = 0;
 
-	Movelist* list = pos->list + pos->ply;
-	list->end      = list->moves;
+	Movelist* list  = pos->list + pos->ply;
+	list->end       = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
+	u32* quiets;
+	u32* caps;
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
+		caps   = list->end;
+		quiets = list->end;
 	} else {
-		gen_quiets(pos, list);
+		// Mark the start of capture moves
+		caps = list->moves;
 		gen_captures(pos, list);
+		// Mark the start of quiet moves
+		quiets = list->end;
+		gen_quiets(pos, list);
 	}
 
 	u32* move;
+	// Put the hash move first
 	u32 tt_move = MOVE(entry.data);
 	if (tt_move) {
 		for (move = list->moves; move != list->end; ++move) {
 			if (*move == tt_move) {
-				swap_moves(list->moves, move);
+				if (move <= quiets) {
+					swap_moves(list->moves, move);
+				} else {
+					swap_moves(quiets, move);
+					swap_moves(list->moves, quiets);
+				}
+				++caps; // Do not try to reorder hash move
 				break;
 			}
 		}
 	}
+
+	// Order captures by MVV-LVA
+	u32* i;
+	u32* j;
+	for (i = caps + 1; i < quiets; ++i)
+		for (j = i; j > caps; --j)
+			if (mvv_lva(pos, j) > mvv_lva(pos, j - 1))
+				swap_moves(j, j - 1);
 
 	for (move = list->moves; move != list->end; ++move) {
 		if (!do_move(pos, move))
@@ -151,6 +206,7 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 			if (legal_moves == 1)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
+			++pos->stats.hash_stores;
 #endif
 			tt_store(&tt, val, FLAG_LOWER, depth, *move, pos->state->pos_key);
 			return beta;
@@ -175,6 +231,9 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 		tt_store(&tt, alpha, FLAG_UPPER, depth, best_move, pos->state->pos_key);
 	else
 		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
+#ifdef STATS
+	++pos->stats.hash_stores;
+#endif
 
 	return alpha;
 }
@@ -226,18 +285,31 @@ static int get_stored_moves(Position* const pos, int depth)
 	return 0;
 }
 
+static void clear_search(Engine* const engine)
+{
+	Controller* const ctlr = engine->ctlr;
+	ctlr->nodes_searched   = 0ULL;
+#ifdef STATS
+	Position* const pos           = engine->pos;
+	pos->ply                      = 0;
+	pos->stats.first_beta_cutoffs = 0;
+	pos->stats.beta_cutoffs       = 0;
+	pos->stats.hash_stores        = 0;
+	pos->stats.hash_probes        = 0;
+	pos->stats.hash_hits          = 0;
+#endif
+	u32 i;
+	for (i = 0; i < tt.size; ++i)
+		tt_age_depth(&tt, tt.table[i].key);
+}
+
 int begin_search(Engine* const engine)
 {
 	int val, depth;
 	int best_move = 0;
-	Position* const pos = engine->pos;
+	clear_search(engine);
+	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
-	ctlr->nodes_searched = 0ULL;
-	engine->pos->ply = 0;
-#ifdef STATS
-	pos->stats.beta_cutoffs = 0;
-	pos->stats.first_beta_cutoffs = 0;
-#endif
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
 		val = search(engine, -INFINITY, +INFINITY, depth);
@@ -249,7 +321,10 @@ int begin_search(Engine* const engine)
 		fprintf(stdout, "\n");
 	}
 #ifdef STATS
-	fprintf(stdout, "ordering=%lf\n", ((double)pos->stats.first_beta_cutoffs) / (pos->stats.beta_cutoffs));
+	fprintf(stdout, "hash stores=%llu hash hit rate=%lf\n",
+		pos->stats.hash_stores, ((double)pos->stats.hash_hits) / pos->stats.hash_probes);
+	fprintf(stdout, "ordering=%lf\n",
+		((double)pos->stats.first_beta_cutoffs) / (pos->stats.beta_cutoffs));
 #endif
 
 	return best_move;

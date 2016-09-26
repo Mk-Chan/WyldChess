@@ -148,16 +148,26 @@ inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 	}
 }
 
-inline u64 atkers_to_sq(Position* pos, u32 sq, u32 by_color)
+inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
 {
 	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
 		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
-		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
-		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, occupancy))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, occupancy))
 		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
 }
 
-inline u64 checkers(Position* pos, u32 by_color)
+inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
+{
+	return (  ( pos->bb[KNIGHT]                   & n_atks[sq])
+		| ( pos->bb[PAWN]                     & pos->bb[WHITE] & p_atks[BLACK][sq])
+		| ( pos->bb[PAWN]                     & pos->bb[BLACK] & p_atks[WHITE][sq])
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & Rmagic(sq, occupancy))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & Bmagic(sq, occupancy))
+		| ( pos->bb[KING]                     & k_atks[sq]));
+}
+
+inline u64 checkers(Position const * const pos, u32 by_color)
 {
 	const u32 sq = pos->king_sq[!by_color];
 	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
@@ -167,7 +177,7 @@ inline u64 checkers(Position* pos, u32 by_color)
 		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
 }
 
-inline void set_pinned(Position* pos)
+inline void set_pinned(Position* const pos)
 {
 	u32 const  to_color  = pos->stm,
 	           ksq       = pos->king_sq[to_color];

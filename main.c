@@ -16,7 +16,7 @@ int main()
 	initmagicmoves();
 	init_atks();
 	init_intervening_sqs();
-	tt_init(&tt, 100000);
+	tt_init(&tt, 1000000);
 	fprintf(stdout, "WyldChess started!\n");
 	cecp_loop();
 	tt_destroy(&tt);

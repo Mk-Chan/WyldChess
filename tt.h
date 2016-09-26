@@ -44,8 +44,16 @@ inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
 {
 	u32 index    = key < tt->size ? key : key % tt->size;
 	Entry* entry = tt->table + index;
-	entry->data  = move | flag | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
-	entry->key   = key ^ entry->data;
+	if (DEPTH(entry->data) < depth) {
+		entry->data  = move | flag | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
+		entry->key   = key ^ entry->data;
+	}
+}
+
+inline void tt_age_depth(TT* tt, u64 key) {
+	u32 index    = key < tt->size ? key : key % tt->size;
+	Entry* entry = tt->table + index;
+	entry->data &= ~(0x7f << DEPTH_SHIFT);
 }
 
 // Return a value instead of reference for thread safety

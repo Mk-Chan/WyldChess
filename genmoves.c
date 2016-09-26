@@ -25,7 +25,8 @@ static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list
 	u32 const c              = pos->stm;
 	u64       pawns_bb       = pos->bb[PAWN] & pos->bb[c];
 	u64 const inlcusion_mask = ~(pawns_bb | pos->bb[KING] | pos->state->pinned_bb),
-	          vacancy_mask   = ~pos->bb[FULL];
+	          full_bb        = pos->bb[FULL],
+	          vacancy_mask   = ~full_bb;
 	while (blocking_poss_bb) {
 		blocking_sq       = bitscan(blocking_poss_bb);
 		blocking_poss_bb &= blocking_poss_bb - 1;
@@ -46,7 +47,7 @@ static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list
 			   && (pawn_block_poss = pawn_shift(pawn_block_poss, !c) & pawns_bb)) {
 			add_move(move_double_push(bitscan(pawn_block_poss), blocking_sq), list);
 		}
-		blockers_poss = atkers_to_sq(pos, blocking_sq, c) & inlcusion_mask;
+		blockers_poss = atkers_to_sq(pos, blocking_sq, c, full_bb) & inlcusion_mask;
 		while (blockers_poss) {
 			add_move(move_normal(bitscan(blockers_poss), blocking_sq), list);
 			blockers_poss &= blockers_poss - 1;
@@ -61,7 +62,8 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 	u32 const c             = pos->stm;
 	u64 const pawns_bb      = pos->bb[PAWN] & pos->bb[c],
 	          non_king_mask = ~pos->bb[KING],
-	          ep_sq_bb      = pos->state->ep_sq_bb;
+	          ep_sq_bb      = pos->state->ep_sq_bb,
+		  full_bb       = pos->bb[FULL];
 	if (    ep_sq_bb
 	    && (pawn_shift(ep_sq_bb, !c) & checkers_bb)) {
 		u32 const ep_sq = bitscan(ep_sq_bb);
@@ -75,7 +77,7 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 	while (checkers_bb) {
 		checker      = bitscan(checkers_bb);
 		checkers_bb &= checkers_bb - 1;
-		atkers_bb    = atkers_to_sq(pos, checker, c) & non_king_mask;
+		atkers_bb    = atkers_to_sq(pos, checker, c, full_bb) & non_king_mask;
 		while (atkers_bb) {
 			atker      = bitscan(atkers_bb);
 			atkers_bb &= atkers_bb - 1;
@@ -94,16 +96,18 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 
 void gen_check_evasions(Position* pos, Movelist* list)
 {
-	u32 const c     = pos->stm,
-	          ksq   = pos->king_sq[c];
-	u64 checkers_bb = pos->state->checkers_bb,
-	    evasions_bb = k_atks[ksq] & ~pos->bb[c];
+	u32 const c         = pos->stm,
+	          ksq       = pos->king_sq[c];
+	u64 checkers_bb     = pos->state->checkers_bb,
+	    evasions_bb     = k_atks[ksq] & ~pos->bb[c];
+	u64 const full_bb   = pos->bb[FULL];
+	u64 const sans_king = full_bb ^ (pos->bb[c] & pos->bb[KING]);
 
 	u32 sq;
 	while (evasions_bb) {
 		sq = bitscan(evasions_bb);
 		evasions_bb &= evasions_bb - 1;
-		if (!atkers_to_sq(pos, sq, !c))
+		if (!atkers_to_sq(pos, sq, !c, sans_king))
 			add_move(move_normal(ksq, sq), list);
 	}
 
@@ -229,18 +233,19 @@ static void gen_castling(Position* pos, Movelist* list)
 		{ (BB(F8) | BB(G8)), (BB(D8) | BB(C8) | BB(B8)) }
 	};
 
-	u32 const c = pos->stm;
+	u32 const c       = pos->stm;
+	u64 const full_bb = pos->bb[FULL];
 
 	if (    (castling_poss[c][0] & pos->state->castling_rights)
 	    && !(castle_mask[c][0] & pos->bb[FULL])
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][0], !c))
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][1], !c)))
+	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][0], !c, full_bb))
+	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][1], !c, full_bb)))
 		add_move(move_castle(castling_king_sqs[c][0][0], castling_king_sqs[c][0][1]), list);
 
 	if (    (castling_poss[c][1] & pos->state->castling_rights)
 	    && !(castle_mask[c][1] & pos->bb[FULL])
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][0], !c))
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][1], !c)))
+	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][0], !c, full_bb))
+	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][1], !c, full_bb)))
 		add_move(move_castle(castling_king_sqs[c][1][0], castling_king_sqs[c][1][1]), list);
 }
 
