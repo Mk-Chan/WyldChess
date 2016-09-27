@@ -11,7 +11,6 @@ typedef struct Stats_s {
 
 	u64 first_beta_cutoffs;
 	u64 beta_cutoffs;
-	u64 hash_stores;
 	u64 hash_probes;
 	u64 hash_hits;
 	u64 total_nodes;

@@ -17,10 +17,16 @@ static inline void swap_moves(u32* const move_1, u32* const move_2)
 
 static int stopped(Engine* const engine)
 {
-	if (engine->target_state != THINKING)
+	if (engine->ctlr->is_stopped)
 		return 1;
-	if (curr_time() >= engine->ctlr->search_end_time)
+	if (engine->target_state != THINKING) {
+		engine->ctlr->is_stopped = 1;
 		return 1;
+	}
+	if (curr_time() >= engine->ctlr->search_end_time) {
+		engine->ctlr->is_stopped = 1;
+		return 1;
+	}
 
 	return 0;
 }
@@ -40,11 +46,12 @@ static int is_repeat(Position* const pos)
 
 static int qsearch(Engine* const engine, int alpha, int beta)
 {
-	if ( !(engine->ctlr->nodes_searched & 4095)
+	if ( !(engine->ctlr->nodes_searched & 2047)
 	    && stopped(engine))
 		return 0;
 
-	Position* const pos = engine->pos;
+	Position* const pos    = engine->pos;
+	Controller* const ctlr = engine->ctlr;
 
 	if (pos->state->fifty_moves > 99 || is_repeat(pos))
 		return 0;
@@ -89,6 +96,8 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 		++legal;
 		val = -qsearch(engine, -beta, -alpha);
 		undo_move(pos, move);
+		if (ctlr->is_stopped)
+			return 0;
 		if (val > alpha) {
 			if (val >= beta) {
 #ifdef STATS
@@ -110,13 +119,14 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 	if (!depth)
 		return qsearch(engine, alpha, beta);
 
-	if ( !(engine->ctlr->nodes_searched & 4095)
-	    && stopped(engine))
-		return 0;
-
-	Position* const pos = engine->pos;
+	Position* const pos    = engine->pos;
+	Controller* const ctlr = engine->ctlr;
 
 	if (pos->ply) {
+		if ( !(engine->ctlr->nodes_searched & 2047)
+		    && stopped(engine))
+			return 0;
+
 		if (pos->state->fifty_moves > 99 || is_repeat(pos))
 			return 0;
 
@@ -201,12 +211,14 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 		++legal_moves;
 		val = -search(engine, -beta, -alpha, depth - 1);
 		undo_move(pos, move);
+		if (   pos->ply
+		    && ctlr->is_stopped)
+			return 0;
 		if (val >= beta) {
 #ifdef STATS
 			if (legal_moves == 1)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
-			++pos->stats.hash_stores;
 #endif
 			tt_store(&tt, val, FLAG_LOWER, depth, *move, pos->state->pos_key);
 			return beta;
@@ -231,9 +243,6 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 		tt_store(&tt, alpha, FLAG_UPPER, depth, best_move, pos->state->pos_key);
 	else
 		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
-#ifdef STATS
-	++pos->stats.hash_stores;
-#endif
 
 	return alpha;
 }
@@ -288,19 +297,16 @@ static int get_stored_moves(Position* const pos, int depth)
 static void clear_search(Engine* const engine)
 {
 	Controller* const ctlr = engine->ctlr;
+	ctlr->is_stopped       = 0;
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
 	pos->ply                      = 0;
 	pos->stats.first_beta_cutoffs = 0;
 	pos->stats.beta_cutoffs       = 0;
-	pos->stats.hash_stores        = 0;
 	pos->stats.hash_probes        = 0;
 	pos->stats.hash_hits          = 0;
 #endif
-	u32 i;
-	for (i = 0; i < tt.size; ++i)
-		tt_age_depth(&tt, tt.table[i].key);
 }
 
 int begin_search(Engine* const engine)
@@ -313,7 +319,8 @@ int begin_search(Engine* const engine)
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
 		val = search(engine, -INFINITY, +INFINITY, depth);
-		if (depth > 1 && stopped(engine))
+		if (   depth > 1
+		    && ctlr->is_stopped)
 			break;
 		fprintf(stdout, "%d %d %llu %llu", depth, val,
 			(curr_time() - ctlr->search_start_time) / 10, ctlr->nodes_searched);
@@ -321,8 +328,8 @@ int begin_search(Engine* const engine)
 		fprintf(stdout, "\n");
 	}
 #ifdef STATS
-	fprintf(stdout, "hash stores=%llu hash hit rate=%lf\n",
-		pos->stats.hash_stores, ((double)pos->stats.hash_hits) / pos->stats.hash_probes);
+	fprintf(stdout, "hash hit rate=%lf\n",
+		((double)pos->stats.hash_hits) / pos->stats.hash_probes);
 	fprintf(stdout, "ordering=%lf\n",
 		((double)pos->stats.first_beta_cutoffs) / (pos->stats.beta_cutoffs));
 #endif

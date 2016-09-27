@@ -174,9 +174,9 @@ u32 do_move(Position* const pos, u32* m)
 				captured_pt = piece_type(captured_pt);
 				remove_piece(pos, to, captured_pt, !c);
 				*m |= captured_pt << CAP_TYPE_SHIFT;
-			}
-			else
+			} else {
 				next->fifty_moves = curr->fifty_moves + 1;
+			}
 			remove_piece(pos, from, PAWN, c);
 			put_piece(pos, to, prom_type(*m), c);
 		}

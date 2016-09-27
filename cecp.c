@@ -65,7 +65,7 @@ static int check_stale_and_mate(Position* const pos)
 
 static int check_result(Position* const pos)
 {
-	if (pos->ply > 99) {
+	if (pos->state->fifty_moves > 99) {
 		fprintf(stdout, "1/2-1/2 {Fifty move rule}\n");
 		return DRAW;
 	}
@@ -113,8 +113,11 @@ void* engine_loop(void* args)
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
 				pthread_exit(0);
 			}
+			engine->pos->ply = 0;
 			fprintf(stdout, "move %s\n", mstr);
-			engine->target_state = WAITING;
+			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
+			engine->ctlr->time_left += engine->ctlr->increment;
+			engine->target_state     = WAITING;
 			break;
 
 		case GAME_OVER:
@@ -160,7 +163,8 @@ static inline void transition(Engine* const engine, int target_state)
 
 static inline void start_thinking(Engine* const engine)
 {
-	if (engine->curr_state == GAME_OVER) return;
+	if (engine->curr_state == GAME_OVER)
+		return;
 	transition(engine, WAITING);
 	if (check_result(engine->pos) != NO_RESULT) {
 		transition(engine, GAME_OVER);
@@ -170,13 +174,15 @@ static inline void start_thinking(Engine* const engine)
 	if (engine->side == engine->pos->stm) {
 		Controller* const ctlr  = engine->ctlr;
 		ctlr->search_start_time = curr_time();
-		ctlr->search_end_time   = ctlr->search_start_time
-			+ (ctlr->time_left / ctlr->moves_left)
-			+ ctlr->increment
-			- 10;
+		ctlr->search_end_time   =  ctlr->search_start_time
+			                + (ctlr->time_left / ctlr->moves_left)
+					//+  ctlr->increment
+			                ;//-  10;
+		fprintf(stdout, "time left=%llu time allotted=%llu\n",
+			ctlr->time_left, ctlr->search_end_time - ctlr->search_start_time);
 		transition(engine, THINKING);
 		--ctlr->moves_left;
-		if (!ctlr->moves_left)
+		if (ctlr->moves_left < 1)
 			ctlr->moves_left = ctlr->moves_per_session;
 	}
 }
@@ -305,6 +311,7 @@ void cecp_loop()
 			if (  !move
 			   || !do_move(engine.pos, &move))
 				fprintf(stdout, "Illegal move: %s\n", input);
+			pos.ply = 0;
 			start_thinking(&engine);
 		}
 	}

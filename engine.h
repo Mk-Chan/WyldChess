@@ -14,6 +14,7 @@ enum State {
 
 typedef struct Controller_s {
 
+	int is_stopped;
 	u32 depth;
 	u32 moves_left;
 	u32 moves_per_session;
