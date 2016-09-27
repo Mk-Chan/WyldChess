@@ -8,9 +8,9 @@
 
 int main()
 {
-	init_timer();
 	setbuf(stdout, NULL);
 	setbuf(stdin, NULL);
+	init_timer();
 	init_genrand64(time(0));
 	init_zobrist_keys();
 	initmagicmoves();
