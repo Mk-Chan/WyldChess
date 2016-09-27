@@ -1,7 +1,7 @@
 #include "defs.h"
 #include "position.h"
 
-void undo_move(Position* pos, u32* m)
+void undo_move(Position* const pos, u32* m)
 {
 	--pos->ply;
 	--pos->state;
@@ -71,7 +71,7 @@ void undo_move(Position* pos, u32* m)
 	}
 }
 
-u32 do_move(Position* pos, u32* m)
+u32 do_move(Position* const pos, u32* m)
 {
 	static u32 const castle_perms[64] = {
 		13, 15, 15, 15, 12, 15, 15, 14,
@@ -88,9 +88,10 @@ u32 do_move(Position* pos, u32* m)
 	State const * const curr = *tmp;
 	State* const next        = ++*tmp;
 
-	next->pos_key     = curr->pos_key;
-	next->fifty_moves = curr->fifty_moves + 1;
-	next->ep_sq_bb    = 0ULL;
+	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
+	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
+	next->fifty_moves           = 0;
+	next->ep_sq_bb              = 0ULL;
 
 	u32 check_illegal = 0;
 	u32 const from    = from_sq(*m),
@@ -99,7 +100,9 @@ u32 do_move(Position* pos, u32* m)
 	          mt      = move_type(*m);
 
 	if (curr->ep_sq_bb)
-		next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
+		next->pos_key = curr->pos_key ^ psq_keys[0][0][bitscan(curr->ep_sq_bb)];
+	else
+		next->pos_key = curr->pos_key;
 
 	switch (mt) {
 	case NORMAL:
@@ -107,23 +110,23 @@ u32 do_move(Position* pos, u32* m)
 			u32 const pt = piece_type(pos->board[from]);
 			if (!pos->board[to]) {
 				move_piece(pos, from, to, pt, c);
+				if (pt != PAWN)
+					next->fifty_moves = curr->fifty_moves + 1;
 			} else {
 				u32 const captured_pt = piece_type(pos->board[to]);
 				remove_piece(pos, to, captured_pt, !c);
 				move_piece(pos, from, to, pt, c);
 				*m |= captured_pt << CAP_TYPE_SHIFT;
-				next->fifty_moves = 0;
 			}
 			if (pt == KING) {
 				pos->king_sq[c] = to;
-				check_illegal = 1;
+				check_illegal   = 1;
 			}
 		}
 		break;
 	case DOUBLE_PUSH:
 		{
 			move_piece(pos, from, to, PAWN, c);
-			next->fifty_moves = 0;
 			if (c == WHITE) {
 				next->ep_sq_bb  = BB(from + 8);
 				next->pos_key  ^= psq_keys[0][0][from + 8];
@@ -137,14 +140,14 @@ u32 do_move(Position* pos, u32* m)
 		{
 			move_piece(pos, from, to, PAWN, c);
 			remove_piece(pos, (c == WHITE ? to - 8 : to + 8), PAWN, !c);
-			next->fifty_moves = 0;
-			check_illegal     = 1;
+			check_illegal = 1;
 		}
 		break;
 	case CASTLE:
 		{
+			next->fifty_moves = curr->fifty_moves + 1;
+			pos->king_sq[c]   = to;
 			move_piece(pos, from, to, KING, c);
-			pos->king_sq[c] = to;
 
 			switch (to) {
 			case C1:
@@ -171,7 +174,8 @@ u32 do_move(Position* pos, u32* m)
 				captured_pt = piece_type(captured_pt);
 				remove_piece(pos, to, captured_pt, !c);
 				*m |= captured_pt << CAP_TYPE_SHIFT;
-				next->fifty_moves = 0;
+			} else {
+				next->fifty_moves = curr->fifty_moves + 1;
 			}
 			remove_piece(pos, from, PAWN, c);
 			put_piece(pos, to, prom_type(*m), c);
@@ -183,7 +187,7 @@ u32 do_move(Position* pos, u32* m)
 	++pos->ply;
 	pos->stm ^= 1;
 
-	next->castling_rights = (curr->castling_rights & castle_perms[from]) & castle_perms[to];
+	next->castling_rights =  (curr->castling_rights & castle_perms[from]) & castle_perms[to];
 	next->pos_key        ^=   stm_key
 		                ^ castle_keys[curr->castling_rights]
 		                ^ castle_keys[next->castling_rights];
@@ -194,5 +198,13 @@ u32 do_move(Position* pos, u32* m)
 		return 0;
 	}
 
+	return 1;
+}
+
+u32 do_usermove(Position* const pos, u32 move) {
+	if (!do_move(pos, &move))
+		return 0;
+	pos->ply = 0;
+	++pos->hist_size;
 	return 1;
 }
