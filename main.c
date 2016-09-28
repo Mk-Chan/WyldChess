@@ -20,9 +20,5 @@ int main()
 	fprintf(stdout, "WyldChess started!\n");
 	cecp_loop();
 	tt_destroy(&tt);
-	/*Position pos;
-	init_pos(&pos);
-	set_pos(&pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-	printf("%llu\n", perft(&pos, 6));*/
 	return 0;
 }

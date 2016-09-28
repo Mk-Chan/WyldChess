@@ -209,6 +209,7 @@ extern u32 initial_stm;
 extern void print_board(Position* pos);
 
 extern void cecp_loop();
+extern void performance_test(Position* const pos, u32 max_depth);
 
 extern void init_pos(Position* pos);
 extern void set_pos(Position* pos, char* fen);

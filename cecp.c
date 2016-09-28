@@ -113,6 +113,8 @@ void* engine_loop(void* args)
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
 				pthread_exit(0);
 			}
+			*engine->move_list_end = move;
+			++engine->move_list_end;
 			engine->pos->ply = 0;
 			fprintf(stdout, "move %s\n", mstr);
 			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
@@ -175,9 +177,7 @@ static inline void start_thinking(Engine* const engine)
 		Controller* const ctlr  = engine->ctlr;
 		ctlr->search_start_time = curr_time();
 		ctlr->search_end_time   =  ctlr->search_start_time
-			                + (ctlr->time_left / ctlr->moves_left)
-					//+  ctlr->increment
-			                ;//-  10;
+			                + (ctlr->time_left / ctlr->moves_left);
 		fprintf(stdout, "time left=%llu time allotted=%llu\n",
 			ctlr->time_left, ctlr->search_end_time - ctlr->search_start_time);
 		transition(engine, THINKING);
@@ -208,6 +208,7 @@ void cecp_loop()
 	engine.ctlr  = &ctlr;
 	engine.target_state = WAITING;
 	engine.side  = BLACK;
+	engine.move_list_end = engine.move_list;
 	init_pos(engine.pos);
 	set_pos(engine.pos, fen1);
 	pthread_t engine_thread;
@@ -234,6 +235,7 @@ void cecp_loop()
 			transition(&engine, WAITING);
 			init_pos(engine.pos);
 			set_pos(engine.pos, fen1);
+			engine.move_list_end = engine.move_list;
 			engine.side = BLACK;
 			ctlr.depth  = MAX_PLY;
 
@@ -252,6 +254,7 @@ void cecp_loop()
 			transition(&engine, WAITING);
 			engine.side = -1;
 			set_pos(engine.pos, input + 9);
+			engine.move_list_end = engine.move_list;
 			engine.side = engine.pos->stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
@@ -274,6 +277,11 @@ void cecp_loop()
 			ctlr.increment  = 1000 * strtod(ptr, &end);
 			fprintf(stdout, "moves=%d timeleft=%llu inc=%llu\n",
 				ctlr.moves_left, ctlr.time_left, ctlr.increment);
+
+		} else if (!strncmp(input, "perft", 5)) {
+
+			transition(&engine, WAITING);
+			performance_test(&pos, atoi(input + 6));
 
 		} else if (!strncmp(input, "st", 2)) {
 
@@ -305,12 +313,29 @@ void cecp_loop()
 			engine.side = engine.pos->stm;
 			start_thinking(&engine);
 
+		} else if (!strncmp(input, "undo", 4)) {
+
+			transition(&engine, WAITING);
+			if (engine.move_list_end > engine.move_list) {
+				--engine.move_list_end;
+				pos.ply = 1;
+				undo_move(&pos, engine.move_list_end);
+				if (   engine.side == pos.stm
+				    && ctlr.moves_left == ctlr.moves_per_session)
+					ctlr.moves_left = 1;
+				else
+					++ctlr.moves_left;
+			}
+			engine.side = -1;
+
 		} else {
 
 			move = parse_move(engine.pos, input);
 			if (  !move
 			   || !do_move(engine.pos, &move))
 				fprintf(stdout, "Illegal move: %s\n", input);
+			*engine.move_list_end = move;
+			++engine.move_list_end;
 			pos.ply = 0;
 			start_thinking(&engine);
 		}

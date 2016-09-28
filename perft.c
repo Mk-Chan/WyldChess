@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "defs.h"
 #include "position.h"
+#include "timer.h"
 
 typedef struct perft_table_s {
 
@@ -13,13 +14,13 @@ typedef struct perft_table_s {
 #define PFT_SIZE (0x100000)
 perft_entry pft[PFT_SIZE];
 
-static inline perft_entry* probe(State* s)
+static inline perft_entry* probe(State* const s)
 {
 	u32 index = s->pos_key < PFT_SIZE ? s->pos_key : s->pos_key % PFT_SIZE;
 	return pft + index;
 }
 
-static inline void store(State* s, u64 nodes, u32 depth)
+static inline void store(State* const s, u64 nodes, u32 depth)
 {
 	perft_entry* pe = probe(s);
 	pe->depth       = depth;
@@ -29,7 +30,7 @@ static inline void store(State* s, u64 nodes, u32 depth)
 
 u64 total, hits, stores;
 
-u64 perft(Position* pos, u32 depth)
+u64 perft(Position* const pos, u32 depth)
 {
 	u32 use_pft = 0 && (depth > 1 && pos->ply >= 3);
 	if (use_pft && !pos->ply) {
@@ -93,4 +94,17 @@ u64 perft(Position* pos, u32 depth)
 	  }*/
 
 	return count;
+}
+
+void performance_test(Position* const pos, u32 max_depth)
+{
+	u32 depth;
+	u64 count;
+	u64 t1, t2;
+	for (depth = 1; depth <= max_depth; ++depth) {
+		t1 = curr_time();
+		count = perft(pos, depth);
+		t2 = curr_time();
+		fprintf(stdout, "Perft(%2d) = %20llu (%10llu ms)\n", depth, count, (t2 - t1));
+	}
 }
