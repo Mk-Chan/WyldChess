@@ -19,13 +19,6 @@ static inline void order_cap(Position const * const pos, Move* const m)
 		encode_order(*m, (BAD_CAP + tmp));
 }
 
-static inline void swap_moves(Move* const move_1, Move* const move_2)
-{
-	Move move_tmp = *move_1;
-	*move_1       = *move_2;
-	*move_2       = move_tmp;
-}
-
 static inline void sort_moves(Move* const start, Move* const end)
 {
 	Move* tmp;
