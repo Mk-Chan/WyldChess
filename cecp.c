@@ -54,10 +54,10 @@ static int check_stale_and_mate(Position* const pos)
 		gen_quiets(pos, list);
 		gen_captures(pos, list);
 	}
-	for (u32* move = list->moves; move != list->end; ++move) {
-		if (!do_move(pos, move))
+	for (Move* move = list->moves; move != list->end; ++move) {
+		if (!do_move(pos, *move))
 			continue;
-		undo_move(pos, move);
+		undo_move(pos, *move);
 		return NO_RESULT;
 	}
 	return pos->state->checkers_bb ? CHECKMATE : DRAW;
@@ -96,7 +96,7 @@ static int check_result(Position* const pos)
 void* engine_loop(void* args)
 {
 	static char mstr[6];
-	u32 move;
+	Move move;
 	Engine* engine = (Engine*) args;
 	Position* pos  = engine->pos;
 	while (1) {
@@ -109,7 +109,7 @@ void* engine_loop(void* args)
 			engine->curr_state = THINKING;
 			move = begin_search(engine);
 			move_str(move, mstr);
-			if (!do_move(pos, &move)) {
+			if (!do_move(pos, move)) {
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
 				pthread_exit(0);
 			}
@@ -199,7 +199,7 @@ void cecp_loop()
 		return;
 	}
 
-	u32 move;
+	Move move;
 	Position pos;
 	Controller ctlr;
 	ctlr.depth = MAX_PLY;
@@ -319,7 +319,7 @@ void cecp_loop()
 			if (engine.move_list_end > engine.move_list) {
 				--engine.move_list_end;
 				pos.ply = 1;
-				undo_move(&pos, engine.move_list_end);
+				undo_move(&pos, *engine.move_list_end);
 				if (   engine.side == pos.stm
 				    && ctlr.moves_left == ctlr.moves_per_session)
 					ctlr.moves_left = 1;
@@ -332,7 +332,7 @@ void cecp_loop()
 
 			move = parse_move(engine.pos, input);
 			if (  !move
-			   || !do_move(engine.pos, &move))
+			   || !do_move(engine.pos, move))
 				fprintf(stdout, "Illegal move: %s\n", input);
 			*engine.move_list_end = move;
 			++engine.move_list_end;

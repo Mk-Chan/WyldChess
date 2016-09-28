@@ -3,16 +3,40 @@
 #include "timer.h"
 #include "eval.h"
 
-static inline int mvv_lva(Position const * const pos, u32 const * const m)
+u64 const HASH_MOVE = 60000ULL;
+u64 const GOOD_CAP  = 50000ULL;
+u64 const KILLER    = 40000ULL;
+u64 const PROM      = 30000ULL;
+u64 const BAD_CAP   = 20000ULL;
+
+static inline void order_cap(Position const * const pos, Move* const m)
 {
-	return piece_val[piece_type(pos->board[to_sq(*m)])] - piece_type(pos->board[to_sq(*m)]);
+	int tmp = piece_val[piece_type(pos->board[to_sq(*m)])]
+		- piece_val[piece_type(pos->board[from_sq(*m)])];
+	if (tmp >= -50)
+		encode_order(*m, (GOOD_CAP + tmp));
+	else
+		encode_order(*m, (BAD_CAP + tmp));
 }
 
-static inline void swap_moves(u32* const move_1, u32* const move_2)
+static inline void swap_moves(Move* const move_1, Move* const move_2)
 {
-	u32 move_tmp = *move_1;
-	*move_1      = *move_2;
-	*move_2      = move_tmp;
+	Move move_tmp = *move_1;
+	*move_1       = *move_2;
+	*move_2       = move_tmp;
+}
+
+static inline void sort_moves(Move* const start, Move* const end)
+{
+	Move* tmp;
+	Move* m;
+	Move to_shift;
+	for (m = start + 1; m < end; ++m) {
+		to_shift = *m;
+		for (tmp = m; tmp > start && order(to_shift) > order(*(tmp - 1)); --tmp)
+			*tmp = *(tmp - 1);
+		*tmp = to_shift;
+	}
 }
 
 static int stopped(Engine* const engine)
@@ -72,30 +96,25 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 	list->end      = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	u32* caps;
+	Move* move;
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
-		caps = list->end;
 	} else {
 		gen_captures(pos, list);
-		caps = list->moves;
+
+		// Order captures by MVV-LVA
+		for (move = list->moves; move < list->end; ++move)
+			order_cap(pos, move);
+		sort_moves(list->moves, list->end);
 	}
 
-	// Order captures by MVV-LVA
-	u32* i;
-	u32* j;
-	for (i = caps + 1; i < list->end; ++i)
-		for (j = i; j > caps; --j)
-			if (mvv_lva(pos, j) > mvv_lva(pos, j - 1))
-				swap_moves(j, j - 1);
-
 	u32 legal = 0;
-	for (u32* move = list->moves; move != list->end; ++move) {
-		if (!do_move(pos, move))
+	for (move = list->moves; move != list->end; ++move) {
+		if (!do_move(pos, *move))
 			continue;
 		++legal;
 		val = -qsearch(engine, -beta, -alpha);
-		undo_move(pos, move);
+		undo_move(pos, *move);
 		if (ctlr->is_stopped)
 			return 0;
 		if (val > alpha) {
@@ -164,49 +183,42 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 	list->end       = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	u32* quiets;
-	u32* caps;
+	Move* quiets;
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
-		caps   = list->end;
-		quiets = list->end;
+		quiets = list->moves;
 	} else {
-		// Mark the start of capture moves
-		caps = list->moves;
 		gen_captures(pos, list);
-		// Mark the start of quiet moves
 		quiets = list->end;
 		gen_quiets(pos, list);
 	}
 
-	u32* move;
-	// Put the hash move first
-	u32 tt_move = MOVE(entry.data);
-	if (tt_move) {
-		for (move = list->moves; move != list->end; ++move) {
-			if (*move == tt_move) {
-				if (move <= quiets) {
-					swap_moves(list->moves, move);
-				} else {
-					swap_moves(quiets, move);
-					swap_moves(list->moves, quiets);
-				}
-				++caps; // Do not try to reorder hash move
-				break;
-			}
+	Move* move;
+
+	/*
+	 *  Move ordering:
+	 *  1. Hash move
+	 *  2. Good/Equal captures
+	 *  3. Killer moves
+	 *  4. Promotions
+	 *  5. Bad captures
+	 *  6. Rest
+	 */
+	Move tt_move = get_move(entry.data);
+	for (move = list->moves; move != list->end; ++move) {
+		if (*move == tt_move) {
+			encode_order(*move, HASH_MOVE);
+		} else if (move < quiets) {
+			order_cap(pos, move);
+		} else {
+			if (move_type(*move) == PROMOTION)
+				encode_order(*move, PROM);
 		}
 	}
-
-	// Order captures by MVV-LVA
-	u32* i;
-	u32* j;
-	for (i = caps + 1; i < quiets; ++i)
-		for (j = i; j > caps; --j)
-			if (mvv_lva(pos, j) > mvv_lva(pos, j - 1))
-				swap_moves(j, j - 1);
+	sort_moves(list->moves, list->end);
 
 	for (move = list->moves; move != list->end; ++move) {
-		if (!do_move(pos, move))
+		if (!do_move(pos, *move))
 			continue;
 		++legal_moves;
 
@@ -219,7 +231,7 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 				val = -search(engine, -beta, -alpha, depth - 1);
 		}
 
-		undo_move(pos, move);
+		undo_move(pos, *move);
 
 		if (   pos->ply
 		    && ctlr->is_stopped)
@@ -231,7 +243,7 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
 #endif
-			tt_store(&tt, val, FLAG_LOWER, depth, *move, pos->state->pos_key);
+			tt_store(&tt, val, FLAG_LOWER, depth, get_move(*move), pos->state->pos_key);
 			return beta;
 		}
 		if (val > best_val) {
@@ -251,14 +263,14 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 	}
 
 	if (old_alpha == alpha)
-		tt_store(&tt, alpha, FLAG_UPPER, depth, best_move, pos->state->pos_key);
+		tt_store(&tt, alpha, FLAG_UPPER, depth, get_move(best_move), pos->state->pos_key);
 	else
-		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
+		tt_store(&tt, alpha, FLAG_EXACT, depth, get_move(best_move), pos->state->pos_key);
 
 	return alpha;
 }
 
-static int valid_move(Position* const pos, u32* move)
+static int valid_move(Position* const pos, Move* move)
 {
 	u32 from = from_sq(*move),
 	    to   = to_sq(*move),
@@ -274,7 +286,7 @@ static int valid_move(Position* const pos, u32* move)
 		gen_quiets(pos, list);
 		gen_captures(pos, list);
 	}
-	for (u32* m = list->moves; m != list->end; ++m) {
+	for (Move* m = list->moves; m != list->end; ++m) {
 		if (   from_sq(*m) == from
 		    && to_sq(*m) == to
 		    && move_type(*m) == mt
@@ -291,15 +303,15 @@ static int get_stored_moves(Position* const pos, int depth)
 		return 0;
 	Entry entry = tt_probe(&tt, pos->state->pos_key);
 	if ((entry.data ^ entry.key) == pos->state->pos_key) {
-		u32 move = MOVE(entry.data);
+		Move move = get_move(entry.data);
 		if (  !valid_move(pos, &move)
-		   || !do_move(pos, &move))
+		   || !do_move(pos, move))
 			return 0;
 		fprintf(stdout, " ");
 		move_str(move, mstr);
 		fprintf(stdout, "%s", mstr);
 		get_stored_moves(pos, depth - 1);
-		undo_move(pos, &move);
+		undo_move(pos, move);
 		return move;
 	}
 	return 0;

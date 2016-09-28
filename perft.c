@@ -69,18 +69,18 @@ u64 perft(Position* const pos, u32 depth)
 	}
 
 	u64 count = 0ULL;
-	u32* move;
+	Move* move;
 	if (depth == 1) {
 		for(move = list->moves; move < list->end; ++move) {
-			if(!do_move(pos, move)) continue;
-			undo_move(pos, move);
+			if(!do_move(pos, *move)) continue;
+			undo_move(pos, *move);
 			++count;
 		}
 	} else {
 		for(move = list->moves; move < list->end; ++move) {
-			if(!do_move(pos, move)) continue;
+			if(!do_move(pos, *move)) continue;
 			count += perft(pos, depth - 1);
-			undo_move(pos, move);
+			undo_move(pos, *move);
 		}
 	}
 

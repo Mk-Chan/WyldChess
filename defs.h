@@ -14,6 +14,7 @@
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
 #define CAP_TYPE_SHIFT  (18)
+#define ORDER_SHIFT     (21)
 
 #define MOVE_TYPE_MASK (7 << MOVE_TYPE_SHIFT)
 #define PROM_TYPE_MASK (7 << PROM_TYPE_SHIFT)
@@ -116,16 +117,22 @@ enum PromotionType {
 #define to_sq(m)      ((m >> 6) & 0x3f)
 #define move_type(m)  (m & MOVE_TYPE_MASK)
 #define prom_type(m)  ((m & PROM_TYPE_MASK) >> PROM_TYPE_SHIFT)
-#define cap_type(m)   (m >> CAP_TYPE_SHIFT)
+#define cap_type(m)   ((m & CAP_TYPE_MASK) >> CAP_TYPE_SHIFT)
+#define order(m)      (((m) >> ORDER_SHIFT))
 
 #define popcnt(bb)  (__builtin_popcountll(bb))
 #define bitscan(bb) (__builtin_ffsll(bb) - 1)
 
-#define move_normal(from, to)      (from | (to << 6) | NORMAL)
-#define move_double_push(from, to) (from | (to << 6) | DOUBLE_PUSH)
-#define move_castle(from, to)      (from | (to << 6) | CASTLE)
-#define move_ep(from, to)          (from | (to << 6) | ENPASSANT)
-#define move_prom(from, to, prom)  (from | (to << 6) | PROMOTION | prom)
-#define move(from, to, mt, prom)   (from | (to << 6) | mt | prom)
+#define get_move(data)                     (((data) & 0x1fffff))
+#define move_normal(from, to)              (from | (to << 6) | NORMAL)
+#define move_cap(from, to, cap)            (from | (to << 6) | NORMAL | (cap << CAP_TYPE_SHIFT))
+#define move_double_push(from, to)         (from | (to << 6) | DOUBLE_PUSH)
+#define move_castle(from, to)              (from | (to << 6) | CASTLE)
+#define move_ep(from, to)                  (from | (to << 6) | ENPASSANT)
+#define move_prom(from, to, prom)          (from | (to << 6) | PROMOTION | prom)
+#define move_prom_cap(from, to, prom, cap) (from | (to << 6) | PROMOTION | prom | (cap << CAP_TYPE_SHIFT))
+#define move(from, to, mt, prom, cap)      (from | (to << 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
+#define encode_cap(m, pt)                  (m    |= (pt << CAP_TYPE_SHIFT))
+#define encode_order(m, order)             (m    |= ((order) << ORDER_SHIFT))
 
 #endif

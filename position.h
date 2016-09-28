@@ -17,10 +17,12 @@ typedef struct Stats_s {
 
 } Stats;
 
+typedef u64 Move;
+
 typedef struct Movelist_s {
 
-	u32  moves[218];
-	u32* end;
+	Move  moves[218];
+	Move* end;
 
 } Movelist;
 
@@ -214,9 +216,9 @@ extern void performance_test(Position* const pos, u32 max_depth);
 extern void init_pos(Position* pos);
 extern void set_pos(Position* pos, char* fen);
 
-extern void undo_move(Position* const pos, u32* m);
-extern u32  do_move(Position* const pos, u32* m);
-extern u32  do_usermove(Position* const pos, u32 m);
+extern void undo_move(Position* const pos, Move const m);
+extern u32  do_move(Position* const pos, Move const m);
+extern u32  do_usermove(Position* const pos, Move const m);
 
 extern void gen_quiets(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
@@ -227,7 +229,7 @@ extern u64 perft(Position* pos, u32 depth);
 
 extern int evaluate(Position* const pos);
 
-inline void move_str(u32 move, char str[6])
+inline void move_str(Move move, char str[6])
 {
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
@@ -273,7 +275,7 @@ inline int parse_move(Position* pos, char* str)
 		gen_quiets(pos, list);
 		gen_captures(pos, list);
 	}
-	for(u32* move = list->moves; move != list->end; ++move) {
+	for(Move* move = list->moves; move != list->end; ++move) {
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {
 			if (    piece_type(pos->board[from]) == PAWN
