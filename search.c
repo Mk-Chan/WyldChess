@@ -209,11 +209,22 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 		if (!do_move(pos, move))
 			continue;
 		++legal_moves;
-		val = -search(engine, -beta, -alpha, depth - 1);
+
+		// Principal Variation Search
+		if (legal_moves == 1)
+			val = -search(engine, -beta, -alpha, depth - 1);
+		else {
+			val = -search(engine, -alpha - 1, -alpha, depth - 1);
+			if (val > alpha)
+				val = -search(engine, -beta, -alpha, depth - 1);
+		}
+
 		undo_move(pos, move);
+
 		if (   pos->ply
 		    && ctlr->is_stopped)
 			return 0;
+
 		if (val >= beta) {
 #ifdef STATS
 			if (legal_moves == 1)
