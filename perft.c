@@ -30,7 +30,7 @@ static inline void store(State* const s, u64 nodes, u32 depth)
 
 u64 total, hits, stores;
 
-u64 perft(Position* const pos, u32 depth)
+static u64 perft(Position* const pos, Movelist* list, u32 depth)
 {
 	u32 use_pft = 0 && (depth > 1 && pos->ply >= 3);
 	if (use_pft && !pos->ply) {
@@ -56,7 +56,6 @@ u64 perft(Position* const pos, u32 depth)
 		}
 	}
 
-	Movelist* list = pos->list + pos->ply;
 	list->end = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
@@ -73,14 +72,14 @@ u64 perft(Position* const pos, u32 depth)
 	if (depth == 1) {
 		for(move = list->moves; move < list->end; ++move) {
 			if(!do_move(pos, *move)) continue;
-			undo_move(pos, *move);
+			undo_move(pos);
 			++count;
 		}
 	} else {
 		for(move = list->moves; move < list->end; ++move) {
 			if(!do_move(pos, *move)) continue;
-			count += perft(pos, depth - 1);
-			undo_move(pos, *move);
+			count += perft(pos, list + 1, depth - 1);
+			undo_move(pos);
 		}
 	}
 
@@ -98,12 +97,13 @@ u64 perft(Position* const pos, u32 depth)
 
 void performance_test(Position* const pos, u32 max_depth)
 {
+	Movelist list[MAX_PLY];
 	u32 depth;
 	u64 count;
 	u64 t1, t2;
 	for (depth = 1; depth <= max_depth; ++depth) {
 		t1 = curr_time();
-		count = perft(pos, depth);
+		count = perft(pos, list, depth);
 		t2 = curr_time();
 		fprintf(stdout, "Perft(%2d) = %20llu (%10llu ms)\n", depth, count, (t2 - t1));
 	}

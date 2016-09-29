@@ -44,20 +44,20 @@ static int insufficient_material(Position* const pos)
 
 static int check_stale_and_mate(Position* const pos)
 {
-	Movelist* list = pos->list;
-	list->end      = list->moves;
+	static Movelist list;
+	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
 	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
+		gen_check_evasions(pos, &list);
 	} else {
-		gen_quiets(pos, list);
-		gen_captures(pos, list);
+		gen_quiets(pos, &list);
+		gen_captures(pos, &list);
 	}
-	for (Move* move = list->moves; move != list->end; ++move) {
+	for (Move* move = list.moves; move != list.end; ++move) {
 		if (!do_move(pos, *move))
 			continue;
-		undo_move(pos, *move);
+		undo_move(pos);
 		return NO_RESULT;
 	}
 	return pos->state->checkers_bb ? CHECKMATE : DRAW;
@@ -319,7 +319,7 @@ void cecp_loop()
 			if (engine.move_list_end > engine.move_list) {
 				--engine.move_list_end;
 				pos.ply = 1;
-				undo_move(&pos, *engine.move_list_end);
+				undo_move(&pos);
 				if (   engine.side == pos.stm
 				    && ctlr.moves_left == ctlr.moves_per_session)
 					ctlr.moves_left = 1;

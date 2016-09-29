@@ -1,12 +1,13 @@
 #include "defs.h"
 #include "position.h"
 
-void undo_move(Position* const pos, Move const m)
+void undo_move(Position* const pos)
 {
 	--pos->ply;
 	--pos->state;
 
 	pos->stm ^= 1;
+	Move m    = pos->state->move;
 	u32 const c    = pos->stm,
 	          from = from_sq(m),
 	          to   = to_sq(m),
@@ -84,10 +85,10 @@ u32 do_move(Position* const pos, Move const m)
 		7, 15, 15, 15, 3,  15, 15, 11
 	};
 
-	State** const tmp        = &pos->state;
-	State const * const curr = *tmp;
-	State* const next        = ++*tmp;
+	State*  const curr = pos->state;
+	State*  const next = ++pos->state;
 
+	curr->move                  = m;
 	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
 	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
 	next->fifty_moves           = 0;
@@ -190,7 +191,7 @@ u32 do_move(Position* const pos, Move const m)
 
 	if ( (check_illegal || (BB(from) & curr->pinned_bb) > 0)
 	   && checkers(pos, pos->stm)) {
-		undo_move(pos, m);
+		undo_move(pos);
 		return 0;
 	}
 

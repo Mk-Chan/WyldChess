@@ -34,6 +34,7 @@ typedef struct State_s {
 	u64      pinned_bb;
 	u64      checkers_bb;
 	u64      ep_sq_bb;
+	Move     move;
 	HashKey  pos_key;
 
 } State;
@@ -48,7 +49,6 @@ typedef struct Position_s {
 	u32      board[64];
 	State*   state;
 	State    hist[MAX_MOVES + MAX_PLY];
-	Movelist list[MAX_PLY];
 
 #ifdef STATS
 	Stats    stats;
@@ -216,7 +216,7 @@ extern void performance_test(Position* const pos, u32 max_depth);
 extern void init_pos(Position* pos);
 extern void set_pos(Position* pos, char* fen);
 
-extern void undo_move(Position* const pos, Move const m);
+extern void undo_move(Position* const pos);
 extern u32  do_move(Position* const pos, Move const m);
 extern u32  do_usermove(Position* const pos, Move const m);
 
@@ -224,8 +224,6 @@ extern void gen_quiets(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
 
 extern void gen_check_evasions(Position* pos, Movelist* list);
-
-extern u64 perft(Position* pos, u32 depth);
 
 extern int evaluate(Position* const pos);
 
@@ -265,17 +263,17 @@ inline int parse_move(Position* pos, char* str)
 	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
 	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
 	char prom = str[4];
-	Movelist* list = pos->list;
-	list->end      = list->moves;
+	Movelist list;
+	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
 	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
+		gen_check_evasions(pos, &list);
 	} else {
-		gen_quiets(pos, list);
-		gen_captures(pos, list);
+		gen_quiets(pos, &list);
+		gen_captures(pos, &list);
 	}
-	for(Move* move = list->moves; move != list->end; ++move) {
+	for(Move* move = list.moves; move != list.end; ++move) {
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {
 			if (    piece_type(pos->board[from]) == PAWN

@@ -3,11 +3,19 @@
 #include "timer.h"
 #include "eval.h"
 
+typedef struct Search_Stack_s {
+
+	Move killers[2];
+	Movelist list;
+
+} Search_Stack;
+
 u64 const HASH_MOVE = 60000ULL;
 u64 const GOOD_CAP  = 50000ULL;
-u64 const KILLER    = 40000ULL;
-u64 const PROM      = 30000ULL;
-u64 const BAD_CAP   = 20000ULL;
+u64 const KILLER1   = 40000ULL;
+u64 const KILLER2   = 30000ULL;
+u64 const PROM      = 20000ULL;
+u64 const BAD_CAP   = 10000ULL;
 
 static inline void order_cap(Position const * const pos, Move* const m)
 {
@@ -61,7 +69,7 @@ static int is_repeat(Position* const pos)
 	return 0;
 }
 
-static int qsearch(Engine* const engine, int alpha, int beta)
+static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
 {
 	if ( !(engine->ctlr->nodes_searched & 2047)
 	    && stopped(engine))
@@ -85,7 +93,7 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 		alpha = eval;
 
 	int val;
-	Movelist* list = pos->list + pos->ply;
+	Movelist* list = &ss->list;
 	list->end      = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
@@ -106,8 +114,8 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 		if (!do_move(pos, *move))
 			continue;
 		++legal;
-		val = -qsearch(engine, -beta, -alpha);
-		undo_move(pos, *move);
+		val = -qsearch(engine, ss + 1, -beta, -alpha);
+		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
 		if (val > alpha) {
@@ -126,10 +134,10 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 	return alpha;
 }
 
-static int search(Engine* const engine, int alpha, int beta, u32 depth)
+static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u32 depth)
 {
 	if (!depth)
-		return qsearch(engine, alpha, beta);
+		return qsearch(engine, ss, alpha, beta);
 
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
@@ -172,7 +180,7 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 	    best_val    = -INFINITY,
 	    legal_moves = 0;
 
-	Movelist* list  = pos->list + pos->ply;
+	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
@@ -204,7 +212,11 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 		} else if (move < quiets) {
 			order_cap(pos, move);
 		} else {
-			if (move_type(*move) == PROMOTION)
+			if (*move == ss->killers[0])
+				encode_order(*move, KILLER1);
+			else if (*move == ss->killers[1])
+				encode_order(*move, KILLER2);
+			else if (move_type(*move) == PROMOTION)
 				encode_order(*move, PROM);
 		}
 	}
@@ -217,14 +229,14 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 
 		// Principal Variation Search
 		if (legal_moves == 1)
-			val = -search(engine, -beta, -alpha, depth - 1);
+			val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
 		else {
-			val = -search(engine, -alpha - 1, -alpha, depth - 1);
+			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth - 1);
 			if (val > alpha)
-				val = -search(engine, -beta, -alpha, depth - 1);
+				val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
 		}
 
-		undo_move(pos, *move);
+		undo_move(pos);
 
 		if (   pos->ply
 		    && ctlr->is_stopped)
@@ -236,6 +248,11 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
 #endif
+			if (   !cap_type(*move)
+			    && move_type(*move) != PROMOTION) {
+				ss->killers[1] = ss->killers[0];
+				ss->killers[0] = *move;
+			}
 			tt_store(&tt, val, FLAG_LOWER, depth, get_move(*move), pos->state->pos_key);
 			return beta;
 		}
@@ -269,17 +286,17 @@ static int valid_move(Position* const pos, Move* move)
 	    to   = to_sq(*move),
 	    mt   = move_type(*move),
 	    prom = prom_type(*move);
-	Movelist* list = pos->list;
-	list->end      = list->moves;
+	static Movelist list;
+	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
 	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
+		gen_check_evasions(pos, &list);
 	} else {
-		gen_quiets(pos, list);
-		gen_captures(pos, list);
+		gen_quiets(pos, &list);
+		gen_captures(pos, &list);
 	}
-	for (Move* m = list->moves; m != list->end; ++m) {
+	for (Move* m = list.moves; m != list.end; ++m) {
 		if (   from_sq(*m) == from
 		    && to_sq(*m) == to
 		    && move_type(*m) == mt
@@ -304,7 +321,7 @@ static int get_stored_moves(Position* const pos, int depth)
 		move_str(move, mstr);
 		fprintf(stdout, "%s", mstr);
 		get_stored_moves(pos, depth - 1);
-		undo_move(pos, move);
+		undo_move(pos);
 		return move;
 	}
 	return 0;
@@ -330,11 +347,12 @@ int begin_search(Engine* const engine)
 	int val, depth;
 	int best_move = 0;
 	clear_search(engine);
+	Search_Stack ss[MAX_PLY];
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
-		val = search(engine, -INFINITY, +INFINITY, depth);
+		val = search(engine, ss, -INFINITY, +INFINITY, depth);
 		if (   depth > 1
 		    && ctlr->is_stopped)
 			break;
