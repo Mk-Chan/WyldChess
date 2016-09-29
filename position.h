@@ -42,7 +42,6 @@ typedef struct State_s {
 typedef struct Position_s {
 
 	u32      hist_size;
-	u32      ply;
 	u32      stm;
 	u64      bb[10];
 	u32      king_sq[2];

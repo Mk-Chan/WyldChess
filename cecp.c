@@ -113,9 +113,6 @@ void* engine_loop(void* args)
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
 				pthread_exit(0);
 			}
-			*engine->move_list_end = move;
-			++engine->move_list_end;
-			engine->pos->ply = 0;
 			fprintf(stdout, "move %s\n", mstr);
 			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
 			engine->ctlr->time_left += engine->ctlr->increment;
@@ -208,7 +205,6 @@ void cecp_loop()
 	engine.ctlr  = &ctlr;
 	engine.target_state = WAITING;
 	engine.side  = BLACK;
-	engine.move_list_end = engine.move_list;
 	init_pos(engine.pos);
 	set_pos(engine.pos, fen1);
 	pthread_t engine_thread;
@@ -235,7 +231,6 @@ void cecp_loop()
 			transition(&engine, WAITING);
 			init_pos(engine.pos);
 			set_pos(engine.pos, fen1);
-			engine.move_list_end = engine.move_list;
 			engine.side = BLACK;
 			ctlr.depth  = MAX_PLY;
 
@@ -254,7 +249,6 @@ void cecp_loop()
 			transition(&engine, WAITING);
 			engine.side = -1;
 			set_pos(engine.pos, input + 9);
-			engine.move_list_end = engine.move_list;
 			engine.side = engine.pos->stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
@@ -315,17 +309,10 @@ void cecp_loop()
 
 		} else if (!strncmp(input, "undo", 4)) {
 
+			// Does not recover time at the moment
 			transition(&engine, WAITING);
-			if (engine.move_list_end > engine.move_list) {
-				--engine.move_list_end;
-				pos.ply = 1;
+			if (pos.state > pos.hist)
 				undo_move(&pos);
-				if (   engine.side == pos.stm
-				    && ctlr.moves_left == ctlr.moves_per_session)
-					ctlr.moves_left = 1;
-				else
-					++ctlr.moves_left;
-			}
 			engine.side = -1;
 
 		} else {
@@ -334,9 +321,6 @@ void cecp_loop()
 			if (  !move
 			   || !do_move(engine.pos, move))
 				fprintf(stdout, "Illegal move: %s\n", input);
-			*engine.move_list_end = move;
-			++engine.move_list_end;
-			pos.ply = 0;
 			start_thinking(&engine);
 		}
 	}

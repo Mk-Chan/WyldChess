@@ -33,8 +33,6 @@ typedef struct Engine_s {
 	u32         volatile side;
 	int         volatile target_state;
 	int         volatile curr_state;
-	Move                 move_list[MAX_MOVES];
-	Move*                move_list_end;
 
 } Engine;
 

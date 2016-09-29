@@ -3,7 +3,6 @@
 
 void undo_move(Position* const pos)
 {
-	--pos->ply;
 	--pos->state;
 
 	pos->stm ^= 1;
@@ -181,7 +180,6 @@ u32 do_move(Position* const pos, Move const m)
 	}
 
 
-	++pos->ply;
 	pos->stm ^= 1;
 
 	next->castling_rights =  (curr->castling_rights & castle_perms[from]) & castle_perms[to];
@@ -201,7 +199,6 @@ u32 do_move(Position* const pos, Move const m)
 u32 do_usermove(Position* const pos, Move const move) {
 	if (!do_move(pos, move))
 		return 0;
-	pos->ply = 0;
 	++pos->hist_size;
 	return 1;
 }

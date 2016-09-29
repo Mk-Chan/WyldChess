@@ -5,7 +5,8 @@
 
 typedef struct Search_Stack_s {
 
-	Move killers[2];
+	u32      ply;
+	Move     killers[2];
 	Movelist list;
 
 } Search_Stack;
@@ -81,7 +82,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	if (pos->state->fifty_moves > 99 || is_repeat(pos))
 		return 0;
 
-	if (pos->ply >= MAX_PLY)
+	if (ss->ply >= MAX_PLY)
 		return evaluate(pos);
 
 	++engine->ctlr->nodes_searched;
@@ -142,7 +143,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 
-	if (pos->ply) {
+	if (ss->ply) {
 		if ( !(engine->ctlr->nodes_searched & 2047)
 		    && stopped(engine))
 			return 0;
@@ -150,7 +151,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 		if (pos->state->fifty_moves > 99 || is_repeat(pos))
 			return 0;
 
-		if (pos->ply >= MAX_PLY)
+		if (ss->ply >= MAX_PLY)
 			return evaluate(pos);
 	}
 
@@ -238,7 +239,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 
 		undo_move(pos);
 
-		if (   pos->ply
+		if (   ss->ply
 		    && ctlr->is_stopped)
 			return 0;
 
@@ -267,7 +268,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 
 	if (!legal_moves) {
 		if (pos->state->checkers_bb)
-			return -INFINITY + pos->ply;
+			return -INFINITY + ss->ply;
 		else
 			return 0;
 	}
@@ -327,27 +328,35 @@ static int get_stored_moves(Position* const pos, int depth)
 	return 0;
 }
 
-static void clear_search(Engine* const engine)
+static void clear_search(Engine* const engine, Search_Stack* const ss)
 {
 	Controller* const ctlr = engine->ctlr;
 	ctlr->is_stopped       = 0;
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
-	pos->ply                      = 0;
 	pos->stats.first_beta_cutoffs = 0;
 	pos->stats.beta_cutoffs       = 0;
 	pos->stats.hash_probes        = 0;
 	pos->stats.hash_hits          = 0;
 #endif
+	u32 i;
+	Search_Stack* curr;
+	for (i = 0; i != MAX_PLY; ++i) {
+		curr             = ss + i;
+		curr->ply        = i;
+		curr->killers[0] = 0;
+		curr->killers[1] = 0;
+		curr->list.end   = ss->list.moves;
+	}
 }
 
 int begin_search(Engine* const engine)
 {
 	int val, depth;
 	int best_move = 0;
-	clear_search(engine);
 	Search_Stack ss[MAX_PLY];
+	clear_search(engine, ss);
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;

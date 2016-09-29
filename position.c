@@ -39,7 +39,6 @@ void init_pos(Position* pos)
 		pos->board[i] = 0;
 	for (i = 0; i != 10; ++i)
 		pos->bb[i] = 0ULL;
-	pos->ply                          = 0;
 	pos->hist_size                    = 0;
 	pos->stm                          = WHITE;
 	pos->state                        = pos->hist;
@@ -59,7 +58,6 @@ void clear_pos(Position* pos)
 		pos->board[i] = 0;
 	for (i = 0; i != 10; ++i)
 		pos->bb[i] = 0ULL;
-	pos->ply                          = 0;
 	pos->state->pos_key               = 0ULL;
 	pos->state->pinned_bb             = 0ULL;
 	pos->state->fifty_moves           = 0;
