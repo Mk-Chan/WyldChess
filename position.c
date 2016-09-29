@@ -45,6 +45,7 @@ void init_pos(Position* pos)
 	pos->state->pos_key               = 0ULL;
 	pos->state->pinned_bb             = 0ULL;
 	pos->state->fifty_moves           = 0;
+	pos->state->full_moves            = 0;
 	pos->state->castling_rights       = 0;
 	pos->state->ep_sq_bb              = 0ULL;
 	pos->state->piece_psq_eval[WHITE] = 0;
@@ -61,6 +62,7 @@ void clear_pos(Position* pos)
 	pos->state->pos_key               = 0ULL;
 	pos->state->pinned_bb             = 0ULL;
 	pos->state->fifty_moves           = 0;
+	pos->state->full_moves            = 0;
 	pos->state->castling_rights       = 0;
 	pos->state->ep_sq_bb              = 0ULL;
 	pos->state->checkers_bb           = 0ULL;
@@ -119,6 +121,11 @@ void set_pos(Position* pos, char* fen)
 	while ((c = fen[index++]) != ' ')
 		x = x * 10 + (c - '0');
 	pos->state->fifty_moves = x;
+
+	x = 0;
+	while ((c = fen[index++]) != '\0')
+		x = x * 10 + (c - '0');
+	pos->state->full_moves = x;
 }
 
 static inline char get_char_from_piece(u32 piece)

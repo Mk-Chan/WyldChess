@@ -88,6 +88,7 @@ u32 do_move(Position* const pos, Move const m)
 	State*  const next = ++pos->state;
 
 	curr->move                  = m;
+	next->full_moves            = curr->full_moves + (pos->stm == BLACK);
 	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
 	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
 	next->fifty_moves           = 0;

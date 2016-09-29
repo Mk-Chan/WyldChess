@@ -31,6 +31,7 @@ typedef struct State_s {
 	int      piece_psq_eval[2];
 	u32      castling_rights;
 	u32      fifty_moves;
+	u32      full_moves;
 	u64      pinned_bb;
 	u64      checkers_bb;
 	u64      ep_sq_bb;

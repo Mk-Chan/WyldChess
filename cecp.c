@@ -175,8 +175,8 @@ static inline void start_thinking(Engine* const engine)
 		ctlr->search_start_time = curr_time();
 		ctlr->search_end_time   =  ctlr->search_start_time
 			                + (ctlr->time_left / ctlr->moves_left);
-		fprintf(stdout, "time left=%llu time allotted=%llu\n",
-			ctlr->time_left, ctlr->search_end_time - ctlr->search_start_time);
+		fprintf(stdout, "time left=%llu moves left=%u time allotted=%llu\n",
+			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 		transition(engine, THINKING);
 		--ctlr->moves_left;
 		if (ctlr->moves_left < 1)
@@ -249,6 +249,8 @@ void cecp_loop()
 			transition(&engine, WAITING);
 			engine.side = -1;
 			set_pos(engine.pos, input + 9);
+			ctlr.moves_left = ctlr.moves_per_session
+				- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			engine.side = engine.pos->stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
@@ -305,6 +307,8 @@ void cecp_loop()
 		} else if (!strncmp(input, "go", 2)) {
 
 			engine.side = engine.pos->stm;
+			ctlr.moves_left = ctlr.moves_per_session
+				- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			start_thinking(&engine);
 
 		} else if (!strncmp(input, "undo", 4)) {
