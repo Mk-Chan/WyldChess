@@ -16,13 +16,10 @@ int main()
 	initmagicmoves();
 	init_atks();
 	init_intervening_sqs();
+	init_masks();
 	tt_init(&tt, 1000000);
 	fprintf(stdout, "WyldChess started!\n");
 	cecp_loop();
 	tt_destroy(&tt);
-	/*Position pos;
-	init_pos(&pos);
-	set_pos(&pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-	printf("%llu\n", perft(&pos, 6));*/
 	return 0;
 }

@@ -44,20 +44,20 @@ static int insufficient_material(Position* const pos)
 
 static int check_stale_and_mate(Position* const pos)
 {
-	Movelist* list = pos->list;
-	list->end      = list->moves;
+	static Movelist list;
+	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
 	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
+		gen_check_evasions(pos, &list);
 	} else {
-		gen_quiets(pos, list);
-		gen_captures(pos, list);
+		gen_quiets(pos, &list);
+		gen_captures(pos, &list);
 	}
-	for (u32* move = list->moves; move != list->end; ++move) {
-		if (!do_move(pos, move))
+	for (Move* move = list.moves; move != list.end; ++move) {
+		if (!do_move(pos, *move))
 			continue;
-		undo_move(pos, move);
+		undo_move(pos);
 		return NO_RESULT;
 	}
 	return pos->state->checkers_bb ? CHECKMATE : DRAW;
@@ -96,7 +96,7 @@ static int check_result(Position* const pos)
 void* engine_loop(void* args)
 {
 	static char mstr[6];
-	u32 move;
+	Move move;
 	Engine* engine = (Engine*) args;
 	Position* pos  = engine->pos;
 	while (1) {
@@ -109,11 +109,10 @@ void* engine_loop(void* args)
 			engine->curr_state = THINKING;
 			move = begin_search(engine);
 			move_str(move, mstr);
-			if (!do_move(pos, &move)) {
+			if (!do_move(pos, move)) {
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
 				pthread_exit(0);
 			}
-			engine->pos->ply = 0;
 			fprintf(stdout, "move %s\n", mstr);
 			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
 			engine->ctlr->time_left += engine->ctlr->increment;
@@ -175,11 +174,9 @@ static inline void start_thinking(Engine* const engine)
 		Controller* const ctlr  = engine->ctlr;
 		ctlr->search_start_time = curr_time();
 		ctlr->search_end_time   =  ctlr->search_start_time
-			                + (ctlr->time_left / ctlr->moves_left)
-					//+  ctlr->increment
-			                ;//-  10;
-		fprintf(stdout, "time left=%llu time allotted=%llu\n",
-			ctlr->time_left, ctlr->search_end_time - ctlr->search_start_time);
+			                + (ctlr->time_left / ctlr->moves_left);
+		fprintf(stdout, "time left=%llu moves left=%u time allotted=%llu\n",
+			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 		transition(engine, THINKING);
 		--ctlr->moves_left;
 		if (ctlr->moves_left < 1)
@@ -199,7 +196,7 @@ void cecp_loop()
 		return;
 	}
 
-	u32 move;
+	Move move;
 	Position pos;
 	Controller ctlr;
 	ctlr.depth = MAX_PLY;
@@ -252,6 +249,8 @@ void cecp_loop()
 			transition(&engine, WAITING);
 			engine.side = -1;
 			set_pos(engine.pos, input + 9);
+			ctlr.moves_left = ctlr.moves_per_session
+				- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			engine.side = engine.pos->stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
@@ -274,6 +273,11 @@ void cecp_loop()
 			ctlr.increment  = 1000 * strtod(ptr, &end);
 			fprintf(stdout, "moves=%d timeleft=%llu inc=%llu\n",
 				ctlr.moves_left, ctlr.time_left, ctlr.increment);
+
+		} else if (!strncmp(input, "perft", 5)) {
+
+			transition(&engine, WAITING);
+			performance_test(&pos, atoi(input + 6));
 
 		} else if (!strncmp(input, "st", 2)) {
 
@@ -303,15 +307,30 @@ void cecp_loop()
 		} else if (!strncmp(input, "go", 2)) {
 
 			engine.side = engine.pos->stm;
+			ctlr.moves_left = ctlr.moves_per_session
+				- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			start_thinking(&engine);
+
+		} else if (!strncmp(input, "eval", 4)) {
+
+			transition(&engine, WAITING);
+			fprintf(stdout, "evaluation = %d\n", evaluate(&pos));
+			fprintf(stdout, "phase = %d\n", pos.state->phase);
+
+		} else if (!strncmp(input, "undo", 4)) {
+
+			// Does not recover time at the moment
+			transition(&engine, WAITING);
+			if (pos.state > pos.hist)
+				undo_move(&pos);
+			engine.side = -1;
 
 		} else {
 
 			move = parse_move(engine.pos, input);
 			if (  !move
-			   || !do_move(engine.pos, &move))
+			   || !do_move(engine.pos, move))
 				fprintf(stdout, "Illegal move: %s\n", input);
-			pos.ply = 0;
 			start_thinking(&engine);
 		}
 	}

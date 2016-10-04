@@ -5,10 +5,13 @@
 #include "random.h"
 #include "bitboard.h"
 #include "magicmoves.h"
-#include "eval.h"
 
 typedef struct Stats_s {
 
+	u64 futility_cutoffs;
+	u64 futility_tries;
+	u64 null_cutoffs;
+	u64 null_tries;
 	u64 first_beta_cutoffs;
 	u64 beta_cutoffs;
 	u64 hash_probes;
@@ -17,21 +20,26 @@ typedef struct Stats_s {
 
 } Stats;
 
+typedef u64 Move;
+
 typedef struct Movelist_s {
 
-	u32  moves[218];
-	u32* end;
+	Move  moves[218];
+	Move* end;
 
 } Movelist;
 
 typedef struct State_s {
 
 	int      piece_psq_eval[2];
+	int      phase;
 	u32      castling_rights;
 	u32      fifty_moves;
+	u32      full_moves;
 	u64      pinned_bb;
 	u64      checkers_bb;
 	u64      ep_sq_bb;
+	Move     move;
 	HashKey  pos_key;
 
 } State;
@@ -39,20 +47,42 @@ typedef struct State_s {
 typedef struct Position_s {
 
 	u32      hist_size;
-	u32      ply;
 	u32      stm;
 	u64      bb[10];
 	u32      king_sq[2];
 	u32      board[64];
 	State*   state;
 	State    hist[MAX_MOVES + MAX_PLY];
-	Movelist list[MAX_PLY];
 
 #ifdef STATS
 	Stats    stats;
 #endif
 
 } Position;
+
+extern int piece_val[7];
+extern int psq_val[8][64];
+extern int phase[7];
+extern void print_board(Position* pos);
+
+extern void cecp_loop();
+extern void performance_test(Position* const pos, u32 max_depth);
+
+extern void init_pos(Position* pos);
+extern void set_pos(Position* pos, char* fen);
+
+extern void do_null_move(Position* const pos);
+extern void undo_null_move(Position* const pos);
+extern void undo_move(Position* const pos);
+extern u32  do_move(Position* const pos, Move const m);
+extern u32  do_usermove(Position* const pos, Move const m);
+
+extern void gen_quiets(Position* pos, Movelist* list);
+extern void gen_captures(Position* pos, Movelist* list);
+
+extern void gen_check_evasions(Position* pos, Movelist* list);
+
+extern int evaluate(Position* const pos);
 
 inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
@@ -105,6 +135,7 @@ inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->bb[pt]         |= set;
 	pos->board[sq]       = make_piece(pt, c);
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
+	pos->state->phase   += phase[pt];
 	if (c == WHITE)
 		pos->state->piece_psq_eval[WHITE] += piece_val[pt] + psq_val[pt][sq];
 	else
@@ -119,6 +150,7 @@ inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->bb[pt]         ^= clr;
 	pos->board[sq]       = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
+	pos->state->phase   -= phase[pt];
 	if (c == WHITE)
 		pos->state->piece_psq_eval[WHITE] -= piece_val[pt] + psq_val[pt][sq];
 	else
@@ -205,28 +237,7 @@ inline void set_checkers(Position* pos)
 	pos->state->checkers_bb = checkers(pos, !pos->stm);
 }
 
-extern u32 initial_stm;
-extern void print_board(Position* pos);
-
-extern void cecp_loop();
-
-extern void init_pos(Position* pos);
-extern void set_pos(Position* pos, char* fen);
-
-extern void undo_move(Position* const pos, u32* m);
-extern u32  do_move(Position* const pos, u32* m);
-extern u32  do_usermove(Position* const pos, u32 m);
-
-extern void gen_quiets(Position* pos, Movelist* list);
-extern void gen_captures(Position* pos, Movelist* list);
-
-extern void gen_check_evasions(Position* pos, Movelist* list);
-
-extern u64 perft(Position* pos, u32 depth);
-
-extern int evaluate(Position* const pos);
-
-inline void move_str(u32 move, char str[6])
+inline void move_str(Move move, char str[6])
 {
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
@@ -262,17 +273,17 @@ inline int parse_move(Position* pos, char* str)
 	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
 	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
 	char prom = str[4];
-	Movelist* list = pos->list;
-	list->end      = list->moves;
+	Movelist list;
+	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
 	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
+		gen_check_evasions(pos, &list);
 	} else {
-		gen_quiets(pos, list);
-		gen_captures(pos, list);
+		gen_quiets(pos, &list);
+		gen_captures(pos, &list);
 	}
-	for(u32* move = list->moves; move != list->end; ++move) {
+	for(Move* move = list.moves; move != list.end; ++move) {
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {
 			if (    piece_type(pos->board[from]) == PAWN

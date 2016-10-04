@@ -1,18 +1,45 @@
 #include "engine.h"
 #include "tt.h"
 #include "timer.h"
-#include "eval.h"
 
-static inline int mvv_lva(Position const * const pos, u32 const * const m)
+typedef struct Search_Stack_s {
+
+	u32      early_prune;
+	u32      ply;
+	Move     killers[2];
+	Movelist list;
+
+} Search_Stack;
+
+u64 const HASH_MOVE = 60000ULL;
+u64 const GOOD_CAP  = 50000ULL;
+u64 const KILLER1   = 40000ULL;
+u64 const KILLER2   = 30000ULL;
+u64 const PROM      = 20000ULL;
+u64 const BAD_CAP   = 10000ULL;
+
+static inline void order_cap(Position const * const pos, Move* const m)
 {
-	return piece_val[piece_type(pos->board[to_sq(*m)])] - piece_type(pos->board[to_sq(*m)]);
+	int tmp = piece_val[piece_type(pos->board[to_sq(*m)])]
+		- piece_val[piece_type(pos->board[from_sq(*m)])];
+	tmp = phased_val(tmp, pos->state->phase);
+	if (tmp >= -50)
+		encode_order(*m, (GOOD_CAP + tmp));
+	else
+		encode_order(*m, (BAD_CAP + tmp));
 }
 
-static inline void swap_moves(u32* const move_1, u32* const move_2)
+static inline void sort_moves(Move* const start, Move* const end)
 {
-	u32 move_tmp = *move_1;
-	*move_1      = *move_2;
-	*move_2      = move_tmp;
+	Move* tmp;
+	Move* m;
+	Move to_shift;
+	for (m = start + 1; m < end; ++m) {
+		to_shift = *m;
+		for (tmp = m; tmp > start && order(to_shift) > order(*(tmp - 1)); --tmp)
+			*tmp = *(tmp - 1);
+		*tmp = to_shift;
+	}
 }
 
 static int stopped(Engine* const engine)
@@ -44,7 +71,7 @@ static int is_repeat(Position* const pos)
 	return 0;
 }
 
-static int qsearch(Engine* const engine, int alpha, int beta)
+static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
 {
 	if ( !(engine->ctlr->nodes_searched & 2047)
 	    && stopped(engine))
@@ -56,7 +83,7 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 	if (pos->state->fifty_moves > 99 || is_repeat(pos))
 		return 0;
 
-	if (pos->ply >= MAX_PLY)
+	if (ss->ply >= MAX_PLY)
 		return evaluate(pos);
 
 	++engine->ctlr->nodes_searched;
@@ -68,34 +95,29 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 		alpha = eval;
 
 	int val;
-	Movelist* list = pos->list + pos->ply;
+	Movelist* list = &ss->list;
 	list->end      = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	u32* caps;
+	Move* move;
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
-		caps = list->end;
 	} else {
 		gen_captures(pos, list);
-		caps = list->moves;
+
+		// Order captures by MVV-LVA
+		for (move = list->moves; move < list->end; ++move)
+			order_cap(pos, move);
+		sort_moves(list->moves, list->end);
 	}
 
-	// Order captures by MVV-LVA
-	u32* i;
-	u32* j;
-	for (i = caps + 1; i < list->end; ++i)
-		for (j = i; j > caps; --j)
-			if (mvv_lva(pos, j) > mvv_lva(pos, j - 1))
-				swap_moves(j, j - 1);
-
 	u32 legal = 0;
-	for (u32* move = list->moves; move != list->end; ++move) {
-		if (!do_move(pos, move))
+	for (move = list->moves; move != list->end; ++move) {
+		if (!do_move(pos, *move))
 			continue;
 		++legal;
-		val = -qsearch(engine, -beta, -alpha);
-		undo_move(pos, move);
+		val = -qsearch(engine, ss + 1, -beta, -alpha);
+		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
 		if (val > alpha) {
@@ -114,15 +136,15 @@ static int qsearch(Engine* const engine, int alpha, int beta)
 	return alpha;
 }
 
-static int search(Engine* const engine, int alpha, int beta, u32 depth)
+static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u32 depth)
 {
 	if (!depth)
-		return qsearch(engine, alpha, beta);
+		return qsearch(engine, ss, alpha, beta);
 
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 
-	if (pos->ply) {
+	if (ss->ply) {
 		if ( !(engine->ctlr->nodes_searched & 2047)
 		    && stopped(engine))
 			return 0;
@@ -130,7 +152,7 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 		if (pos->state->fifty_moves > 99 || is_repeat(pos))
 			return 0;
 
-		if (pos->ply >= MAX_PLY)
+		if (ss->ply >= MAX_PLY)
 			return evaluate(pos);
 	}
 
@@ -154,73 +176,131 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 
 	++engine->ctlr->nodes_searched;
 
-	int val,
-	    old_alpha   = alpha,
+	int val;
+	set_checkers(pos);
+
+	// Futility pruning
+	if (   depth <= 6
+	    && ss->early_prune
+	    && ss->ply
+	    && !pos->state->checkers_bb) {
+#ifdef STATS
+		++pos->stats.futility_tries;
+#endif
+		val = evaluate(pos) - (mg_val(piece_val[PAWN]) * depth);
+		if (   val >= beta
+		    && abs(val) < MATE_VAL) {
+#ifdef STATS
+			++pos->stats.futility_cutoffs;
+#endif
+			return beta;
+		}
+	}
+
+	// Null move pruning
+	if (   depth >= 4
+	    && ss->ply
+	    && ss->early_prune
+	    && pos->state->phase > (MAX_PHASE / 4)
+	    && !pos->state->checkers_bb) {
+#ifdef STATS
+		++pos->stats.null_tries;
+#endif
+		int R = 3;
+		do_null_move(pos);
+		ss[1].early_prune = 0;
+		val = -search(engine, ss + 1, -beta, -beta + 1, depth - R);
+		ss[1].early_prune = 1;
+		undo_null_move(pos);
+		if (stopped(engine))
+			return 0;
+		if (   val >= beta
+		    && abs(val) < MATE_VAL) {
+#ifdef STATS
+			++pos->stats.null_cutoffs;
+#endif
+			return val;
+		}
+	}
+
+	int old_alpha   = alpha,
 	    best_move   = 0,
 	    best_val    = -INFINITY,
 	    legal_moves = 0;
 
-	Movelist* list  = pos->list + pos->ply;
+	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
-	set_checkers(pos);
-	u32* quiets;
-	u32* caps;
+	Move* quiets;
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
-		caps   = list->end;
-		quiets = list->end;
+		quiets = list->moves;
 	} else {
-		// Mark the start of capture moves
-		caps = list->moves;
 		gen_captures(pos, list);
-		// Mark the start of quiet moves
 		quiets = list->end;
 		gen_quiets(pos, list);
 	}
 
-	u32* move;
-	// Put the hash move first
-	u32 tt_move = MOVE(entry.data);
-	if (tt_move) {
-		for (move = list->moves; move != list->end; ++move) {
-			if (*move == tt_move) {
-				if (move <= quiets) {
-					swap_moves(list->moves, move);
-				} else {
-					swap_moves(quiets, move);
-					swap_moves(list->moves, quiets);
-				}
-				++caps; // Do not try to reorder hash move
-				break;
-			}
+	Move* move;
+
+	/*
+	 *  Move ordering:
+	 *  1. Hash move
+	 *  2. Good/Equal captures
+	 *  3. Killer moves
+	 *  4. Promotions
+	 *  5. Bad captures
+	 *  6. Rest
+	 */
+	Move tt_move = get_move(entry.data);
+	for (move = list->moves; move != list->end; ++move) {
+		if (*move == tt_move) {
+			encode_order(*move, HASH_MOVE);
+		} else if (move < quiets) {
+			order_cap(pos, move);
+		} else {
+			if (*move == ss->killers[0])
+				encode_order(*move, KILLER1);
+			else if (*move == ss->killers[1])
+				encode_order(*move, KILLER2);
+			else if (move_type(*move) == PROMOTION)
+				encode_order(*move, PROM);
 		}
 	}
-
-	// Order captures by MVV-LVA
-	u32* i;
-	u32* j;
-	for (i = caps + 1; i < quiets; ++i)
-		for (j = i; j > caps; --j)
-			if (mvv_lva(pos, j) > mvv_lva(pos, j - 1))
-				swap_moves(j, j - 1);
+	sort_moves(list->moves, list->end);
 
 	for (move = list->moves; move != list->end; ++move) {
-		if (!do_move(pos, move))
+		if (!do_move(pos, *move))
 			continue;
 		++legal_moves;
-		val = -search(engine, -beta, -alpha, depth - 1);
-		undo_move(pos, move);
-		if (   pos->ply
+
+		// Principal Variation Search
+		if (legal_moves == 1)
+			val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
+		else {
+			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth - 1);
+			if (val > alpha)
+				val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
+		}
+
+		undo_move(pos);
+
+		if (   ss->ply
 		    && ctlr->is_stopped)
 			return 0;
+
 		if (val >= beta) {
 #ifdef STATS
 			if (legal_moves == 1)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
 #endif
-			tt_store(&tt, val, FLAG_LOWER, depth, *move, pos->state->pos_key);
+			if (   !cap_type(*move)
+			    && move_type(*move) != PROMOTION) {
+				ss->killers[1] = ss->killers[0];
+				ss->killers[0] = *move;
+			}
+			tt_store(&tt, val, FLAG_LOWER, depth, get_move(*move), pos->state->pos_key);
 			return beta;
 		}
 		if (val > best_val) {
@@ -234,36 +314,36 @@ static int search(Engine* const engine, int alpha, int beta, u32 depth)
 
 	if (!legal_moves) {
 		if (pos->state->checkers_bb)
-			return -INFINITY + pos->ply;
+			return -INFINITY + ss->ply;
 		else
 			return 0;
 	}
 
 	if (old_alpha == alpha)
-		tt_store(&tt, alpha, FLAG_UPPER, depth, best_move, pos->state->pos_key);
+		tt_store(&tt, alpha, FLAG_UPPER, depth, get_move(best_move), pos->state->pos_key);
 	else
-		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
+		tt_store(&tt, alpha, FLAG_EXACT, depth, get_move(best_move), pos->state->pos_key);
 
 	return alpha;
 }
 
-static int valid_move(Position* const pos, u32* move)
+static int valid_move(Position* const pos, Move* move)
 {
 	u32 from = from_sq(*move),
 	    to   = to_sq(*move),
 	    mt   = move_type(*move),
 	    prom = prom_type(*move);
-	Movelist* list = pos->list;
-	list->end      = list->moves;
+	static Movelist list;
+	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
 	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
+		gen_check_evasions(pos, &list);
 	} else {
-		gen_quiets(pos, list);
-		gen_captures(pos, list);
+		gen_quiets(pos, &list);
+		gen_captures(pos, &list);
 	}
-	for (u32* m = list->moves; m != list->end; ++m) {
+	for (Move* m = list.moves; m != list.end; ++m) {
 		if (   from_sq(*m) == from
 		    && to_sq(*m) == to
 		    && move_type(*m) == mt
@@ -280,45 +360,59 @@ static int get_stored_moves(Position* const pos, int depth)
 		return 0;
 	Entry entry = tt_probe(&tt, pos->state->pos_key);
 	if ((entry.data ^ entry.key) == pos->state->pos_key) {
-		u32 move = MOVE(entry.data);
+		Move move = get_move(entry.data);
 		if (  !valid_move(pos, &move)
-		   || !do_move(pos, &move))
+		   || !do_move(pos, move))
 			return 0;
 		fprintf(stdout, " ");
 		move_str(move, mstr);
 		fprintf(stdout, "%s", mstr);
 		get_stored_moves(pos, depth - 1);
-		undo_move(pos, &move);
+		undo_move(pos);
 		return move;
 	}
 	return 0;
 }
 
-static void clear_search(Engine* const engine)
+static void clear_search(Engine* const engine, Search_Stack* const ss)
 {
 	Controller* const ctlr = engine->ctlr;
 	ctlr->is_stopped       = 0;
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
-	pos->ply                      = 0;
+	pos->stats.futility_cutoffs   = 0;
+	pos->stats.futility_tries     = 0;
+	pos->stats.null_cutoffs       = 0;
+	pos->stats.null_tries         = 0;
 	pos->stats.first_beta_cutoffs = 0;
 	pos->stats.beta_cutoffs       = 0;
 	pos->stats.hash_probes        = 0;
 	pos->stats.hash_hits          = 0;
 #endif
+	u32 i;
+	Search_Stack* curr;
+	for (i = 0; i != MAX_PLY; ++i) {
+		curr                = ss + i;
+		curr->early_prune   = 1;
+		curr->ply           = i;
+		curr->killers[0]    = 0;
+		curr->killers[1]    = 0;
+		curr->list.end      = ss->list.moves;
+	}
 }
 
 int begin_search(Engine* const engine)
 {
 	int val, depth;
 	int best_move = 0;
-	clear_search(engine);
+	Search_Stack ss[MAX_PLY];
+	clear_search(engine, ss);
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
-		val = search(engine, -INFINITY, +INFINITY, depth);
+		val = search(engine, ss, -INFINITY, +INFINITY, depth);
 		if (   depth > 1
 		    && ctlr->is_stopped)
 			break;
@@ -328,6 +422,10 @@ int begin_search(Engine* const engine)
 		fprintf(stdout, "\n");
 	}
 #ifdef STATS
+	fprintf(stdout, "futility cutoff rate=%lf\n",
+		((double)pos->stats.futility_cutoffs) / pos->stats.futility_tries);
+	fprintf(stdout, "null cutoff rate=%lf\n",
+		((double)pos->stats.null_cutoffs) / pos->stats.null_tries);
 	fprintf(stdout, "hash hit rate=%lf\n",
 		((double)pos->stats.hash_hits) / pos->stats.hash_probes);
 	fprintf(stdout, "ordering=%lf\n",

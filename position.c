@@ -2,6 +2,8 @@
 #include "position.h"
 #include "random.h"
 
+int phase[7] = { 0, 0, 1, 10, 10, 20, 40 };
+
 static inline u32 get_piece_from_char(char c)
 {
 	switch (c) {
@@ -39,15 +41,16 @@ void init_pos(Position* pos)
 		pos->board[i] = 0;
 	for (i = 0; i != 10; ++i)
 		pos->bb[i] = 0ULL;
-	pos->ply                          = 0;
 	pos->hist_size                    = 0;
 	pos->stm                          = WHITE;
 	pos->state                        = pos->hist;
 	pos->state->pos_key               = 0ULL;
 	pos->state->pinned_bb             = 0ULL;
 	pos->state->fifty_moves           = 0;
+	pos->state->full_moves            = 0;
 	pos->state->castling_rights       = 0;
 	pos->state->ep_sq_bb              = 0ULL;
+	pos->state->phase                 = 0;
 	pos->state->piece_psq_eval[WHITE] = 0;
 	pos->state->piece_psq_eval[BLACK] = 0;
 }
@@ -59,13 +62,14 @@ void clear_pos(Position* pos)
 		pos->board[i] = 0;
 	for (i = 0; i != 10; ++i)
 		pos->bb[i] = 0ULL;
-	pos->ply                          = 0;
 	pos->state->pos_key               = 0ULL;
 	pos->state->pinned_bb             = 0ULL;
 	pos->state->fifty_moves           = 0;
+	pos->state->full_moves            = 0;
 	pos->state->castling_rights       = 0;
 	pos->state->ep_sq_bb              = 0ULL;
 	pos->state->checkers_bb           = 0ULL;
+	pos->state->phase                 = 0;
 	pos->state->piece_psq_eval[WHITE] = 0;
 	pos->state->piece_psq_eval[BLACK] = 0;
 }
@@ -121,6 +125,11 @@ void set_pos(Position* pos, char* fen)
 	while ((c = fen[index++]) != ' ')
 		x = x * 10 + (c - '0');
 	pos->state->fifty_moves = x;
+
+	x = 0;
+	while ((c = fen[index++]) != '\0')
+		x = x * 10 + (c - '0');
+	pos->state->full_moves = x;
 }
 
 static inline char get_char_from_piece(u32 piece)

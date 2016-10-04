@@ -12,10 +12,9 @@
 #define FLAG_LOWER  ((3ULL << FLAG_SHIFT))
 #define FLAG_MASK   ((3ULL << FLAG_SHIFT))
 
-#define MOVE(data)  (((data) & 0x1fffff))
 #define FLAG(data)  ( (data) & FLAG_MASK)
 #define DEPTH(data) (((data) >> DEPTH_SHIFT) & 0x7f)
-#define SCORE(data) ( (data) >> SCORE_SHIFT)
+#define SCORE(data) ((data) >> SCORE_SHIFT)
 
 typedef struct Entry_s {
 	u64 data;
