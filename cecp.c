@@ -311,6 +311,12 @@ void cecp_loop()
 				- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			start_thinking(&engine);
 
+		} else if (!strncmp(input, "eval", 4)) {
+
+			transition(&engine, WAITING);
+			fprintf(stdout, "evaluation = %d\n", evaluate(&pos));
+			fprintf(stdout, "phase = %d\n", pos.state->phase);
+
 		} else if (!strncmp(input, "undo", 4)) {
 
 			// Does not recover time at the moment

@@ -5,11 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_MOVES (2048)
-#define MAX_PLY   (128)
-#define BB(x)     (1ULL << (x))
-#define INFINITY  (30000)
-#define MATE_VAL  (INFINITY - MAX_PLY)
+#define MAX_MOVES   (2048)
+#define MAX_PLY     (128)
+#define BB(x)       (1ULL << (x))
+#define INFINITY    (30000)
+#define MATE_VAL    (INFINITY - MAX_PLY)
+#define S(mg, eg)   (((mg) + (((unsigned int)eg) << 16)))
+#define MAX_PHASE   (256)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
@@ -113,12 +115,12 @@ enum PromotionType {
 #define cancel_bkc(cr) ((cr) & 0b1011)
 #define cancel_bqc(cr) ((cr) & 0b0111)
 
-#define from_sq(m)    (m & 0x3f)
-#define to_sq(m)      ((m >> 6) & 0x3f)
-#define move_type(m)  (m & MOVE_TYPE_MASK)
-#define prom_type(m)  ((m & PROM_TYPE_MASK) >> PROM_TYPE_SHIFT)
-#define cap_type(m)   ((m & CAP_TYPE_MASK) >> CAP_TYPE_SHIFT)
-#define order(m)      (((m) >> ORDER_SHIFT))
+#define from_sq(m)   (m & 0x3f)
+#define to_sq(m)     ((m >> 6) & 0x3f)
+#define move_type(m) (m & MOVE_TYPE_MASK)
+#define prom_type(m) ((m & PROM_TYPE_MASK) >> PROM_TYPE_SHIFT)
+#define cap_type(m)  ((m & CAP_TYPE_MASK) >> CAP_TYPE_SHIFT)
+#define order(m)     (((m) >> ORDER_SHIFT))
 
 #define popcnt(bb)  (__builtin_popcountll(bb))
 #define bitscan(bb) (__builtin_ffsll(bb) - 1)
@@ -134,5 +136,10 @@ enum PromotionType {
 #define move(from, to, mt, prom, cap)      (from | (to << 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
 #define encode_cap(m, pt)                  (m    |= (pt << CAP_TYPE_SHIFT))
 #define encode_order(m, order)             (m    |= ((order) << ORDER_SHIFT))
+
+#define mg_val(val) ((int)((short)val))
+#define eg_val(val) ((int)((val + 0x8000) >> 16))
+
+#define phased_val(val, phase) ((((mg_val(val) * phase) + (eg_val(val) * (MAX_PHASE - phase))) / MAX_PHASE))
 
 #endif

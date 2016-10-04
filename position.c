@@ -2,6 +2,8 @@
 #include "position.h"
 #include "random.h"
 
+int phase[7] = { 0, 0, 1, 10, 10, 20, 40 };
+
 static inline u32 get_piece_from_char(char c)
 {
 	switch (c) {
@@ -48,6 +50,7 @@ void init_pos(Position* pos)
 	pos->state->full_moves            = 0;
 	pos->state->castling_rights       = 0;
 	pos->state->ep_sq_bb              = 0ULL;
+	pos->state->phase                 = 0;
 	pos->state->piece_psq_eval[WHITE] = 0;
 	pos->state->piece_psq_eval[BLACK] = 0;
 }
@@ -66,6 +69,7 @@ void clear_pos(Position* pos)
 	pos->state->castling_rights       = 0;
 	pos->state->ep_sq_bb              = 0ULL;
 	pos->state->checkers_bb           = 0ULL;
+	pos->state->phase                 = 0;
 	pos->state->piece_psq_eval[WHITE] = 0;
 	pos->state->piece_psq_eval[BLACK] = 0;
 }

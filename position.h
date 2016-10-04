@@ -5,10 +5,13 @@
 #include "random.h"
 #include "bitboard.h"
 #include "magicmoves.h"
-#include "eval.h"
 
 typedef struct Stats_s {
 
+	u64 futility_cutoffs;
+	u64 futility_tries;
+	u64 null_cutoffs;
+	u64 null_tries;
 	u64 first_beta_cutoffs;
 	u64 beta_cutoffs;
 	u64 hash_probes;
@@ -29,6 +32,7 @@ typedef struct Movelist_s {
 typedef struct State_s {
 
 	int      piece_psq_eval[2];
+	int      phase;
 	u32      castling_rights;
 	u32      fifty_moves;
 	u32      full_moves;
@@ -55,6 +59,30 @@ typedef struct Position_s {
 #endif
 
 } Position;
+
+extern int piece_val[7];
+extern int psq_val[8][64];
+extern int phase[7];
+extern void print_board(Position* pos);
+
+extern void cecp_loop();
+extern void performance_test(Position* const pos, u32 max_depth);
+
+extern void init_pos(Position* pos);
+extern void set_pos(Position* pos, char* fen);
+
+extern void do_null_move(Position* const pos);
+extern void undo_null_move(Position* const pos);
+extern void undo_move(Position* const pos);
+extern u32  do_move(Position* const pos, Move const m);
+extern u32  do_usermove(Position* const pos, Move const m);
+
+extern void gen_quiets(Position* pos, Movelist* list);
+extern void gen_captures(Position* pos, Movelist* list);
+
+extern void gen_check_evasions(Position* pos, Movelist* list);
+
+extern int evaluate(Position* const pos);
 
 inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
@@ -107,6 +135,7 @@ inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->bb[pt]         |= set;
 	pos->board[sq]       = make_piece(pt, c);
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
+	pos->state->phase   += phase[pt];
 	if (c == WHITE)
 		pos->state->piece_psq_eval[WHITE] += piece_val[pt] + psq_val[pt][sq];
 	else
@@ -121,6 +150,7 @@ inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->bb[pt]         ^= clr;
 	pos->board[sq]       = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
+	pos->state->phase   -= phase[pt];
 	if (c == WHITE)
 		pos->state->piece_psq_eval[WHITE] -= piece_val[pt] + psq_val[pt][sq];
 	else
@@ -206,26 +236,6 @@ inline void set_checkers(Position* pos)
 {
 	pos->state->checkers_bb = checkers(pos, !pos->stm);
 }
-
-extern u32 initial_stm;
-extern void print_board(Position* pos);
-
-extern void cecp_loop();
-extern void performance_test(Position* const pos, u32 max_depth);
-
-extern void init_pos(Position* pos);
-extern void set_pos(Position* pos, char* fen);
-
-extern void undo_move(Position* const pos);
-extern u32  do_move(Position* const pos, Move const m);
-extern u32  do_usermove(Position* const pos, Move const m);
-
-extern void gen_quiets(Position* pos, Movelist* list);
-extern void gen_captures(Position* pos, Movelist* list);
-
-extern void gen_check_evasions(Position* pos, Movelist* list);
-
-extern int evaluate(Position* const pos);
 
 inline void move_str(Move move, char str[6])
 {

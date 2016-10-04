@@ -1,10 +1,10 @@
 #include "engine.h"
 #include "tt.h"
 #include "timer.h"
-#include "eval.h"
 
 typedef struct Search_Stack_s {
 
+	u32      early_prune;
 	u32      ply;
 	Move     killers[2];
 	Movelist list;
@@ -22,6 +22,7 @@ static inline void order_cap(Position const * const pos, Move* const m)
 {
 	int tmp = piece_val[piece_type(pos->board[to_sq(*m)])]
 		- piece_val[piece_type(pos->board[from_sq(*m)])];
+	tmp = phased_val(tmp, pos->state->phase);
 	if (tmp >= -50)
 		encode_order(*m, (GOOD_CAP + tmp));
 	else
@@ -175,8 +176,54 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 
 	++engine->ctlr->nodes_searched;
 
-	int val,
-	    old_alpha   = alpha,
+	int val;
+	set_checkers(pos);
+
+	// Futility pruning
+	if (   depth <= 6
+	    && ss->early_prune
+	    && ss->ply
+	    && !pos->state->checkers_bb) {
+#ifdef STATS
+		++pos->stats.futility_tries;
+#endif
+		val = evaluate(pos) - (mg_val(piece_val[PAWN]) * depth);
+		if (   val >= beta
+		    && abs(val) < MATE_VAL) {
+#ifdef STATS
+			++pos->stats.futility_cutoffs;
+#endif
+			return beta;
+		}
+	}
+
+	// Null move pruning
+	if (   depth >= 4
+	    && ss->ply
+	    && ss->early_prune
+	    && pos->state->phase > (MAX_PHASE / 4)
+	    && !pos->state->checkers_bb) {
+#ifdef STATS
+		++pos->stats.null_tries;
+#endif
+		int R = 3;
+		do_null_move(pos);
+		ss[1].early_prune = 0;
+		val = -search(engine, ss + 1, -beta, -beta + 1, depth - R);
+		ss[1].early_prune = 1;
+		undo_null_move(pos);
+		if (stopped(engine))
+			return 0;
+		if (   val >= beta
+		    && abs(val) < MATE_VAL) {
+#ifdef STATS
+			++pos->stats.null_cutoffs;
+#endif
+			return val;
+		}
+	}
+
+	int old_alpha   = alpha,
 	    best_move   = 0,
 	    best_val    = -INFINITY,
 	    legal_moves = 0;
@@ -184,7 +231,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
-	set_checkers(pos);
 	Move* quiets;
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
@@ -335,6 +381,10 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
+	pos->stats.futility_cutoffs   = 0;
+	pos->stats.futility_tries     = 0;
+	pos->stats.null_cutoffs       = 0;
+	pos->stats.null_tries         = 0;
 	pos->stats.first_beta_cutoffs = 0;
 	pos->stats.beta_cutoffs       = 0;
 	pos->stats.hash_probes        = 0;
@@ -343,11 +393,12 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	u32 i;
 	Search_Stack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
-		curr             = ss + i;
-		curr->ply        = i;
-		curr->killers[0] = 0;
-		curr->killers[1] = 0;
-		curr->list.end   = ss->list.moves;
+		curr                = ss + i;
+		curr->early_prune   = 1;
+		curr->ply           = i;
+		curr->killers[0]    = 0;
+		curr->killers[1]    = 0;
+		curr->list.end      = ss->list.moves;
 	}
 }
 
@@ -371,6 +422,10 @@ int begin_search(Engine* const engine)
 		fprintf(stdout, "\n");
 	}
 #ifdef STATS
+	fprintf(stdout, "futility cutoff rate=%lf\n",
+		((double)pos->stats.futility_cutoffs) / pos->stats.futility_tries);
+	fprintf(stdout, "null cutoff rate=%lf\n",
+		((double)pos->stats.null_cutoffs) / pos->stats.null_tries);
 	fprintf(stdout, "hash hit rate=%lf\n",
 		((double)pos->stats.hash_hits) / pos->stats.hash_probes);
 	fprintf(stdout, "ordering=%lf\n",
