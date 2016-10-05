@@ -5,11 +5,11 @@
 int piece_val[7] = {
 	0,
 	0,
-	S(150, 160),
-	S(500, 510),
-	S(520, 530),
-	S(1000, 1200),
-	S(2100, 2300)
+	S(100, 120),
+	S(300, 300),
+	S(310, 310),
+	S(550, 600),
+	S(1000, 1100)
 };
 
 int psq_val[8][64] = {
@@ -80,21 +80,29 @@ int psq_val[8][64] = {
 };
 
 int passed_pawn[2][8] = {
-	{ 0, S(0, 0), S(0, 0), S(0, 0), S(10, 30), S(30, 50), S(50, 80), 0 },
-	{ 0, S(50, 80), S(30, 50), S(10, 30), S(0, 0), S(0, 0), S(0, 0), 0 }
+	{ 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 },
+	{ 0, S(80, 100), S(50, 80), S(30, 50), S(20, 30), S(0, 0), S(0, 0), 0 }
 };
-int doubled_pawns  = S(-60, -80);
-int isolated_pawn  = S(-20, -30);
-int rook_7th_rank  = S(80, 0);
+int doubled_pawns       = S(-20, -30);
+int isolated_pawn       = S(-10, -20);
+int rook_7th_rank       = S(50, 0);
+int rook_open_file      = S(20, 0);
+int rook_semi_open_file = S(10, 0);
 
-static int eval_pawns(Position* const pos)
+typedef struct Eval_s {
+
+	u64 pawn_bb[2];
+
+} Eval;
+
+static int eval_pawns(Position* const pos, Eval* ev)
 {
 	int eval[2] = { S(0, 0), S(0, 0) };
 	u64 bb, pawn_bb, opp_pawn_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
-		pawn_bb     = pos->bb[PAWN] & pos->bb[c];
-		opp_pawn_bb = pos->bb[PAWN] & pos->bb[!c];
+		pawn_bb     = ev->pawn_bb[c];
+		opp_pawn_bb = ev->pawn_bb[!c];
 		bb          = pawn_bb;
 		while (bb) {
 			sq  = bitscan(bb);
@@ -110,24 +118,36 @@ static int eval_pawns(Position* const pos)
 	return eval[WHITE] - eval[BLACK];
 }
 
-static int eval_pieces(Position* const pos)
+static int eval_pieces(Position* const pos, Eval* ev)
 {
 	int eval[2] = { S(0, 0), S(0, 0) };
-	u64 bb;
-	int c;
+	u64 bb = pos->bb[ROOK];
+	eval[WHITE] += popcnt((bb & pos->bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
+	eval[BLACK] += popcnt((bb & pos->bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
+	int sq, c;
 	for (c = WHITE; c <= BLACK; ++c) {
 		bb = pos->bb[ROOK] & pos->bb[c];
-		eval[c] += c == WHITE ? popcnt((bb & rank_mask[RANK_7])) * rook_7th_rank
-			              : popcnt((bb & rank_mask[RANK_2])) * rook_7th_rank;
+		while (bb) {
+			sq   = bitscan(bb);
+			bb  &= bb - 1;
+			if (!(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
+				eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
+					           ? rook_open_file
+						   : rook_semi_open_file;
+			}
+		}
 	}
 	return eval[WHITE] - eval[BLACK];
 }
 
 int evaluate(Position* const pos)
 {
+	Eval ev;
+	ev.pawn_bb[WHITE] = pos->bb[PAWN] & pos->bb[WHITE];
+	ev.pawn_bb[BLACK] = pos->bb[PAWN] & pos->bb[BLACK];
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
-	eval += eval_pawns(pos);
-	eval += eval_pieces(pos);
+	eval += eval_pawns(pos, &ev);
+	eval += eval_pieces(pos, &ev);
 	eval  = phased_val(eval, pos->state->phase);
 	return pos->stm == WHITE ? eval : -eval;
 }
