@@ -28,18 +28,18 @@ typedef struct TT_s {
 
 TT tt;
 
-inline void tt_init(TT* tt, u32 size)
+static inline void tt_init(TT* tt, u32 size)
 {
 	tt->table = malloc(sizeof(Entry) * size);
 	tt->size  = size;
 }
 
-inline void tt_destroy(TT* tt)
+static inline void tt_destroy(TT* tt)
 {
 	free(tt->table);
 }
 
-inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
+static inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
 {
 	u32 index    = key < tt->size ? key : key % tt->size;
 	Entry* entry = tt->table + index;
@@ -48,7 +48,7 @@ inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
 }
 
 // Return a value instead of reference for thread safety
-inline Entry tt_probe(TT* tt, u64 key)
+static inline Entry tt_probe(TT* tt, u64 key)
 {
 	return tt->table[(key < tt->size ? key : key % tt->size)];
 }
