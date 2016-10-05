@@ -24,13 +24,7 @@
 
 typedef unsigned int        u32;
 typedef unsigned long long  u64;
-typedef unsigned __int128   u128;
-
-#ifdef HASH_128_BIT
-typedef u128 HashKey;
-#else
-typedef u64  HashKey;
-#endif
+typedef unsigned long long  HashKey;
 
 enum Color {
 	WHITE = 0,
