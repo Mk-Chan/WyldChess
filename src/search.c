@@ -120,17 +120,16 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
-		if (val > alpha) {
-			if (val >= beta) {
+		if (val >= beta) {
 #ifdef STATS
-				if (legal == 1)
-					++pos->stats.first_beta_cutoffs;
-				++pos->stats.beta_cutoffs;
+			if (legal == 1)
+				++pos->stats.first_beta_cutoffs;
+			++pos->stats.beta_cutoffs;
 #endif
-				return beta;
-			}
-			alpha = val;
+			return beta;
 		}
+		if (val > alpha)
+			alpha = val;
 	}
 
 	return alpha;
@@ -304,9 +303,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			return beta;
 		}
 		if (val > best_val) {
-			if (val > alpha) {
+			if (val > alpha)
 				alpha = val;
-			}
 			best_val  = val;
 			best_move = *move;
 		}
