@@ -102,6 +102,7 @@ void* engine_loop(void* args)
 	while (1) {
 		switch (engine->target_state) {
 		case WAITING:
+			// Make thread sleep here(condition var)
 			engine->curr_state = WAITING;
 			break;
 
@@ -175,7 +176,7 @@ static inline void start_thinking(Engine* const engine)
 		ctlr->search_start_time = curr_time();
 		ctlr->search_end_time   =  ctlr->search_start_time
 			                + (ctlr->time_left / ctlr->moves_left);
-		fprintf(stdout, "time left=%llu moves left=%u time allotted=%llu\n",
+		fprintf(stdout, "time left = %llu, moves left = %u, time allotted = %llu\n",
 			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 		transition(engine, THINKING);
 		--ctlr->moves_left;
@@ -190,11 +191,6 @@ void cecp_loop()
 	char  input[max_len];
 	char* ptr;
 	char* end;
-	fgets(input, max_len, stdin);
-	if (strncmp(input, "xboard", 6)) {
-		fprintf(stdout, "Protocol not found!\n");
-		return;
-	}
 
 	Move move;
 	Position pos;
@@ -233,6 +229,10 @@ void cecp_loop()
 			set_pos(engine.pos, fen1);
 			engine.side = BLACK;
 			ctlr.depth  = MAX_PLY;
+			ctlr.moves_per_session = 40;
+			ctlr.moves_left = ctlr.moves_per_session;
+			ctlr.time_left = 240000;
+			ctlr.increment = 0;
 
 		} else if (!strncmp(input, "quit", 4)) {
 
@@ -271,8 +271,6 @@ void cecp_loop()
 				ptr = end;
 			}
 			ctlr.increment  = 1000 * strtod(ptr, &end);
-			fprintf(stdout, "moves=%d timeleft=%llu inc=%llu\n",
-				ctlr.moves_left, ctlr.time_left, ctlr.increment);
 
 		} else if (!strncmp(input, "perft", 5)) {
 
