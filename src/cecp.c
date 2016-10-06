@@ -93,44 +93,6 @@ static int check_result(Position* const pos)
 	return result;
 }
 
-void* engine_loop(void* args)
-{
-	static char mstr[6];
-	Move move;
-	Engine* engine = (Engine*) args;
-	Position* pos  = engine->pos;
-	while (1) {
-		switch (engine->target_state) {
-		case WAITING:
-			// Make thread sleep here(condition var)
-			engine->curr_state = WAITING;
-			break;
-
-		case THINKING:
-			engine->curr_state = THINKING;
-			move = begin_search(engine);
-			move_str(move, mstr);
-			if (!do_move(pos, move)) {
-				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
-				pthread_exit(0);
-			}
-			fprintf(stdout, "move %s\n", mstr);
-			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
-			engine->ctlr->time_left += engine->ctlr->increment;
-			engine->target_state     = WAITING;
-			break;
-
-		case GAME_OVER:
-			engine->curr_state = GAME_OVER;
-			break;
-
-		case QUITTING:
-			engine->curr_state = QUITTING;
-			pthread_exit(0);
-		}
-	}
-}
-
 static inline void print_options()
 {
 	fprintf(stdout, "feature done=0\n");
@@ -179,9 +141,49 @@ static inline void start_thinking(Engine* const engine)
 		fprintf(stdout, "time left = %llu, moves left = %u, time allotted = %llu\n",
 			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 		transition(engine, THINKING);
-		--ctlr->moves_left;
-		if (ctlr->moves_left < 1)
-			ctlr->moves_left = ctlr->moves_per_session;
+		if (ctlr->moves_per_session) {
+			--ctlr->moves_left;
+			if (ctlr->moves_left < 1)
+				ctlr->moves_left = ctlr->moves_per_session;
+		}
+	}
+}
+
+void* engine_loop(void* args)
+{
+	static char mstr[6];
+	Move move;
+	Engine* engine = (Engine*) args;
+	Position* pos  = engine->pos;
+	while (1) {
+		switch (engine->target_state) {
+		case WAITING:
+			// Make thread sleep here(condition var)
+			engine->curr_state = WAITING;
+			break;
+
+		case THINKING:
+			engine->curr_state = THINKING;
+			move = begin_search(engine);
+			move_str(move, mstr);
+			if (!do_move(pos, move)) {
+				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
+				pthread_exit(0);
+			}
+			fprintf(stdout, "move %s\n", mstr);
+			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
+			engine->ctlr->time_left += engine->ctlr->increment;
+			engine->target_state     = WAITING;
+			break;
+
+		case GAME_OVER:
+			engine->curr_state = GAME_OVER;
+			break;
+
+		case QUITTING:
+			engine->curr_state = QUITTING;
+			pthread_exit(0);
+		}
 	}
 }
 
@@ -249,8 +251,10 @@ void cecp_loop()
 			transition(&engine, WAITING);
 			engine.side = -1;
 			set_pos(engine.pos, input + 9);
-			ctlr.moves_left = ctlr.moves_per_session
-				- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
+			if (ctlr.moves_per_session) {
+				ctlr.moves_left = ctlr.moves_per_session
+					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
+			}
 			engine.side = engine.pos->stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
@@ -261,7 +265,8 @@ void cecp_loop()
 
 			ptr = input + 6;
 			ctlr.moves_per_session = strtol(ptr, &end, 10);
-			ctlr.moves_left = ctlr.moves_per_session;
+			ctlr.moves_left = ctlr.moves_per_session ? ctlr.moves_per_session
+					                         : 40;
 			ptr = end;
 			ctlr.time_left  = 60000 * strtol(ptr, &end, 10);
 			ptr = end;
@@ -305,8 +310,10 @@ void cecp_loop()
 		} else if (!strncmp(input, "go", 2)) {
 
 			engine.side = engine.pos->stm;
-			ctlr.moves_left = ctlr.moves_per_session
-				- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
+			if (ctlr.moves_per_session) {
+				ctlr.moves_left = ctlr.moves_per_session
+					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
+			}
 			start_thinking(&engine);
 
 		} else if (!strncmp(input, "eval", 4)) {
