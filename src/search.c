@@ -1,3 +1,21 @@
+/*
+ * WyldChess, a free Xboard/Winboard compatible chess engine
+ * Copyright (C) 2016  Manik Charan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "engine.h"
 #include "tt.h"
 #include "timer.h"
@@ -120,17 +138,16 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
-		if (val > alpha) {
-			if (val >= beta) {
+		if (val >= beta) {
 #ifdef STATS
-				if (legal == 1)
-					++pos->stats.first_beta_cutoffs;
-				++pos->stats.beta_cutoffs;
+			if (legal == 1)
+				++pos->stats.first_beta_cutoffs;
+			++pos->stats.beta_cutoffs;
 #endif
-				return beta;
-			}
-			alpha = val;
+			return beta;
 		}
+		if (val > alpha)
+			alpha = val;
 	}
 
 	return alpha;
@@ -304,9 +321,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			return beta;
 		}
 		if (val > best_val) {
-			if (val > alpha) {
+			if (val > alpha)
 				alpha = val;
-			}
 			best_val  = val;
 			best_move = *move;
 		}
