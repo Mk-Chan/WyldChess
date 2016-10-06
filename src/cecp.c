@@ -265,8 +265,9 @@ void cecp_loop()
 
 			ptr = input + 6;
 			ctlr.moves_per_session = strtol(ptr, &end, 10);
-			ctlr.moves_left = ctlr.moves_per_session ? ctlr.moves_per_session
-					                         : 40;
+			ctlr.moves_left = ctlr.moves_per_session;
+			if (!ctlr.moves_left)
+				ctlr.moves_left = 40;
 			ptr = end;
 			ctlr.time_left  = 60000 * strtol(ptr, &end, 10);
 			ptr = end;
