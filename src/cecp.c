@@ -102,6 +102,7 @@ void* engine_loop(void* args)
 	while (1) {
 		switch (engine->target_state) {
 		case WAITING:
+			// Make thread sleep here(condition var)
 			engine->curr_state = WAITING;
 			break;
 
