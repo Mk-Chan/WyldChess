@@ -19,7 +19,14 @@ int main()
 	init_masks();
 	tt_init(&tt, 1000000);
 	fprintf(stdout, "WyldChess started!\n");
-	cecp_loop();
+
+	char input[8];
+	fgets(input, 8, stdin);
+	if (!strncmp(input, "xboard", 6))
+		cecp_loop();
+	else
+		fprintf(stdout, "Protocol not found!\n");
+
 	tt_destroy(&tt);
 	return 0;
 }

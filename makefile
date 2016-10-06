@@ -1,7 +1,7 @@
 CC_LINUX = gcc
 CC_WIN32 = mingw32-gcc
 CC_WIN64 = x86_64-w64-mingw32-gcc
-CFLAGS = -static -std=c11 -O3
+CFLAGS = -static -std=c11 -O3 -march=native
 SRC = src/*.c
 DEPS = -pthread
 EXEC_LINUX = wyld
