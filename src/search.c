@@ -22,6 +22,7 @@
 
 typedef struct Search_Stack_s {
 
+	u32      pv_node;
 	u32      early_prune;
 	u32      ply;
 	Move     killers[2];
@@ -29,12 +30,13 @@ typedef struct Search_Stack_s {
 
 } Search_Stack;
 
-u64 const HASH_MOVE = 60000ULL;
-u64 const GOOD_CAP  = 50000ULL;
-u64 const KILLER1   = 40000ULL;
-u64 const KILLER2   = 30000ULL;
-u64 const PROM      = 20000ULL;
-u64 const BAD_CAP   = 10000ULL;
+u64 const HASH_MOVE   = 60000ULL;
+u64 const GOOD_CAP    = 50000ULL;
+u64 const KILLER1     = 40000ULL;
+u64 const KILLER2     = 30000ULL;
+u64 const PROM        = 20000ULL;
+u64 const BAD_CAP     = 10000ULL;
+u64 const INTERESTING = 5000ULL;
 
 static inline void order_cap(Position const * const pos, Move* const m)
 {
@@ -195,16 +197,14 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 
 	int val;
 	set_checkers(pos);
-	int ext = 0;
-
-	// In-check extension
-	if (pos->state->checkers_bb)
-		++ext;
+	int checked = pos->state->checkers_bb > 0ULL;
 
 	// Futility pruning
-	if (   depth <= 6
-	    && ss->early_prune
-	    && ss->ply
+	if (    depth <= 6
+	    && !ss->pv_node
+	    && !checked
+	    &&  ss->early_prune
+	    &&  ss->ply
 	    && !pos->state->checkers_bb) {
 #ifdef STATS
 		++pos->stats.futility_tries;
@@ -220,11 +220,12 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	}
 
 	// Null move pruning
-	if (   depth >= 4
-	    && ss->ply
-	    && ss->early_prune
-	    && pos->state->phase > (MAX_PHASE / 4)
-	    && !pos->state->checkers_bb) {
+	if (    depth >= 4
+	    && !ss->pv_node
+	    &&  ss->ply
+	    &&  ss->early_prune
+	    &&  pos->state->phase > (MAX_PHASE / 4)
+	    && !checked) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
@@ -254,7 +255,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	list->end       = list->moves;
 	set_pinned(pos);
 	Move* quiets;
-	if (pos->state->checkers_bb) {
+	if (checked) {
 		gen_check_evasions(pos, list);
 		quiets = list->moves;
 	} else {
@@ -263,7 +264,24 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 		gen_quiets(pos, list);
 	}
 
-	Move* move;
+#ifdef STATS
+	int iid = 0;
+#endif
+	Move tt_move = get_move(entry.data);
+	// Internal iterative deepening
+	if (   !tt_move
+	    &&  depth > (ss->pv_node ? 4 : 7)) {
+#ifdef STATS
+		iid = 1;
+		++pos->stats.iid_tries;
+#endif
+		ss->early_prune = 0;
+		search(engine, ss, alpha, beta, depth - 2);
+		ss->early_prune = 1;
+
+		tt_move = get_move(entry.data);
+	}
+
 
 	/*
 	 *  Move ordering:
@@ -274,7 +292,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	 *  5. Bad captures
 	 *  6. Rest
 	 */
-	Move tt_move = get_move(entry.data);
+	Move* move;
 	for (move = list->moves; move != list->end; ++move) {
 		if (*move == tt_move) {
 			encode_order(*move, HASH_MOVE);
@@ -289,21 +307,45 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 				encode_order(*move, PROM);
 		}
 	}
+
 	sort_moves(list->moves, list->end);
 
-	int depth_left = depth - 1 + ext;
+	int depth_left = depth - 1;
+	int ext;
 	for (move = list->moves; move != list->end; ++move) {
+		ext = 0;
+
 		if (!do_move(pos, *move))
 			continue;
 		++legal_moves;
 
+		// Check extension
+		if (checkers(pos, !pos->stm))
+			ext = 1;
+
 		// Principal Variation Search
-		if (legal_moves == 1)
-			val = -search(engine, ss + 1, -beta, -alpha, depth_left);
-		else {
-			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left);
-			if (val > alpha && val < beta)
+		if (legal_moves == 1) {
+			ss[1].pv_node = 1;
+			val = -search(engine, ss + 1, -beta, -alpha, depth_left + ext);
+			ss[1].pv_node = 0;
+		} else {
+			// Late Move Reduction (LMR)
+			if (    depth_left > 2
+			    &&  legal_moves > 1
+			    &&  order(*move) < INTERESTING
+			    && !checked
+			    && !ext) {
+				int reduction = 1;
+				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left + ext - reduction);
+			}
+			else
+				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left + ext);
+
+			if (val > alpha && val < beta) {
+				ss[1].pv_node = 1;
 				val = -search(engine, ss + 1, -beta, -alpha, depth_left);
+				ss[1].pv_node = 0;
+			}
 		}
 
 		undo_move(pos);
@@ -317,6 +359,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			if (legal_moves == 1)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
+			if (iid)
+				++pos->stats.iid_cutoffs;
 #endif
 			if (   !cap_type(*move)
 			    && move_type(*move) != PROMOTION) {
@@ -403,6 +447,8 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
+	pos->stats.iid_cutoffs        = 0;
+	pos->stats.iid_tries          = 0;
 	pos->stats.futility_cutoffs   = 0;
 	pos->stats.futility_tries     = 0;
 	pos->stats.null_cutoffs       = 0;
@@ -416,12 +462,14 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	Search_Stack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
 		curr                = ss + i;
+		curr->pv_node       = 0;
 		curr->early_prune   = 1;
 		curr->ply           = i;
 		curr->killers[0]    = 0;
 		curr->killers[1]    = 0;
 		curr->list.end      = ss->list.moves;
 	}
+	ss->pv_node = 1;
 }
 
 int begin_search(Engine* const engine)
@@ -444,6 +492,8 @@ int begin_search(Engine* const engine)
 		fprintf(stdout, "\n");
 	}
 #ifdef STATS
+	fprintf(stdout, "iid cutoff rate=%lf\n",
+		((double)pos->stats.iid_cutoffs) / pos->stats.iid_tries);
 	fprintf(stdout, "futility cutoff rate=%lf\n",
 		((double)pos->stats.futility_cutoffs) / pos->stats.futility_tries);
 	fprintf(stdout, "null cutoff rate=%lf\n",
