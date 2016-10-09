@@ -153,8 +153,8 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 		opp_pawn_bb           = ev->pawn_bb[!c];
 		bb                    = pawn_bb;
 		while (bb) {
-			sq  = bitscan(bb);
-			bb &= bb - 1;
+			sq     = bitscan(bb);
+			bb    &= bb - 1;
 			atk_bb = p_atks[c][sq];
 			// king atk counter here
 			ev->atks_bb[c][PAWN] |= atk_bb;
@@ -225,9 +225,9 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		ev->atks_bb[c][QUEEN] = 0ULL;
 		bb = pos->bb[QUEEN] & c_bb & ~pinned_bb;
 		while (bb) {
-			sq = bitscan(bb);
-			bb &= bb - 1;
-			atk_bb = Qmagic(sq, pos->bb[FULL]) & ~c_bb & ~opp_pawn_atks_bb;
+			sq       = bitscan(bb);
+			bb      &= bb - 1;
+			atk_bb   = Qmagic(sq, pos->bb[FULL]) & ~c_bb & ~opp_pawn_atks_bb;
 			eval[c] += mobility[QUEEN][popcnt(atk_bb)];
 			ev->atks_bb[c][QUEEN] |= atk_bb;
 		}
