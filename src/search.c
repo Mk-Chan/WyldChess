@@ -195,6 +195,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 
 	int val;
 	set_checkers(pos);
+	int ext = 0;
+
+	// In-check extension
+	if (pos->state->checkers_bb)
+		++ext;
 
 	// Futility pruning
 	if (   depth <= 6
@@ -286,6 +291,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	}
 	sort_moves(list->moves, list->end);
 
+	int depth_left = depth - 1 + ext;
 	for (move = list->moves; move != list->end; ++move) {
 		if (!do_move(pos, *move))
 			continue;
@@ -293,11 +299,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 
 		// Principal Variation Search
 		if (legal_moves == 1)
-			val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
+			val = -search(engine, ss + 1, -beta, -alpha, depth_left);
 		else {
-			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth - 1);
-			if (val > alpha)
-				val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
+			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left);
+			if (val > alpha && val < beta)
+				val = -search(engine, ss + 1, -beta, -alpha, depth_left);
 		}
 
 		undo_move(pos);
