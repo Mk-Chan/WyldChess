@@ -26,6 +26,8 @@
 
 typedef struct Stats_s {
 
+	u64 iid_cutoffs;
+	u64 iid_tries;
 	u64 futility_cutoffs;
 	u64 futility_tries;
 	u64 null_cutoffs;
