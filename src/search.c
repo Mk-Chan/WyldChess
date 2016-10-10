@@ -123,15 +123,14 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	set_pinned(pos);
 	set_checkers(pos);
 	Move* move;
-	if (pos->state->checkers_bb) {
+	if (pos->state->checkers_bb)
 		gen_check_evasions(pos, list);
-	} else {
+	else
 		gen_captures(pos, list);
 
-		for (move = list->moves; move < list->end; ++move)
-			order_cap(pos, move);
-		sort_moves(list->moves, list->end);
-	}
+	for (move = list->moves; move < list->end; ++move)
+		order_cap(pos, move);
+	sort_moves(list->moves, list->end);
 
 	u32 legal = 0;
 	for (move = list->moves; move != list->end; ++move) {
@@ -378,7 +377,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			if (  !cap_type(*move)
 			    && move_type(*move) != PROMOTION) {
 				ss->killers[1] = ss->killers[0];
-				ss->killers[0] = *move;
+				ss->killers[0] = get_move(*move);
 			}
 			tt_store(&tt, val, FLAG_LOWER, depth, get_move(*move), pos->state->pos_key);
 			return beta;
