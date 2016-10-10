@@ -32,19 +32,25 @@ typedef struct Search_Stack_s {
 
 u64 const HASH_MOVE   = 60000ULL;
 u64 const GOOD_CAP    = 50000ULL;
-u64 const KILLER1     = 40000ULL;
-u64 const KILLER2     = 30000ULL;
-u64 const PROM        = 20000ULL;
+u64 const QUEEN_PROM  = 45000ULL;
+u64 const EQUAL_CAP   = 40000ULL;
+u64 const KILLER_PLY  = 35000ULL;
+u64 const KILLER_OLD  = 30000ULL;
+u64 const MINOR_PROM  = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
 u64 const INTERESTING = 5000ULL;
 
 static inline void order_cap(Position const * const pos, Move* const m)
 {
-	int tmp = piece_val[piece_type(pos->board[to_sq(*m)])]
-		- piece_val[piece_type(pos->board[from_sq(*m)])];
-	tmp = phased_val(tmp, pos->state->phase);
-	if (tmp >= -50)
+	static int equal_cap_bound = 50;
+	int victim_pt = piece_type(pos->board[to_sq(*m)]);
+	int atker_pt  = piece_type(pos->board[from_sq(*m)]);
+	int tmp = piece_val[victim_pt] - piece_val[atker_pt];
+	tmp = phased_val(tmp, pos->state->phase) + victim_pt;
+	if (tmp > equal_cap_bound)
 		encode_order(*m, (GOOD_CAP + tmp));
+	else if (tmp > -equal_cap_bound)
+		encode_order(*m, (EQUAL_CAP + victim_pt));
 	else
 		encode_order(*m, (BAD_CAP + tmp));
 }
@@ -229,10 +235,10 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
-		int R = 3;
+		int reduction = 3;
 		do_null_move(pos);
 		ss[1].early_prune = 0;
-		val = -search(engine, ss + 1, -beta, -beta + 1, depth - R);
+		val = -search(engine, ss + 1, -beta, -beta + 1, depth - reduction);
 		ss[1].early_prune = 1;
 		undo_null_move(pos);
 		if (stopped(engine))
@@ -286,11 +292,14 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	/*
 	 *  Move ordering:
 	 *  1. Hash move
-	 *  2. Good/Equal captures
-	 *  3. Killer moves
-	 *  4. Promotions
-	 *  5. Bad captures
-	 *  6. Rest
+	 *  2. Good captures
+	 *  3. Queen promotions
+	 *  4. Equal captures
+	 *  5. Killer moves
+	 *  6. Killer moves from 2 plies ago
+	 *  7. Minor promotions
+	 *  8. Bad captures
+	 *  9. Rest
 	 */
 	Move* move;
 	for (move = list->moves; move != list->end; ++move) {
@@ -300,11 +309,19 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			order_cap(pos, move);
 		} else {
 			if (*move == ss->killers[0])
-				encode_order(*move, KILLER1);
+				encode_order(*move, KILLER_PLY + 1);
+
 			else if (*move == ss->killers[1])
-				encode_order(*move, KILLER2);
+				encode_order(*move, KILLER_PLY);
+
+			else if (*move == (ss - 2)->killers[0])
+				encode_order(*move, KILLER_OLD + 1);
+
+			else if (*move == (ss - 2)->killers[1])
+				encode_order(*move, KILLER_OLD);
+
 			else if (move_type(*move) == PROMOTION)
-				encode_order(*move, PROM);
+				encode_order(*move, (prom_type(*move) == QUEEN ? QUEEN_PROM : MINOR_PROM));
 		}
 	}
 
@@ -330,20 +347,20 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			ss[1].pv_node = 0;
 		} else {
 			// Late Move Reduction (LMR)
-			if (    depth_left > 2
+			if (0 &&    depth_left > 2
 			    &&  legal_moves > 1
 			    &&  order(*move) < INTERESTING
 			    && !checked
 			    && !ext) {
 				int reduction = 1;
-				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left + ext - reduction);
+				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
 			else
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left + ext);
 
-			if (val > alpha && val < beta) {
+			if (val > alpha) {
 				ss[1].pv_node = 1;
-				val = -search(engine, ss + 1, -beta, -alpha, depth_left);
+				val = -search(engine, ss + 1, -beta, -alpha, depth_left + ext);
 				ss[1].pv_node = 0;
 			}
 		}
@@ -362,7 +379,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			if (iid)
 				++pos->stats.iid_cutoffs;
 #endif
-			if (   !cap_type(*move)
+			if (  !cap_type(*move)
 			    && move_type(*move) != PROMOTION) {
 				ss->killers[1] = ss->killers[0];
 				ss->killers[0] = *move;
@@ -476,13 +493,14 @@ int begin_search(Engine* const engine)
 {
 	int val, depth;
 	int best_move = 0;
-	Search_Stack ss[MAX_PLY];
+	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
+	Search_Stack ss[MAX_PLY + 2];
 	clear_search(engine, ss);
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
-		val = search(engine, ss, -INFINITY, +INFINITY, depth);
+		val = search(engine, ss + 2, -INFINITY, +INFINITY, depth);
 		if (   depth > 1
 		    && ctlr->is_stopped)
 			break;
