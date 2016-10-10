@@ -286,6 +286,7 @@ void gen_quiets(Position* pos, Movelist* list)
 	u64 const full_bb      = pos->bb[FULL],
 	          vacancy_mask = ~full_bb,
 	          us_mask      = pos->bb[c];
+	gen_castling(pos, list);
 	gen_pawn_quiets(pos, list);
 	u64 curr_piece_bb;
 	for (pt = KNIGHT; pt != KING; ++pt) {
@@ -298,5 +299,4 @@ void gen_quiets(Position* pos, Movelist* list)
 	}
 	from = pos->king_sq[c];
 	extract_moves(from, k_atks[from] & vacancy_mask, list);
-	gen_castling(pos, list);
 }

@@ -43,16 +43,13 @@ u64 const INTERESTING = 5000ULL;
 static inline void order_cap(Position const * const pos, Move* const m)
 {
 	static int equal_cap_bound = 50;
-	int victim_pt = piece_type(pos->board[to_sq(*m)]);
-	int atker_pt  = piece_type(pos->board[from_sq(*m)]);
-	int tmp = piece_val[victim_pt] - piece_val[atker_pt];
-	tmp = phased_val(tmp, pos->state->phase) + victim_pt;
-	if (tmp > equal_cap_bound)
-		encode_order(*m, (GOOD_CAP + tmp));
-	else if (tmp > -equal_cap_bound)
-		encode_order(*m, (EQUAL_CAP + victim_pt));
+	int see_val = see(pos, *m);
+	if (see_val > equal_cap_bound)
+		encode_order(*m, (GOOD_CAP + see_val));
+	else if (see_val > -equal_cap_bound)
+		encode_order(*m, (EQUAL_CAP + see_val));
 	else
-		encode_order(*m, (BAD_CAP + tmp));
+		encode_order(*m, (BAD_CAP + see_val));
 }
 
 static inline void sort_moves(Move* const start, Move* const end)
@@ -131,7 +128,6 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	} else {
 		gen_captures(pos, list);
 
-		// Order captures by MVV-LVA
 		for (move = list->moves; move < list->end; ++move)
 			order_cap(pos, move);
 		sort_moves(list->moves, list->end);
