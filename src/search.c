@@ -156,25 +156,23 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	return alpha;
 }
 
-static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u32 depth)
+static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, int depth)
 {
-	if (!depth)
+	if (depth <= 0)
 		return qsearch(engine, ss, alpha, beta);
 
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 
-	if (ss->ply) {
-		if ( !(engine->ctlr->nodes_searched & 2047)
-		    && stopped(engine))
-			return 0;
+	if ( !(engine->ctlr->nodes_searched & 2047)
+	    && stopped(engine))
+		return 0;
 
-		if (pos->state->fifty_moves > 99 || is_repeat(pos))
-			return 0;
+	if (pos->state->fifty_moves > 99 || is_repeat(pos))
+		return 0;
 
-		if (ss->ply >= MAX_PLY)
-			return evaluate(pos);
-	}
+	if (ss->ply >= MAX_PLY)
+		return evaluate(pos);
 
 	Entry entry = tt_probe(&tt, pos->state->pos_key);
 #ifdef STATS
@@ -194,7 +192,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			return alpha;
 	}
 
-	++engine->ctlr->nodes_searched;
+	++ctlr->nodes_searched;
 
 	int val;
 	set_checkers(pos);
@@ -205,7 +203,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	    && !ss->pv_node
 	    && !checked
 	    &&  ss->early_prune
-	    &&  ss->ply
 	    && !pos->state->checkers_bb) {
 #ifdef STATS
 		++pos->stats.futility_tries;
@@ -223,7 +220,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 	// Null move pruning
 	if (    depth >= 4
 	    && !ss->pv_node
-	    &&  ss->ply
 	    &&  ss->early_prune
 	    &&  pos->state->phase > (MAX_PHASE / 4)
 	    && !checked) {
@@ -344,9 +340,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			// Late Move Reduction (LMR)
 			if (0 &&    depth_left > 2
 			    &&  legal_moves > 1
-			    &&  order(*move) < INTERESTING
-			    && !checked
-			    && !ext) {
+			    &&  order(*move) < INTERESTING) {
 				int reduction = 1;
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
@@ -362,8 +356,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 
 		undo_move(pos);
 
-		if (   ss->ply
-		    && ctlr->is_stopped)
+		if (ctlr->is_stopped)
 			return 0;
 
 		if (val >= beta) {
@@ -383,10 +376,89 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, u
 			return beta;
 		}
 		if (val > best_val) {
-			if (val > alpha)
-				alpha = val;
 			best_val  = val;
 			best_move = *move;
+			if (val > alpha)
+				alpha = val;
+		}
+	}
+
+	if (!legal_moves) {
+		if (pos->state->checkers_bb)
+			return -INFINITY + ss->ply;
+		else
+			return 0;
+	}
+
+	if (old_alpha == alpha)
+		tt_store(&tt, alpha, FLAG_UPPER, depth, get_move(best_move), pos->state->pos_key);
+	else
+		tt_store(&tt, alpha, FLAG_EXACT, depth, get_move(best_move), pos->state->pos_key);
+
+	return alpha;
+}
+
+static int search_root(Engine* const engine, Search_Stack* ss, int alpha, int beta, int depth)
+{
+	Position* const pos    = engine->pos;
+	Controller* const ctlr = engine->ctlr;
+
+	Entry entry = tt_probe(&tt, pos->state->pos_key);
+#ifdef STATS
+	++pos->stats.hash_probes;
+#endif
+	if (  (entry.key ^ entry.data) == pos->state->pos_key
+	    && DEPTH(entry.data) >= depth) {
+#ifdef STATS
+		++pos->stats.hash_hits;
+#endif
+		int val  = SCORE(entry.data);
+		u64 flag = FLAG(entry.data);
+
+		if (flag == FLAG_LOWER && val >= beta)
+			return beta;
+		else if (flag == FLAG_UPPER && val <= alpha)
+			return alpha;
+	}
+
+	++ctlr->nodes_searched;
+
+	Movelist* list = &ss->list;
+	sort_moves(list->moves, list->end);
+
+	int val,
+	    best_val    = -INFINITY,
+	    best_move   = 0,
+	    old_alpha   = alpha,
+	    legal_moves = 0;;
+
+	//char str[5];
+	Move* move;
+	for (move = list->moves; move != list->end; ++move) {
+		//move_str(*move, str);
+		//fprintf(stdout, "%s = %llu\n", str, order(*move));
+		*move = get_move(*move);
+		if (!do_move(pos, *move))
+			continue;
+		++legal_moves;
+		val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
+		encode_order(*move, val);
+		undo_move(pos);
+		if (val >= beta) {
+#ifdef STATS
+			if (legal_moves == 1)
+				++pos->stats.first_beta_cutoffs;
+			++pos->stats.beta_cutoffs;
+#endif
+			tt_store(&tt, val, FLAG_LOWER, depth, get_move(*move), pos->state->pos_key);
+			return beta;
+		}
+		if (val > best_val) {
+			best_move = *move;
+			best_val  = val;
+			if (val > alpha) {
+				alpha = val;
+			}
 		}
 	}
 
@@ -473,15 +545,39 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	u32 i;
 	Search_Stack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
-		curr                = ss + i;
-		curr->pv_node       = 0;
-		curr->early_prune   = 1;
-		curr->ply           = i;
-		curr->killers[0]    = 0;
-		curr->killers[1]    = 0;
-		curr->list.end      = ss->list.moves;
+		curr              = ss + i;
+		curr->pv_node     = 0;
+		curr->early_prune = 1;
+		curr->ply         = i;
+		curr->killers[0]  = 0;
+		curr->killers[1]  = 0;
+		curr->list.end    = ss->list.moves;
 	}
 	ss->pv_node = 1;
+}
+
+void setup_root_moves(Position* const pos, Search_Stack* const ss)
+{
+	Movelist* list = &ss->list;
+	list->end      = list->moves;
+	Move* quiets;
+	set_pinned(pos);
+	set_checkers(pos);
+	if (pos->state->checkers_bb) {
+		gen_check_evasions(pos, list);
+	} else {
+		gen_captures(pos, list);
+		quiets = list->end;
+		gen_quiets(pos, list);
+	}
+
+	Move* move;
+	for (move = list->moves; move != list->end; ++move) {
+		if (move < quiets)
+			order_cap(pos, move);
+		else if (move_type(*move) == PROMOTION)
+			encode_order(*move, (prom_type(*move) == QUEEN ? QUEEN_PROM : MINOR_PROM));
+	}
 }
 
 int begin_search(Engine* const engine)
@@ -493,9 +589,10 @@ int begin_search(Engine* const engine)
 	clear_search(engine, ss);
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
+	setup_root_moves(pos, ss + 2);
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
-		val = search(engine, ss + 2, -INFINITY, +INFINITY, depth);
+		val = search_root(engine, ss + 2, -INFINITY, +INFINITY, depth);
 		if (   depth > 1
 		    && ctlr->is_stopped)
 			break;
