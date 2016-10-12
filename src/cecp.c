@@ -18,7 +18,6 @@
 
 #include "defs.h"
 #include "engine.h"
-#include "timer.h"
 
 char* fen1 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -121,56 +120,6 @@ static inline void print_options()
 	fprintf(stdout, "feature setboard=1\n");
 	fprintf(stdout, "feature analyze=0\n");
 	fprintf(stdout, "feature done=1\n");
-}
-
-static inline int synced(Engine const * const engine)
-{
-	return engine->curr_state == engine->target_state;
-}
-
-static inline void sync(Engine const * const engine)
-{
-	while (!synced(engine))
-		continue;
-}
-
-static inline void transition(Engine* const engine, int target_state)
-{
-	if (engine->curr_state == WAITING) {
-		pthread_mutex_lock(&engine->mutex);
-		engine->target_state = target_state;
-		pthread_cond_signal(&engine->sleep_cv);
-		pthread_mutex_unlock(&engine->mutex);
-	}
-	else
-		engine->target_state = target_state;
-	sync(engine);
-}
-
-static inline void start_thinking(Engine* const engine)
-{
-	if (engine->game_over)
-		return;
-	transition(engine, WAITING);
-	if (check_result(engine->pos) != NO_RESULT) {
-		engine->game_over = 1;
-		return;
-	}
-
-	if (engine->side == engine->pos->stm) {
-		Controller* const ctlr  = engine->ctlr;
-		ctlr->search_start_time = curr_time();
-		ctlr->search_end_time   =  ctlr->search_start_time
-			                + (ctlr->time_left / ctlr->moves_left);
-		fprintf(stdout, "time left = %llu, moves left = %u, time allotted = %llu\n",
-			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
-		transition(engine, THINKING);
-		if (ctlr->moves_per_session) {
-			--ctlr->moves_left;
-			if (ctlr->moves_left < 1)
-				ctlr->moves_left = ctlr->moves_per_session;
-		}
-	}
 }
 
 void* engine_loop(void* args)
@@ -338,7 +287,11 @@ void cecp_loop()
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
-			start_thinking(&engine);
+			transition(&engine, WAITING);
+			if (check_result(engine.pos) != NO_RESULT)
+				engine.game_over = 1;
+			else
+				start_thinking(&engine);
 
 		} else if (!strncmp(input, "see", 3)) {
 
@@ -365,7 +318,12 @@ void cecp_loop()
 			if (  !move
 			   || !do_move(engine.pos, move))
 				fprintf(stdout, "Illegal move: %s\n", input);
-			start_thinking(&engine);
+
+			transition(&engine, WAITING);
+			if (check_result(engine.pos) != NO_RESULT)
+				engine.game_over = 1;
+			else
+				start_thinking(&engine);
 		}
 	}
 cleanup_and_exit:
