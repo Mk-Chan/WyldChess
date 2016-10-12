@@ -162,7 +162,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 				eval[c] += isolated_pawn;
 			if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				ev->passed_pawn_bb[c] |= BB(sq);
-				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : RANK_8 - rank_of(sq))];
+				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
 			}
 		}
 	}
@@ -176,23 +176,30 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	eval[BLACK] += popcnt((pos->bb[ROOK] & pos->bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
 	int sq, c, pt;
 	u64 pinned_bb = pos->state->pinned_bb;
-	u64 bb, c_bb, atk_bb, opp_pawn_non_atks_mask;
+	u64 full_bb   = pos->bb[FULL];
+	u64 bb, c_bb, atk_bb, opp_pawn_non_atks_mask, c_non_pawn_occupancy_bb;
 	for (c = WHITE; c <= BLACK; ++c) {
 		c_bb = pos->bb[c];
+		c_non_pawn_occupancy_bb = c_bb & ~pos->bb[PAWN];
 		opp_pawn_non_atks_mask = ~ev->atks_bb[!c][PAWN];
 
 		for (pt = KNIGHT; pt <= QUEEN; ++pt) {
 			ev->atks_bb[c][pt] = 0ULL;
 			bb = pos->bb[pt] & c_bb;
 			while (bb) {
-				sq                = bitscan(bb);
-				bb               &= bb - 1;
-				atk_bb            = get_atks(sq, pt, pos->bb[c]);
+				sq                  = bitscan(bb);
+				bb                 &= bb - 1;
+				atk_bb              = get_atks(sq, pt, full_bb);
 				ev->atks_bb[c][pt] |= atk_bb;
-				atk_bb &= opp_pawn_non_atks_mask;
+				atk_bb             &= opp_pawn_non_atks_mask;
+
 				if (BB(sq) & pinned_bb)
 					atk_bb &= dirn_sqs[sq][pos->king_sq[c]];
+				if (pt != KNIGHT)
+					atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & c_non_pawn_occupancy_bb));
+				atk_bb &= ~full_bb;
 				eval[c] += mobility[pt][popcnt(atk_bb)];
+
 				if (     pt == ROOK
 				    && !(file_forward_mask[c][sq] & ev->pawn_bb[c]))
 					eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
