@@ -57,7 +57,7 @@ void init_pos(Position* pos)
 	u32 i;
 	for (i = 0; i != 64; ++i)
 		pos->board[i] = 0;
-	for (i = 0; i != 10; ++i)
+	for (i = 0; i != 9; ++i)
 		pos->bb[i] = 0ULL;
 	pos->hist_size                    = 0;
 	pos->stm                          = WHITE;
@@ -78,7 +78,7 @@ void clear_pos(Position* pos)
 	u32 i;
 	for (i = 0; i != 64; ++i)
 		pos->board[i] = 0;
-	for (i = 0; i != 10; ++i)
+	for (i = 0; i != 9; ++i)
 		pos->bb[i] = 0ULL;
 	pos->state->pos_key               = 0ULL;
 	pos->state->pinned_bb             = 0ULL;

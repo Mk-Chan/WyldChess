@@ -51,24 +51,24 @@ typedef struct Movelist_s {
 
 typedef struct State_s {
 
-	int      piece_psq_eval[2];
-	int      phase;
-	u32      castling_rights;
-	u32      fifty_moves;
-	u32      full_moves;
+	Move     move;
 	u64      pinned_bb;
 	u64      checkers_bb;
 	u64      ep_sq_bb;
-	Move     move;
 	HashKey  pos_key;
+	u32      castling_rights;
+	u32      fifty_moves;
+	u32      full_moves;
+	int      phase;
+	int      piece_psq_eval[2];
 
 } State;
 
 typedef struct Position_s {
 
+	u64      bb[9];
 	u32      hist_size;
 	u32      stm;
-	u64      bb[10];
 	u32      king_sq[2];
 	u32      board[64];
 	State*   state;
@@ -255,6 +255,64 @@ static inline void set_pinned(Position* const pos)
 static inline void set_checkers(Position* pos)
 {
 	pos->state->checkers_bb = checkers(pos, !pos->stm);
+}
+
+static inline int min_attacker(Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {
+	u64 tmp;
+	int pt = PAWN - 1;
+	do {
+		++pt;
+		tmp = c_atkers_bb & pos->bb[pt];
+	} while (!tmp && pt < KING);
+	if (pt == KING)
+		return pt;
+	*occupied_bb ^= tmp & -tmp;
+	if (pt == PAWN || pt == BISHOP || pt == QUEEN)
+		*atkers_bb |= Bmagic(to, *occupied_bb) & (pos->bb[BISHOP] | pos->bb[QUEEN]);
+	if (pt == ROOK || pt == QUEEN)
+		*atkers_bb |= Rmagic(to, *occupied_bb) & (pos->bb[ROOK] | pos->bb[QUEEN]);
+	*atkers_bb &= *occupied_bb;
+	return pt;
+}
+
+static inline int see(Position const * const pos, Move move)
+{
+	if (move_type(move) == CASTLE)
+		return 0;
+
+	int to = to_sq(move);
+	int swap_list[32];
+	swap_list[0] = mg_val(piece_val[piece_type(pos->board[to])]);
+	int c = pos->stm;
+	int from = from_sq(move);
+	u64 occupied_bb = pos->bb[FULL] ^ BB(from);
+	if (move_type(move) == ENPASSANT) {
+		occupied_bb ^= BB((to - (c == WHITE ? 8 : -8)));
+		swap_list[0] = mg_val(piece_val[PAWN]);
+	}
+	u64 atkers_bb = all_atkers_to_sq(pos, to, occupied_bb) & occupied_bb;
+	c = !c;
+	u64 c_atkers_bb = atkers_bb & pos->bb[c];
+	int cap = piece_type(pos->board[from]);
+	int i;
+	for (i = 1; c_atkers_bb;) {
+		swap_list[i] = -swap_list[i - 1] + mg_val(piece_val[cap]);
+		cap = min_attacker(pos, to, c_atkers_bb, &occupied_bb, &atkers_bb);
+		if (cap == KING) {
+			if (c_atkers_bb == atkers_bb)
+				++i;
+			break;
+		}
+
+		c = !c;
+		c_atkers_bb = atkers_bb & pos->bb[c];
+		++i;
+	}
+
+	while (--i)
+		if (-swap_list[i] < swap_list[i - 1])
+			swap_list[i - 1] = -swap_list[i];
+	return swap_list[0];
 }
 
 static inline void move_str(Move move, char str[6])

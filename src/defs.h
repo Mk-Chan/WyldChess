@@ -56,7 +56,6 @@ enum BitboardConstants {
 	ROOK,
 	QUEEN,
 	KING,
-	PINNED,
 	FULL
 };
 
