@@ -19,11 +19,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <pthread.h>
 #include "defs.h"
 #include "position.h"
 
 enum State {
-	GAME_OVER,
 	WAITING,
 	THINKING,
 //	ANALYZING,
@@ -51,6 +51,9 @@ typedef struct Engine_s {
 	u32         volatile side;
 	int         volatile target_state;
 	int         volatile curr_state;
+	int                  game_over;
+	pthread_mutex_t      mutex;
+	pthread_cond_t       sleep_cv;
 
 } Engine;
 
