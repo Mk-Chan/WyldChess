@@ -339,9 +339,12 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		} else {
 			// Late Move Reduction (LMR)
 			if (0 &&    depth_left > 2
-			    &&  legal_moves > 1
-			    &&  order(*move) < INTERESTING) {
-				int reduction = 1;
+			    &&  legal_moves > 3
+			    &&  move_type(*move) == NORMAL
+			    &&  order(*move) < INTERESTING
+			    && !ext
+			    && !checked) {
+				int reduction = 1 + (legal_moves / 8) + (depth / 8);
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
 			else
