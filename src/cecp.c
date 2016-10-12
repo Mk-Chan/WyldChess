@@ -16,7 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <pthread.h>
 #include "defs.h"
 #include "engine.h"
 #include "timer.h"
@@ -137,17 +136,24 @@ static inline void sync(Engine const * const engine)
 
 static inline void transition(Engine* const engine, int target_state)
 {
-	engine->target_state = target_state;
+	if (engine->curr_state == WAITING) {
+		pthread_mutex_lock(&engine->mutex);
+		engine->target_state = target_state;
+		pthread_cond_signal(&engine->sleep_cv);
+		pthread_mutex_unlock(&engine->mutex);
+	}
+	else
+		engine->target_state = target_state;
 	sync(engine);
 }
 
 static inline void start_thinking(Engine* const engine)
 {
-	if (engine->curr_state == GAME_OVER)
+	if (engine->game_over)
 		return;
 	transition(engine, WAITING);
 	if (check_result(engine->pos) != NO_RESULT) {
-		transition(engine, GAME_OVER);
+		engine->game_over = 1;
 		return;
 	}
 
@@ -176,8 +182,12 @@ void* engine_loop(void* args)
 	while (1) {
 		switch (engine->target_state) {
 		case WAITING:
-			// Make thread sleep here(condition var)
 			engine->curr_state = WAITING;
+			// Condition variable here is an ELO hit at lightning(1s + 0.01s) time controls
+			pthread_mutex_lock(&engine->mutex);
+			while (engine->target_state == WAITING)
+				pthread_cond_wait(&engine->sleep_cv, &engine->mutex);
+			pthread_mutex_unlock(&engine->mutex);
 			break;
 
 		case THINKING:
@@ -192,10 +202,6 @@ void* engine_loop(void* args)
 			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
 			engine->ctlr->time_left += engine->ctlr->increment;
 			engine->target_state     = WAITING;
-			break;
-
-		case GAME_OVER:
-			engine->curr_state = GAME_OVER;
 			break;
 
 		case QUITTING:
@@ -217,6 +223,8 @@ void cecp_loop()
 	Controller ctlr;
 	ctlr.depth = MAX_PLY;
 	Engine engine;
+	pthread_mutex_init(&engine.mutex, NULL);
+	pthread_cond_init(&engine.sleep_cv, NULL);
 	engine.pos   = &pos;
 	engine.ctlr  = &ctlr;
 	engine.target_state = WAITING;
@@ -244,6 +252,7 @@ void cecp_loop()
 
 		} else if (!strncmp(input, "new", 3)) {
 
+			engine.game_over = 0;
 			transition(&engine, WAITING);
 			init_pos(engine.pos);
 			set_pos(engine.pos, fen1);
@@ -257,12 +266,7 @@ void cecp_loop()
 		} else if (!strncmp(input, "quit", 4)) {
 
 			transition(&engine, QUITTING);
-			return;
-
-		} else if (!strncmp(input, "exit", 4)) {
-
-			transition(&engine, WAITING);
-			engine.side = -1;
+			goto cleanup_and_exit;
 
 		} else if (!strncmp(input, "setboard", 8)) {
 
@@ -320,7 +324,8 @@ void cecp_loop()
 		} else if (!strncmp(input, "result", 6)) {
 
 			// Use result for learning later
-			transition(&engine, GAME_OVER);
+			engine.game_over = 1;
+			transition(&engine, WAITING);
 
 		} else if (!strncmp(input, "?", 1)) {
 
@@ -334,6 +339,11 @@ void cecp_loop()
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
 			start_thinking(&engine);
+
+		} else if (!strncmp(input, "see", 3)) {
+
+			move = parse_move(engine.pos, input + 4);
+			fprintf(stdout, "see = %d\n", see(&pos, move));
 
 		} else if (!strncmp(input, "eval", 4)) {
 
@@ -358,4 +368,7 @@ void cecp_loop()
 			start_thinking(&engine);
 		}
 	}
+cleanup_and_exit:
+	pthread_cond_destroy(&engine.sleep_cv);
+	pthread_mutex_destroy(&engine.mutex);
 }
