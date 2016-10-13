@@ -119,6 +119,19 @@ static int mobility[7][32] = {
 	}
 };
 
+static int king_atk_weights[7] = { 0, 0, 0, 3, 2, 3, 4 };
+static int king_safety_table[100] = { // Taken from CPW(Glaurung 1.2)
+	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
+	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
+	 55,  62,  70,  80,  90, 100, 110, 120, 130, 140,
+	150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
+	250, 260, 270, 280, 290, 300, 310, 320, 330, 340,
+	350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
+	450, 460, 470, 480, 490, 500, 510, 520, 530, 540,
+	550, 560, 570, 580, 590, 600, 610, 620, 630, 640,
+	650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
+	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
+};
 static int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
 static int doubled_pawns       = S(-20, -30);
 static int isolated_pawn       = S(-10, -20);
@@ -128,6 +141,8 @@ static int rook_semi_open_file = S(10, 0);
 
 typedef struct Eval_s {
 
+	int king_atk_counter[2];
+	u64 king_danger_bb[2];
 	u64 pawn_bb[2];
 	u64 passed_pawn_bb[2];
 	u64 atks_bb[2][7];
@@ -162,7 +177,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 				eval[c] += isolated_pawn;
 			if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				ev->passed_pawn_bb[c] |= BB(sq);
-				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : RANK_8 - rank_of(sq))];
+				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
 			}
 		}
 	}
@@ -176,23 +191,34 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	eval[BLACK] += popcnt((pos->bb[ROOK] & pos->bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
 	int sq, c, pt;
 	u64 pinned_bb = pos->state->pinned_bb;
-	u64 bb, c_bb, atk_bb, opp_pawn_non_atks_mask;
+	u64 full_bb   = pos->bb[FULL];
+	u64 bb, c_bb, atk_bb, opp_pawn_non_atks_mask, c_non_pawn_occupancy_bb;
 	for (c = WHITE; c <= BLACK; ++c) {
 		c_bb = pos->bb[c];
+		c_non_pawn_occupancy_bb = c_bb & ~pos->bb[PAWN];
 		opp_pawn_non_atks_mask = ~ev->atks_bb[!c][PAWN];
 
 		for (pt = KNIGHT; pt <= QUEEN; ++pt) {
 			ev->atks_bb[c][pt] = 0ULL;
 			bb = pos->bb[pt] & c_bb;
 			while (bb) {
-				sq                = bitscan(bb);
-				bb               &= bb - 1;
-				atk_bb            = get_atks(sq, pt, pos->bb[c]);
+				sq                  = bitscan(bb);
+				bb                 &= bb - 1;
+				atk_bb              = get_atks(sq, pt, full_bb);
 				ev->atks_bb[c][pt] |= atk_bb;
-				atk_bb &= opp_pawn_non_atks_mask;
+				atk_bb             &= opp_pawn_non_atks_mask;
+
+				if (pt != KNIGHT)
+					atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & c_non_pawn_occupancy_bb));
+
+				ev->king_atk_counter[c] += popcnt(atk_bb & ev->king_danger_bb[!c]) * king_atk_weights[pt];
+
 				if (BB(sq) & pinned_bb)
 					atk_bb &= dirn_sqs[sq][pos->king_sq[c]];
+
+				atk_bb &= ~full_bb;
 				eval[c] += mobility[pt][popcnt(atk_bb)];
+
 				if (     pt == ROOK
 				    && !(file_forward_mask[c][sq] & ev->pawn_bb[c]))
 					eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
@@ -204,16 +230,35 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	return eval[WHITE] - eval[BLACK];
 }
 
+static inline int max(int a, int b)
+{
+	return a > b ? a : b;
+}
+
+static inline int min(int a, int b)
+{
+	return a < b ? a : b;
+}
+
 int evaluate(Position* const pos)
 {
 	Eval ev;
 	ev.pawn_bb[WHITE] = pos->bb[PAWN] & pos->bb[WHITE];
 	ev.pawn_bb[BLACK] = pos->bb[PAWN] & pos->bb[BLACK];
+	ev.king_atk_counter[WHITE] = 0;
+	ev.king_atk_counter[BLACK] = 0;
+	ev.king_danger_bb[WHITE] = k_atks[pos->king_sq[WHITE]];
+	ev.king_danger_bb[BLACK] = k_atks[pos->king_sq[BLACK]];
 
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
 	eval += eval_pawns(pos, &ev);
 	eval += eval_pieces(pos, &ev);
 	eval += eval_passed_pawns(pos, &ev);
-	eval  = phased_val(eval, pos->state->phase);
+
+	ev.king_atk_counter[WHITE] = min(max(ev.king_atk_counter[WHITE], 0), 99);
+	ev.king_atk_counter[BLACK] = min(max(ev.king_atk_counter[WHITE], 0), 99);
+	int king_eval_diff = king_safety_table[ev.king_atk_counter[WHITE]] - king_safety_table[ev.king_atk_counter[BLACK]];
+
+	eval = phased_val(eval, pos->state->phase) + phased_val(S(king_eval_diff, 0), pos->state->phase);
 	return pos->stm == WHITE ? eval : -eval;
 }

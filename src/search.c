@@ -40,6 +40,65 @@ u64 const MINOR_PROM  = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
 u64 const INTERESTING = 5000ULL;
 
+int min_attacker(Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {
+	u64 tmp;
+	int pt = PAWN - 1;
+	do {
+		++pt;
+		tmp = c_atkers_bb & pos->bb[pt];
+	} while (!tmp && pt < KING);
+	if (pt == KING)
+		return pt;
+	*occupied_bb ^= tmp & -tmp;
+	if (pt == PAWN || pt == BISHOP || pt == QUEEN)
+		*atkers_bb |= Bmagic(to, *occupied_bb) & (pos->bb[BISHOP] | pos->bb[QUEEN]);
+	if (pt == ROOK || pt == QUEEN)
+		*atkers_bb |= Rmagic(to, *occupied_bb) & (pos->bb[ROOK] | pos->bb[QUEEN]);
+	*atkers_bb &= *occupied_bb;
+	return pt;
+}
+
+// Idea taken from Stockfish 6
+int see(Position const * const pos, Move move)
+{
+	if (move_type(move) == CASTLE)
+		return 0;
+
+	int to = to_sq(move);
+	int swap_list[32];
+	swap_list[0] = mg_val(piece_val[piece_type(pos->board[to])]);
+	int c = pos->stm;
+	int from = from_sq(move);
+	u64 occupied_bb = pos->bb[FULL] ^ BB(from);
+	if (move_type(move) == ENPASSANT) {
+		occupied_bb ^= BB((to - (c == WHITE ? 8 : -8)));
+		swap_list[0] = mg_val(piece_val[PAWN]);
+	}
+	u64 atkers_bb = all_atkers_to_sq(pos, to, occupied_bb) & occupied_bb;
+	c = !c;
+	u64 c_atkers_bb = atkers_bb & pos->bb[c];
+	int cap = piece_type(pos->board[from]);
+	int i;
+	for (i = 1; c_atkers_bb;) {
+		swap_list[i] = -swap_list[i - 1] + mg_val(piece_val[cap]);
+		cap = min_attacker(pos, to, c_atkers_bb, &occupied_bb, &atkers_bb);
+		if (cap == KING) {
+			if (c_atkers_bb == atkers_bb)
+				++i;
+			break;
+		}
+
+		c = !c;
+		c_atkers_bb = atkers_bb & pos->bb[c];
+		++i;
+	}
+
+	while (--i)
+		if (-swap_list[i] < swap_list[i - 1])
+			swap_list[i - 1] = -swap_list[i];
+	return swap_list[0];
+}
+
 static inline void order_cap(Position const * const pos, Move* const m)
 {
 	static int equal_cap_bound = 50;
@@ -337,11 +396,14 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			val = -search(engine, ss + 1, -beta, -alpha, depth_left + ext);
 			ss[1].pv_node = 0;
 		} else {
-			// Late Move Reduction (LMR)
+			// Late Move Reduction (LMR) -- Not completely confident of this yet
 			if (0 &&    depth_left > 2
-			    &&  legal_moves > 1
-			    &&  order(*move) < INTERESTING) {
-				int reduction = 1;
+			    &&  legal_moves > 3
+			    &&  move_type(*move) == NORMAL
+			    &&  order(*move) < INTERESTING
+			    && !ext
+			    && !checked) {
+				int reduction = 1 + (legal_moves / 8) + (depth / 8);
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
 			else
@@ -584,6 +646,7 @@ int begin_search(Engine* const engine)
 {
 	int val, depth;
 	int best_move = 0;
+	u64 time;
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
 	Search_Stack ss[MAX_PLY + 2];
 	clear_search(engine, ss);
@@ -592,12 +655,18 @@ int begin_search(Engine* const engine)
 	setup_root_moves(pos, ss + 2);
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
+
 		val = search_root(engine, ss + 2, -INFINITY, +INFINITY, depth);
+
 		if (   depth > 1
 		    && ctlr->is_stopped)
 			break;
-		fprintf(stdout, "%d %d %llu %llu", depth, val,
-			(curr_time() - ctlr->search_start_time) / 10, ctlr->nodes_searched);
+
+		time = (curr_time() - ctlr->search_start_time) / 10;
+		if (engine->protocol == CECP)
+			fprintf(stdout, "%d %d %llu %llu", depth, val, time, ctlr->nodes_searched);
+		else if (engine->protocol == UCI)
+			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
 		fprintf(stdout, "\n");
 	}
