@@ -337,7 +337,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			val = -search(engine, ss + 1, -beta, -alpha, depth_left + ext);
 			ss[1].pv_node = 0;
 		} else {
-			// Late Move Reduction (LMR)
+			// Late Move Reduction (LMR) -- Not completely confident of this yet
 			if (0 &&    depth_left > 2
 			    &&  legal_moves > 3
 			    &&  move_type(*move) == NORMAL
@@ -587,6 +587,7 @@ int begin_search(Engine* const engine)
 {
 	int val, depth;
 	int best_move = 0;
+	u64 time;
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
 	Search_Stack ss[MAX_PLY + 2];
 	clear_search(engine, ss);
@@ -595,12 +596,18 @@ int begin_search(Engine* const engine)
 	setup_root_moves(pos, ss + 2);
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
+
 		val = search_root(engine, ss + 2, -INFINITY, +INFINITY, depth);
+
 		if (   depth > 1
 		    && ctlr->is_stopped)
 			break;
-		fprintf(stdout, "%d %d %llu %llu", depth, val,
-			(curr_time() - ctlr->search_start_time) / 10, ctlr->nodes_searched);
+
+		time = (curr_time() - ctlr->search_start_time) / 10;
+		if (engine->protocol == CECP)
+			fprintf(stdout, "%d %d %llu %llu", depth, val, time, ctlr->nodes_searched);
+		else if (engine->protocol == UCI)
+			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
 		fprintf(stdout, "\n");
 	}
