@@ -40,6 +40,65 @@ u64 const MINOR_PROM  = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
 u64 const INTERESTING = 5000ULL;
 
+int min_attacker(Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {
+	u64 tmp;
+	int pt = PAWN - 1;
+	do {
+		++pt;
+		tmp = c_atkers_bb & pos->bb[pt];
+	} while (!tmp && pt < KING);
+	if (pt == KING)
+		return pt;
+	*occupied_bb ^= tmp & -tmp;
+	if (pt == PAWN || pt == BISHOP || pt == QUEEN)
+		*atkers_bb |= Bmagic(to, *occupied_bb) & (pos->bb[BISHOP] | pos->bb[QUEEN]);
+	if (pt == ROOK || pt == QUEEN)
+		*atkers_bb |= Rmagic(to, *occupied_bb) & (pos->bb[ROOK] | pos->bb[QUEEN]);
+	*atkers_bb &= *occupied_bb;
+	return pt;
+}
+
+// Idea taken from Stockfish 6
+int see(Position const * const pos, Move move)
+{
+	if (move_type(move) == CASTLE)
+		return 0;
+
+	int to = to_sq(move);
+	int swap_list[32];
+	swap_list[0] = mg_val(piece_val[piece_type(pos->board[to])]);
+	int c = pos->stm;
+	int from = from_sq(move);
+	u64 occupied_bb = pos->bb[FULL] ^ BB(from);
+	if (move_type(move) == ENPASSANT) {
+		occupied_bb ^= BB((to - (c == WHITE ? 8 : -8)));
+		swap_list[0] = mg_val(piece_val[PAWN]);
+	}
+	u64 atkers_bb = all_atkers_to_sq(pos, to, occupied_bb) & occupied_bb;
+	c = !c;
+	u64 c_atkers_bb = atkers_bb & pos->bb[c];
+	int cap = piece_type(pos->board[from]);
+	int i;
+	for (i = 1; c_atkers_bb;) {
+		swap_list[i] = -swap_list[i - 1] + mg_val(piece_val[cap]);
+		cap = min_attacker(pos, to, c_atkers_bb, &occupied_bb, &atkers_bb);
+		if (cap == KING) {
+			if (c_atkers_bb == atkers_bb)
+				++i;
+			break;
+		}
+
+		c = !c;
+		c_atkers_bb = atkers_bb & pos->bb[c];
+		++i;
+	}
+
+	while (--i)
+		if (-swap_list[i] < swap_list[i - 1])
+			swap_list[i - 1] = -swap_list[i];
+	return swap_list[0];
+}
+
 static inline void order_cap(Position const * const pos, Move* const m)
 {
 	static int equal_cap_bound = 50;

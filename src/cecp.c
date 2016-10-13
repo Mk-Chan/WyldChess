@@ -292,11 +292,6 @@ void cecp_loop()
 			else
 				start_thinking(&engine);
 
-		} else if (!strncmp(input, "see", 3)) {
-
-			move = parse_move(&pos, input + 4);
-			fprintf(stdout, "see = %d\n", see(&pos, move));
-
 		} else if (!strncmp(input, "eval", 4)) {
 
 			transition(&engine, WAITING);
