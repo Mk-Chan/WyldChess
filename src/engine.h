@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include "defs.h"
 #include "position.h"
+#include "timer.h"
 
 enum State {
 	WAITING,
@@ -52,11 +53,52 @@ typedef struct Engine_s {
 	int         volatile target_state;
 	int         volatile curr_state;
 	int                  game_over;
+	int                  protocol;
 	pthread_mutex_t      mutex;
 	pthread_cond_t       sleep_cv;
 
 } Engine;
 
+static inline void sync(Engine const * const engine)
+{
+	while (engine->curr_state != engine->target_state)
+		continue;
+}
+
+static inline void transition(Engine* const engine, int target_state)
+{
+	if (engine->curr_state == WAITING) {
+		pthread_mutex_lock(&engine->mutex);
+		engine->target_state = target_state;
+		pthread_cond_signal(&engine->sleep_cv);
+		pthread_mutex_unlock(&engine->mutex);
+	}
+	else
+		engine->target_state = target_state;
+	sync(engine);
+}
+
+static inline void start_thinking(Engine* const engine)
+{
+	if (engine->game_over)
+		return;
+
+	Controller* const ctlr  = engine->ctlr;
+	ctlr->search_start_time = curr_time();
+	ctlr->search_end_time   =  ctlr->search_start_time
+				+ (ctlr->time_left / ctlr->moves_left);
+	fprintf(stdout, "time left = %llu, moves left = %u, time allotted = %llu\n",
+		ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
+	transition(engine, THINKING);
+	if (ctlr->moves_per_session) {
+		--ctlr->moves_left;
+		if (ctlr->moves_left < 1)
+			ctlr->moves_left = ctlr->moves_per_session;
+	}
+}
+
 extern int begin_search(Engine* const engine);
+extern void cecp_loop();
+extern void uci_loop();
 
 #endif

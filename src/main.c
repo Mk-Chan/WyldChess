@@ -36,12 +36,13 @@ int main()
 	init_intervening_sqs();
 	init_masks();
 	tt_init(&tt, 1000000);
-	fprintf(stdout, "WyldChess started!\n");
 
 	char input[8];
 	fgets(input, 8, stdin);
 	if (!strncmp(input, "xboard", 6))
 		cecp_loop();
+	else if (!strncmp(input, "uci", 3))
+		uci_loop();
 	else
 		fprintf(stdout, "Protocol not found!\n");
 
