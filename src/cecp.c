@@ -19,8 +19,6 @@
 #include "defs.h"
 #include "engine.h"
 
-char* fen1 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
 enum Result {
 	NO_RESULT,
 	DRAW,
@@ -109,11 +107,11 @@ static int check_result(Position* const pos)
 	return result;
 }
 
-static inline void print_options()
+static inline void print_options_cecp()
 {
 	fprintf(stdout, "feature done=0\n");
 	fprintf(stdout, "feature ping=1\n");
-	fprintf(stdout, "feature myname=\"WyldChess\"\n");
+	fprintf(stdout, "feature myname=\"%s\"\n", ENGINE_NAME);
 	fprintf(stdout, "feature reuse=1\n");
 	fprintf(stdout, "feature sigint=0\n");
 	fprintf(stdout, "feature sigterm=0\n");
@@ -122,9 +120,9 @@ static inline void print_options()
 	fprintf(stdout, "feature done=1\n");
 }
 
-void* engine_loop(void* args)
+void* engine_loop_cecp(void* args)
 {
-	static char mstr[6];
+	char mstr[6];
 	Move move;
 	Engine* engine = (Engine*) args;
 	Position* pos  = engine->pos;
@@ -166,34 +164,34 @@ void cecp_loop()
 	char  input[max_len];
 	char* ptr;
 	char* end;
-
 	Move move;
+
 	Position pos;
 	Controller ctlr;
 	ctlr.depth = MAX_PLY;
 	Engine engine;
+	engine.protocol = CECP;
 	pthread_mutex_init(&engine.mutex, NULL);
 	pthread_cond_init(&engine.sleep_cv, NULL);
 	engine.pos   = &pos;
 	engine.ctlr  = &ctlr;
 	engine.target_state = WAITING;
 	engine.side  = BLACK;
-	init_pos(engine.pos);
-	set_pos(engine.pos, fen1);
+	init_pos(&pos);
+	set_pos(&pos, INITIAL_POSITION);
 	pthread_t engine_thread;
-	pthread_create(&engine_thread, NULL, engine_loop, (void*) &engine);
+	pthread_create(&engine_thread, NULL, engine_loop_cecp, (void*) &engine);
 	pthread_detach(engine_thread);
 
-	// Controller parameters are still left
 	while (1) {
 		fgets(input, max_len, stdin);
 		if (!strncmp(input, "protover 2", 10)) {
 
-			print_options();
+			print_options_cecp();
 
 		} else if (!strncmp(input, "print", 5)) {
 
-			print_board(engine.pos);
+			print_board(&pos);
 
 		} else if (!strncmp(input, "ping", 4)) {
 
@@ -201,10 +199,10 @@ void cecp_loop()
 
 		} else if (!strncmp(input, "new", 3)) {
 
-			engine.game_over = 0;
 			transition(&engine, WAITING);
-			init_pos(engine.pos);
-			set_pos(engine.pos, fen1);
+			engine.game_over = 0;
+			init_pos(&pos);
+			set_pos(&pos, INITIAL_POSITION);
 			engine.side = BLACK;
 			ctlr.depth  = MAX_PLY;
 			ctlr.moves_per_session = 40;
@@ -221,12 +219,12 @@ void cecp_loop()
 
 			transition(&engine, WAITING);
 			engine.side = -1;
-			set_pos(engine.pos, input + 9);
+			set_pos(&pos, input + 9);
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
-			engine.side = engine.pos->stm == WHITE ? BLACK : WHITE;
+			engine.side = pos.stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
 
@@ -257,9 +255,10 @@ void cecp_loop()
 		} else if (!strncmp(input, "st", 2)) {
 
 			// Seconds per move
-			ctlr.time_left  = 1000 * atoi(input + 3);
-			ctlr.moves_left = 1;
-			ctlr.increment  = 0;
+			ctlr.time_left         = 1000 * atoi(input + 3);
+			ctlr.moves_per_session = 0;
+			ctlr.moves_left        = 1;
+			ctlr.increment         = 0;
 
 		} else if (!strncmp(input, "sd", 2)) {
 
@@ -282,20 +281,20 @@ void cecp_loop()
 
 		} else if (!strncmp(input, "go", 2)) {
 
-			engine.side = engine.pos->stm;
+			engine.side = pos.stm;
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
 			transition(&engine, WAITING);
-			if (check_result(engine.pos) != NO_RESULT)
+			if (check_result(&pos) != NO_RESULT)
 				engine.game_over = 1;
 			else
 				start_thinking(&engine);
 
 		} else if (!strncmp(input, "see", 3)) {
 
-			move = parse_move(engine.pos, input + 4);
+			move = parse_move(&pos, input + 4);
 			fprintf(stdout, "see = %d\n", see(&pos, move));
 
 		} else if (!strncmp(input, "eval", 4)) {
@@ -314,15 +313,15 @@ void cecp_loop()
 
 		} else {
 
-			move = parse_move(engine.pos, input);
+			move = parse_move(&pos, input);
 			if (  !move
-			   || !do_move(engine.pos, move))
+			   || !do_move(&pos, move))
 				fprintf(stdout, "Illegal move: %s\n", input);
 
 			transition(&engine, WAITING);
-			if (check_result(engine.pos) != NO_RESULT)
+			if (check_result(&pos) != NO_RESULT)
 				engine.game_over = 1;
-			else
+			else if (engine.side == pos.stm)
 				start_thinking(&engine);
 		}
 	}

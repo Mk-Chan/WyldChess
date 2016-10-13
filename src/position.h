@@ -85,11 +85,10 @@ extern int psq_val[8][64];
 extern int phase[7];
 extern void print_board(Position* pos);
 
-extern void cecp_loop();
 extern void performance_test(Position* const pos, u32 max_depth);
 
 extern void init_pos(Position* pos);
-extern void set_pos(Position* pos, char* fen);
+extern int set_pos(Position* pos, char* fen);
 
 extern void do_null_move(Position* const pos);
 extern void undo_null_move(Position* const pos);

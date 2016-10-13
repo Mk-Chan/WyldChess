@@ -92,7 +92,7 @@ void clear_pos(Position* pos)
 	pos->state->piece_psq_eval[BLACK] = 0;
 }
 
-void set_pos(Position* pos, char* fen)
+int set_pos(Position* pos, char* fen)
 {
 	clear_pos(pos);
 	u32 piece, pt, sq, pc,
@@ -145,9 +145,11 @@ void set_pos(Position* pos, char* fen)
 	pos->state->fifty_moves = x;
 
 	x = 0;
-	while ((c = fen[index++]) != '\0')
+	while ((c = fen[index++]) != '\0' && c != ' ')
 		x = x * 10 + (c - '0');
 	pos->state->full_moves = x;
+
+	return index;
 }
 
 static inline char get_char_from_piece(u32 piece)

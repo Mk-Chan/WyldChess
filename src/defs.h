@@ -23,6 +23,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define ENGINE_NAME (("WyldChess"))
+#define AUTHOR_NAME (("Manik Charan"))
+#define INITIAL_POSITION (("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
+
 #define MAX_MOVES   (2048)
 #define MAX_PLY     (128)
 #define BB(x)       (1ULL << (x))
@@ -44,7 +48,12 @@ typedef unsigned int        u32;
 typedef unsigned long long  u64;
 typedef unsigned long long  HashKey;
 
-enum Color {
+enum Protocols {
+	CECP,
+	UCI
+};
+
+enum Colors {
 	WHITE = 0,
 	BLACK
 };
@@ -97,7 +106,7 @@ enum CastlingRights {
 	BQC = 8
 };
 
-enum MoveType {
+enum MoveTypes {
 	NORMAL,
 	CASTLE      = 1 << MOVE_TYPE_SHIFT,
 	ENPASSANT   = 2 << MOVE_TYPE_SHIFT,
@@ -105,7 +114,7 @@ enum MoveType {
 	DOUBLE_PUSH = 4 << MOVE_TYPE_SHIFT
 };
 
-enum PromotionType {
+enum PromotionTypes {
 	TO_KNIGHT = KNIGHT << PROM_TYPE_SHIFT,
 	TO_BISHOP = BISHOP << PROM_TYPE_SHIFT,
 	TO_ROOK   = ROOK   << PROM_TYPE_SHIFT,
