@@ -34,7 +34,6 @@ extern u64 rank_mask[8];
 extern u64 file_mask[8];
 
 extern u64 passed_pawn_mask[2][64];
-extern u64 king_forward_mask[2][64];
 extern u64 file_forward_mask[2][64];
 extern u64 adjacent_files_mask[8];
 extern u64 adjacent_ranks_mask[8];

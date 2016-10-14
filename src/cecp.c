@@ -39,23 +39,6 @@ static int three_fold_repetition(Position* const pos)
 	return repeats >= 2;
 }
 
-static int insufficient_material(Position* const pos)
-{
-	u64 const * const bb = pos->bb;
-	if (bb[PAWN] || bb[QUEEN] || bb[ROOK])
-		return NO_RESULT;
-	if (   popcnt(bb[BISHOP] & bb[WHITE]) > 2
-	    || popcnt(bb[BISHOP] & bb[BLACK]) > 2)
-		return NO_RESULT;
-	if (   popcnt(bb[KNIGHT] & bb[WHITE]) > 2
-	    || popcnt(bb[KNIGHT] & bb[BLACK]) > 2)
-		return NO_RESULT;
-	if (   popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[WHITE]) > 1
-	    || popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[BLACK]) > 1)
-		return NO_RESULT;
-	return 1;
-}
-
 static int check_stale_and_mate(Position* const pos)
 {
 	static Movelist list;
