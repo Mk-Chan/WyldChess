@@ -123,10 +123,10 @@ static int mobility[7][32] = {
 static int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
 static int doubled_pawns       = S(-20, -30);
 static int isolated_pawn       = S(-10, -20);
-static int rook_7th_rank       = S(30, 40);
+static int rook_7th_rank       = S(40, 0);
 static int rook_open_file      = S(20, 0);
 static int rook_semi_open      = S(10, 0);
-static int pinned_piece        = S(-20, -5);
+static int pinned_piece        = S(-10, -5);
 static int pawn_blocked_bishop = S(-5, -5);
 
 typedef struct Eval_s {
@@ -193,6 +193,8 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 
 		// Bishop
 		curr_bb = bb[BISHOP] & c_bb & non_pinned_bb;
+		if (popcnt(curr_bb) == 1)
+			eval[c] += popcnt(color_sq_mask[sq_color[bitscan(curr_bb)]] & ev->pawn_bb[c]) * pawn_blocked_bishop;
 		while (curr_bb) {
 			sq       = bitscan(curr_bb);
 			curr_bb &= curr_bb - 1;
@@ -200,8 +202,6 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			atk_bb  |= Bmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
 			atk_bb  &= mobility_mask;
 			eval[c] += mobility[BISHOP][popcnt(atk_bb)];
-			if (!curr_bb)
-				eval[c] += popcnt(color_sq_mask[sq_color[sq]] & ev->pawn_bb[c]) * pawn_blocked_bishop;
 		}
 
 		// Rook
@@ -213,7 +213,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			atk_bb  |= Rmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
 			atk_bb  &= mobility_mask;
 			eval[c] += mobility[ROOK][popcnt(atk_bb)];
-			if (!(file_mask[file_of(sq)] & ev->pawn_bb[c])) {
+			if (!(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
 				eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
 					? rook_open_file
 					: rook_semi_open;
@@ -232,7 +232,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		}
 
 		// Pinned
-		curr_bb  = c_bb & ~non_pinned_bb;
+		curr_bb  = ~non_pinned_bb;
 		eval[c] += popcnt(curr_bb) * pinned_piece;
 		while (curr_bb) {
 			sq       = bitscan(curr_bb);
