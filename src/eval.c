@@ -97,63 +97,44 @@ int psq_val[8][64] = {
 	}
 };
 
+
 static int mobility[7][32] = {
 	{ 0 }, { 0 }, { 0 },
 	{	// Knight
-		S(-20, -30), S(-10, -10), S(0, 0), S(10, 5), S(15, 10), S(20, 15), S(25, 20), S(30, 25), S(30, 30)
+		S(-40, -40), S(-20, -20), S(-10, -10), S(0, 0), S(5, 5), S(15, 15), S(25, 25), S(35, 35), S(40, 40)
 	},
 	{	// Bishop
-		S(-40, -80), S(-30, -60), S(-20, -40), S(-10, -20), S(0, -10), S(5, 0), S(10, 10), S(15, 20),
-		S(20, 30), S(25, 40), S(30, 40), S(35, 40), S(40, 45), S(40, 45), S(40, 45), S(40, 45)
+		S(-80, -80), S(-60, -60), S(-40, -40), S(-20, -20), S(0, 0), S(5, 5), S(10, 10), S(15, 15),
+		S(20, 20), S(25, 25), S(30, 30), S(35, 35), S(40, 40), S(45, 45), S(40, 40), S(40, 40)
 	},
 	{
 		// Rook
-		S(-40, -80), S(-30, -50), S(-20, -20), S(-10, -10), S(0, 0), S(5, 10), S(10, 20), S(15, 30),
-		S(20, 40), S(25, 50), S(30, 60), S(35, 70), S(40, 70), S(40, 70), S(40, 80), S(40, 90)
+		S(-20, -80), S(-10, -60), S(0, -40), S(5, -20), S(5, -10), S(10, 0), S(10, 0), S(15, 5),
+		S(15, 10), S(20, 15), S(20, 20), S(25, 30), S(30, 40), S(35, 50), S(40, 60), S(40, 70)
 	},
 	{	// Queen
-		S(-30, -80), S(-10, -40), S(0, -10), S(2, 0), S(4, 5), S(6, 10), S(8, 15), S(10, 20),
+		S(-30, -60), S(-20, -40), S(-10, -20), S(0, 0), S(5, 5), S(5, 10), S(10, 15), S(10, 20),
 		S(12, 25), S(14, 30), S(16, 35), S(18, 40), S(20, 40), S(25, 40), S(25, 40), S(25, 40),
 		S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40),
 		S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40)
 	}
 };
 
-static int king_atk_weights[7] = { 0, 0, 0, 3, 2, 3, 4 };
-static int king_safety_table[100] = { // Taken from CPW(Glaurung 1.2)
-	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
-	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
-	 55,  62,  70,  80,  90, 100, 110, 120, 130, 140,
-	150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
-	250, 260, 270, 280, 290, 300, 310, 320, 330, 340,
-	350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
-	450, 460, 470, 480, 490, 500, 510, 520, 530, 540,
-	550, 560, 570, 580, 590, 600, 610, 620, 630, 640,
-	650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
-};
 static int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
 static int doubled_pawns       = S(-20, -30);
-static int isolated_pawn       = S(-10, -20);
-static int rook_7th_rank       = S(40, 0);
-static int rook_open_file      = S(20, 0);
-static int rook_semi_open_file = S(10, 0);
+static int isolated_pawn       = S(-10, -15);
+static int rook_open_file      = S(20, 10);
+static int rook_semi_open      = S(10, 5);
+static int pinned_piece        = S(-20, -5);
+static int pawn_blocked_bishop = S(-5, -5);
 
 typedef struct Eval_s {
 
-	int king_atk_counter[2];
-	u64 king_danger_bb[2];
 	u64 pawn_bb[2];
 	u64 passed_pawn_bb[2];
-	u64 atks_bb[2][7];
+	u64 p_atks_bb[2];
 
 } Eval;
-
-static int eval_passed_pawns(Position* const pos, Eval* const ev)
-{
-	int eval[2] = { S(0, 0), S(0, 0) };
-	return eval[WHITE] - eval[BLACK];
-}
 
 static int eval_pawns(Position* const pos, Eval* const ev)
 {
@@ -161,7 +142,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 	u64 bb, pawn_bb, opp_pawn_bb, atk_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
-		ev->atks_bb[c][PAWN]  = 0ULL;
+		ev->p_atks_bb[c]      = 0ULL;
 		ev->passed_pawn_bb[c] = 0ULL;
 		pawn_bb               = ev->pawn_bb[c];
 		opp_pawn_bb           = ev->pawn_bb[!c];
@@ -170,10 +151,10 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 			sq     = bitscan(bb);
 			bb    &= bb - 1;
 			atk_bb = p_atks[c][sq];
-			ev->atks_bb[c][PAWN] |= atk_bb;
-			if (pawn_bb & file_forward_mask[c][sq])
+			ev->p_atks_bb[c] |= atk_bb;
+			if (file_forward_mask[c][sq] & pawn_bb)
 				eval[c] += doubled_pawns;
-			if (!(pawn_bb & adjacent_files_mask[file_of(sq)]))
+			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
 			if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				ev->passed_pawn_bb[c] |= BB(sq);
@@ -187,57 +168,74 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 static int eval_pieces(Position* const pos, Eval* const ev)
 {
 	int eval[2]  = { S(0, 0), S(0, 0) };
-	eval[WHITE] += popcnt((pos->bb[ROOK] & pos->bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
-	eval[BLACK] += popcnt((pos->bb[ROOK] & pos->bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
 	int sq, c, pt;
-	u64 pinned_bb = pos->state->pinned_bb;
-	u64 full_bb   = pos->bb[FULL];
-	u64 bb, c_bb, atk_bb, opp_pawn_non_atks_mask, c_non_pawn_occupancy_bb;
+	u64* bb     = pos->bb;
+	u64 full_bb = pos->bb[FULL];
+	u64 curr_bb, c_bb, atk_bb, c_piece_occupancy_bb,
+	    non_pinned_bb, mobility_mask;
 	for (c = WHITE; c <= BLACK; ++c) {
-		c_bb = pos->bb[c];
-		c_non_pawn_occupancy_bb = c_bb & ~pos->bb[PAWN];
-		opp_pawn_non_atks_mask = ~ev->atks_bb[!c][PAWN];
+		c_bb                 =  bb[c];
+		c_piece_occupancy_bb = ~bb[PAWN] & c_bb;
+		non_pinned_bb        = ~(pos->state->pinned_bb & c_bb);
+		mobility_mask        = ~(full_bb | ev->p_atks_bb[!c]);
 
-		for (pt = KNIGHT; pt <= QUEEN; ++pt) {
-			ev->atks_bb[c][pt] = 0ULL;
-			bb = pos->bb[pt] & c_bb;
-			while (bb) {
-				sq                  = bitscan(bb);
-				bb                 &= bb - 1;
-				atk_bb              = get_atks(sq, pt, full_bb);
-				ev->atks_bb[c][pt] |= atk_bb;
-				atk_bb             &= opp_pawn_non_atks_mask;
+		curr_bb = bb[KNIGHT] & c_bb & non_pinned_bb;
+		while (curr_bb) {
+			sq       = bitscan(curr_bb);
+			curr_bb &= curr_bb - 1;
+			atk_bb   = n_atks[sq] & mobility_mask;
+			eval[c] += mobility[KNIGHT][popcnt(atk_bb)];
+		}
 
-				if (pt != KNIGHT)
-					atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & c_non_pawn_occupancy_bb));
+		curr_bb = bb[BISHOP] & c_bb & non_pinned_bb;
+		while (curr_bb) {
+			sq       = bitscan(curr_bb);
+			curr_bb &= curr_bb - 1;
+			atk_bb   = Bmagic(sq, full_bb);
+			atk_bb  |= Bmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
+			atk_bb  &= mobility_mask;
+			eval[c] += mobility[BISHOP][popcnt(atk_bb)];
+			if (!curr_bb)
+				eval[c] += popcnt(color_sq_mask[sq_color[sq]] & ev->pawn_bb[c]) * pawn_blocked_bishop;
+		}
 
-				ev->king_atk_counter[c] += popcnt(atk_bb & ev->king_danger_bb[!c]) * king_atk_weights[pt];
-
-				if (BB(sq) & pinned_bb)
-					atk_bb &= dirn_sqs[sq][pos->king_sq[c]];
-
-				atk_bb &= ~full_bb;
-				eval[c] += mobility[pt][popcnt(atk_bb)];
-
-				if (     pt == ROOK
-				    && !(file_forward_mask[c][sq] & ev->pawn_bb[c]))
-					eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
-							   ? rook_open_file
-							   : rook_semi_open_file;
+		curr_bb = bb[ROOK] & c_bb & non_pinned_bb;
+		while (curr_bb) {
+			sq       = bitscan(curr_bb);
+			curr_bb &= curr_bb - 1;
+			atk_bb   = Rmagic(sq, full_bb);
+			atk_bb  |= Rmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
+			atk_bb  &= mobility_mask;
+			eval[c] += mobility[ROOK][popcnt(atk_bb)];
+			if (!(file_mask[file_of(sq)] & ev->pawn_bb[c])) {
+				eval[c] += !(file_mask[file_of(sq)] & ev->pawn_bb[!c])
+					? rook_open_file
+					: rook_semi_open;
 			}
 		}
+
+		curr_bb = bb[QUEEN] & c_bb & non_pinned_bb;
+		while (curr_bb) {
+			sq       = bitscan(curr_bb);
+			curr_bb &= curr_bb - 1;
+			atk_bb   = Qmagic(sq, full_bb);
+			atk_bb  |= Qmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
+			atk_bb  &= mobility_mask;
+			eval[c] += mobility[QUEEN][popcnt(atk_bb)];
+		}
+
+		curr_bb  = c_bb & ~non_pinned_bb;
+		eval[c] += popcnt(curr_bb) * pinned_piece;
+		while (curr_bb) {
+			sq       = bitscan(curr_bb);
+			curr_bb &= curr_bb - 1;
+			pt       = piece_type(pos->board[sq]);
+			atk_bb   = get_atks(sq, pt, full_bb) & mobility_mask & dirn_sqs[sq][pos->king_sq[c]];
+			eval[c] += mobility[pt][popcnt(atk_bb)];
+		}
 	}
+
 	return eval[WHITE] - eval[BLACK];
-}
-
-static inline int max(int a, int b)
-{
-	return a > b ? a : b;
-}
-
-static inline int min(int a, int b)
-{
-	return a < b ? a : b;
 }
 
 int evaluate(Position* const pos)
@@ -245,20 +243,11 @@ int evaluate(Position* const pos)
 	Eval ev;
 	ev.pawn_bb[WHITE] = pos->bb[PAWN] & pos->bb[WHITE];
 	ev.pawn_bb[BLACK] = pos->bb[PAWN] & pos->bb[BLACK];
-	ev.king_atk_counter[WHITE] = 0;
-	ev.king_atk_counter[BLACK] = 0;
-	ev.king_danger_bb[WHITE] = k_atks[pos->king_sq[WHITE]];
-	ev.king_danger_bb[BLACK] = k_atks[pos->king_sq[BLACK]];
 
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
 	eval += eval_pawns(pos, &ev);
 	eval += eval_pieces(pos, &ev);
-	eval += eval_passed_pawns(pos, &ev);
 
-	ev.king_atk_counter[WHITE] = min(max(ev.king_atk_counter[WHITE], 0), 99);
-	ev.king_atk_counter[BLACK] = min(max(ev.king_atk_counter[WHITE], 0), 99);
-	int king_eval_diff = king_safety_table[ev.king_atk_counter[WHITE]] - king_safety_table[ev.king_atk_counter[BLACK]];
-
-	eval = phased_val(eval, pos->state->phase) + phased_val(S(king_eval_diff, 0), pos->state->phase);
+	eval = phased_val(eval, pos->state->phase);
 	return pos->stm == WHITE ? eval : -eval;
 }

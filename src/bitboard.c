@@ -59,6 +59,7 @@ u64 file_forward_mask[2][64];
 u64 adjacent_files_mask[8];
 u64 adjacent_ranks_mask[8];
 u64 color_sq_mask[2];
+u32 sq_color[64];
 
 static inline int file_diff(int sq1, int sq2)
 {
@@ -84,12 +85,14 @@ void init_masks()
 	color_sq_mask[BLACK] = 0ULL;
 	for (sq = 0; sq != 64; ++sq) {
 		if (   (rank_of(sq) % 2 == 0 && sq % 2 == 0)
-		    || (rank_of(sq) % 2 == 1 && sq % 2 == 1))
-			color_sq_mask[WHITE] |= BB(sq);
-		else
+		    || (rank_of(sq) % 2 == 1 && sq % 2 == 1)) {
 			color_sq_mask[BLACK] |= BB(sq);
+			sq_color[sq] = BLACK;
+		} else {
+			color_sq_mask[WHITE] |= BB(sq);
+			sq_color[sq] = WHITE;
+		}
 	}
-
 	int forward, i, offset;
 	for (c = WHITE; c <= BLACK; ++c) {
 		forward = c == WHITE ? 1 : -1;
