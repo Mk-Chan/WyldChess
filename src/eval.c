@@ -34,23 +34,23 @@ int psq_val[8][64] = {
 	{ 0 },
 	{ 0 },
 	{	 // Pawn
-		S(0, 0), S( 0, 0), S( 0, 0), S( 0, 0), S(0,  0), S( 0, 0), S( 0, 0), S(  0, 0),
-		S(0, 0), S( 0, 0), S( 0, 0), S( 0, 0), S(0,  0), S( 0, 0), S( 0, 0), S(0, 0),
-		S(0, 0), S( 0, 0), S(0, 0), S(0, 0), S(0, 0), S(0, 0), S( 0, 0), S(0, 0),
-		S(0, 0), S( 0, 0), S(0, 0), S(20, 0), S(20, 0), S(0, 0), S( 0, 0), S(0, 0),
-		S(0, 0), S( 0, 0), S(0, 0), S(20, 0), S(20, 0), S(0, 0), S( 0, 0), S(0, 0),
-		S(0, 0), S( 0, 0), S( 0, 0), S( 0, 0), S(0,  0), S( 0, 0), S( 0, 0), S(0, 0),
-		S(0, 0), S( 0, 0), S( 0, 0), S( 0, 0), S(0,  0), S( 0, 0), S( 0, 0), S(0, 0),
-		S(0, 0), S( 0, 0), S( 0, 0), S( 0, 0), S(0,  0), S( 0, 0), S( 0, 0), S(  0, 0)
+		S(0, 0),  S( 0,  0), S(0,  0), S( 0,  0), S( 0,  0), S(0,  0), S( 0,  0), S(0,  0),
+		S(0, -5), S(10, -5), S(5, -5), S( 0, -5), S( 0, -5), S(5, -5), S(10, -5), S(0, -5),
+		S(0, 5),  S( 0,  5), S(0,  5), S( 0,  5), S( 0,  5), S(0,  5), S( 0,  5), S(0,  5),
+		S(0, 10), S( 0, 10), S(0, 10), S(20, 10), S(20, 10), S(0, 10), S( 0, 10), S(0, 10),
+		S(0, 30), S( 0, 30), S(0, 30), S(20, 30), S(20, 30), S(0, 30), S( 0, 30), S(0, 30),
+		S(0, 50), S( 0, 50), S(0, 50), S( 0, 50), S( 0, 50), S(0, 50), S( 0, 50), S(0, 50),
+		S(0, 80), S( 0, 80), S(0, 80), S( 0, 80), S( 0, 80), S(0, 80), S( 0, 80), S(0, 80),
+		S(0, 0),  S( 0,  0), S(0,  0), S( 0,  0), S( 0,  0), S(0,  0), S( 0,  0), S(0,  0)
 	},
 	{	 // Knight
 		S(-50, -50), S(-30, -50), S(-10, -10), S(-10, -10), S(-10, -10), S(-20, -20), S(-30, -30), S(-50, -50),
-		S(-30, -30), S(-10, -10), S(0, 0), S(10, 10), S(10, 10), S(0, 0), S(-10, -10), S(-30,-30),
-		S(-10, -10), S(10, 10), S(20, 20), S(25, 25), S(25, 25), S(20, 20), S(10, 10), S(-10, -10),
-		S(0, 0), S(10, 10), S(30, 30), S(35, 35), S(35, 35), S(30, 30), S(10, 10), S(0, 0),
-		S(0, 0), S(15, 15), S(30, 30), S(40, 40), S(40, 40), S(30, 30), S(15, 15), S(0, 0),
-		S(0, 0), S(15, 15), S(40, 40), S(50, 50), S(50, 50), S(40, 40), S(15, 15), S(0, 0),
-		S(-10, -10), S(-5, -5), S(5, 5), S(5, 5), S(5, 5), S(5, 5), S(-5, -5), S(-10, -10),
+		S(-30, -30), S(-10, -10), S(  0,   0), S(10, 10), S(10, 10), S(0, 0), S(-10, -10), S(-30,-30),
+		S(-10, -10), S( 10,  10), S( 20,  20), S(25, 25), S(25, 25), S(20, 20), S(10, 10), S(-10, -10),
+		S(  0,   0), S( 10,  10), S( 30,  30), S(35, 35), S(35, 35), S(30, 30), S(10, 10), S(0, 0),
+		S(  0,   0), S( 15,  15), S( 30,  30), S(40, 40), S(40, 40), S(30, 30), S(15, 15), S(0, 0),
+		S(  0,   0), S( 15,  15), S( 40,  40), S(50, 50), S(50, 50), S(40, 40), S(15, 15), S(0, 0),
+		S(-10, -10), S( -5,  -5), S(  5,   5), S(5, 5), S(5, 5), S(5, 5), S(-5, -5), S(-10, -10),
 		S(-50, -50), S(-30, -50), S(-10, -10), S(-10, -10), S(-10, -10), S(-10, -10), S(-30, -30), S(-50, -50)
 	},
 	{	 // Bishop
@@ -97,7 +97,6 @@ int psq_val[8][64] = {
 	}
 };
 
-
 static int mobility[7][32] = {
 	{ 0 }, { 0 }, { 0 },
 	{	// Knight
@@ -120,6 +119,20 @@ static int mobility[7][32] = {
 	}
 };
 
+static int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
+	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
+	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
+	 55,  62,  70,  80,  90, 100, 110, 120, 130, 140,
+	150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
+	250, 260, 270, 280, 290, 300, 310, 320, 330, 340,
+	350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
+	450, 460, 470, 480, 490, 500, 510, 520, 530, 540,
+	550, 560, 570, 580, 590, 600, 610, 620, 630, 640,
+	650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
+	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
+};
+
+static int king_atk_wt[7]      = { 0, 0, 0, 4, 3, 2, 4 };
 static int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
 static int doubled_pawns       = S(-20, -30);
 static int isolated_pawn       = S(-10, -20);
@@ -134,6 +147,8 @@ typedef struct Eval_s {
 	u64 pawn_bb[2];
 	u64 passed_pawn_bb[2];
 	u64 p_atks_bb[2];
+	u64 king_danger_zone[2];
+	int king_atks[2];
 
 } Eval;
 
@@ -185,10 +200,12 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		// Knight
 		curr_bb = bb[KNIGHT] & c_bb & non_pinned_bb;
 		while (curr_bb) {
-			sq       = bitscan(curr_bb);
-			curr_bb &= curr_bb - 1;
-			atk_bb   = n_atks[sq] & mobility_mask;
-			eval[c] += mobility[KNIGHT][popcnt(atk_bb)];
+			sq                = bitscan(curr_bb);
+			curr_bb          &= curr_bb - 1;
+			atk_bb            = n_atks[sq];
+			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[KNIGHT];
+			atk_bb           &= mobility_mask;
+			eval[c]          += mobility[KNIGHT][popcnt(atk_bb)];
 		}
 
 		// Bishop
@@ -196,23 +213,25 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		if (popcnt(curr_bb) == 1)
 			eval[c] += popcnt(color_sq_mask[sq_color[bitscan(curr_bb)]] & ev->pawn_bb[c]) * pawn_blocked_bishop;
 		while (curr_bb) {
-			sq       = bitscan(curr_bb);
-			curr_bb &= curr_bb - 1;
-			atk_bb   = Bmagic(sq, full_bb);
-			atk_bb  |= Bmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
-			atk_bb  &= mobility_mask;
-			eval[c] += mobility[BISHOP][popcnt(atk_bb)];
+			sq                = bitscan(curr_bb);
+			curr_bb          &= curr_bb - 1;
+			atk_bb            = Bmagic(sq, full_bb);
+			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[BISHOP];
+			atk_bb           |= Bmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
+			atk_bb           &= mobility_mask;
+			eval[c]          += mobility[BISHOP][popcnt(atk_bb)];
 		}
 
 		// Rook
 		curr_bb = bb[ROOK] & c_bb & non_pinned_bb;
 		while (curr_bb) {
-			sq       = bitscan(curr_bb);
-			curr_bb &= curr_bb - 1;
-			atk_bb   = Rmagic(sq, full_bb);
-			atk_bb  |= Rmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
-			atk_bb  &= mobility_mask;
-			eval[c] += mobility[ROOK][popcnt(atk_bb)];
+			sq                = bitscan(curr_bb);
+			curr_bb          &= curr_bb - 1;
+			atk_bb            = Rmagic(sq, full_bb);
+			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[ROOK];
+			atk_bb           |= Rmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
+			atk_bb           &= mobility_mask;
+			eval[c]          += mobility[ROOK][popcnt(atk_bb)];
 			if (!(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
 				eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
 					? rook_open_file
@@ -223,39 +242,65 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		// Queen
 		curr_bb = bb[QUEEN] & c_bb & non_pinned_bb;
 		while (curr_bb) {
-			sq       = bitscan(curr_bb);
-			curr_bb &= curr_bb - 1;
-			atk_bb   = Qmagic(sq, full_bb);
-			atk_bb  |= Qmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
-			atk_bb  &= mobility_mask;
-			eval[c] += mobility[QUEEN][popcnt(atk_bb)];
+			sq                = bitscan(curr_bb);
+			curr_bb          &= curr_bb - 1;
+			atk_bb            = Qmagic(sq, full_bb);
+			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[QUEEN];
+			atk_bb           |= Qmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
+			atk_bb           &= mobility_mask;
+			eval[c]          += mobility[QUEEN][popcnt(atk_bb)];
 		}
 
 		// Pinned
 		curr_bb  = ~non_pinned_bb;
 		eval[c] += popcnt(curr_bb) * pinned_piece;
 		while (curr_bb) {
-			sq       = bitscan(curr_bb);
-			curr_bb &= curr_bb - 1;
-			pt       = piece_type(pos->board[sq]);
-			atk_bb   = get_atks(sq, pt, full_bb) & mobility_mask & dirn_sqs[sq][pos->king_sq[c]];
-			eval[c] += mobility[pt][popcnt(atk_bb)];
+			sq                = bitscan(curr_bb);
+			curr_bb          &= curr_bb - 1;
+			pt                = piece_type(pos->board[sq]);
+			atk_bb            = get_atks(sq, pt, full_bb);
+			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[pt];
+			atk_bb           &= dirn_sqs[sq][pos->king_sq[c]] & mobility_mask;
+			eval[c]          += mobility[pt][popcnt(atk_bb)];
 		}
 	}
 
 	return eval[WHITE] - eval[BLACK];
 }
 
+static inline int min(int a, int b)
+{
+	return (a < b ? a : b);
+}
+
+static inline int max(int a, int b)
+{
+	return (a > b ? a : b);
+}
+
 int evaluate(Position* const pos)
 {
+	if (   pos->state->phase < (MAX_PHASE / 5)
+	    && insufficient_material(pos))
+		return 0;
 	Eval ev;
-	ev.pawn_bb[WHITE] = pos->bb[PAWN] & pos->bb[WHITE];
-	ev.pawn_bb[BLACK] = pos->bb[PAWN] & pos->bb[BLACK];
+	int ksq, c;
+	for (c = WHITE; c <= BLACK; ++c) {
+		ksq                    = pos->king_sq[c];
+		ev.king_atks[c]        = 0;
+		ev.king_danger_zone[c] = k_atks[ksq];
+		ev.pawn_bb[c]          = pos->bb[PAWN] & pos->bb[c];
+	}
 
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
 	eval += eval_pawns(pos, &ev);
 	eval += eval_pieces(pos, &ev);
+	eval  = phased_val(eval, pos->state->phase);
 
-	eval = phased_val(eval, pos->state->phase);
+	for (c = WHITE; c <= BLACK; ++c)
+		ev.king_atks[c] = min(max(ev.king_atks[c], 0), 99);
+	int king_atk_diff = king_atk_table[ev.king_atks[WHITE]] - king_atk_table[ev.king_atks[BLACK]];
+	eval += phased_val((S(king_atk_diff, 0)), pos->state->phase);
+
 	return pos->stm == WHITE ? eval : -eval;
 }
