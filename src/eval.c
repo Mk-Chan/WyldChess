@@ -27,7 +27,7 @@ int piece_val[7] = {
 	S(300, 300),
 	S(310, 310),
 	S(550, 600),
-	S(1100, 1200)
+	S(1000, 1100)
 };
 
 int psq_val[8][64] = {
@@ -101,19 +101,19 @@ int psq_val[8][64] = {
 static int mobility[7][32] = {
 	{ 0 }, { 0 }, { 0 },
 	{	// Knight
-		S(-40, -40), S(-20, -20), S(-10, -10), S(0, 0), S(5, 5), S(15, 15), S(25, 25), S(35, 35), S(40, 40)
+		S(-20, -30), S(-10, -10), S(0, 0), S(10, 5), S(15, 10), S(20, 15), S(25, 20), S(30, 25), S(30, 30)
 	},
 	{	// Bishop
-		S(-80, -80), S(-60, -60), S(-40, -40), S(-20, -20), S(0, 0), S(5, 5), S(10, 10), S(15, 15),
-		S(20, 20), S(25, 25), S(30, 30), S(35, 35), S(40, 40), S(45, 45), S(40, 40), S(40, 40)
+		S(-40, -80), S(-30, -60), S(-20, -40), S(-10, -20), S(0, -10), S(5, 0), S(10, 10), S(15, 20),
+		S(20, 30), S(25, 40), S(30, 40), S(35, 40), S(40, 45), S(40, 45), S(40, 45), S(40, 45)
 	},
 	{
 		// Rook
-		S(-20, -80), S(-10, -60), S(0, -40), S(5, -20), S(5, -10), S(10, 0), S(10, 0), S(15, 5),
-		S(15, 10), S(20, 15), S(20, 20), S(25, 30), S(30, 40), S(35, 50), S(40, 60), S(40, 70)
+		S(-40, -80), S(-30, -50), S(-20, -20), S(-10, -10), S(0, 0), S(5, 10), S(10, 20), S(15, 30),
+		S(20, 40), S(25, 50), S(30, 60), S(35, 70), S(40, 70), S(40, 70), S(40, 80), S(40, 90)
 	},
 	{	// Queen
-		S(-30, -60), S(-20, -40), S(-10, -20), S(0, 0), S(5, 5), S(5, 10), S(10, 15), S(10, 20),
+		S(-30, -80), S(-10, -40), S(0, -10), S(2, 0), S(4, 5), S(6, 10), S(8, 15), S(10, 20),
 		S(12, 25), S(14, 30), S(16, 35), S(18, 40), S(20, 40), S(25, 40), S(25, 40), S(25, 40),
 		S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40),
 		S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40), S(25, 40)
@@ -122,9 +122,10 @@ static int mobility[7][32] = {
 
 static int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
 static int doubled_pawns       = S(-20, -30);
-static int isolated_pawn       = S(-10, -15);
-static int rook_open_file      = S(20, 10);
-static int rook_semi_open      = S(10, 5);
+static int isolated_pawn       = S(-10, -20);
+static int rook_7th_rank       = S(30, 40);
+static int rook_open_file      = S(20, 0);
+static int rook_semi_open      = S(10, 0);
 static int pinned_piece        = S(-20, -5);
 static int pawn_blocked_bishop = S(-5, -5);
 
@@ -168,6 +169,8 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 static int eval_pieces(Position* const pos, Eval* const ev)
 {
 	int eval[2]  = { S(0, 0), S(0, 0) };
+	eval[WHITE] += popcnt((pos->bb[ROOK] & pos->bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
+	eval[BLACK] += popcnt((pos->bb[ROOK] & pos->bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
 	int sq, c, pt;
 	u64* bb     = pos->bb;
 	u64 full_bb = pos->bb[FULL];
@@ -177,8 +180,9 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		c_bb                 =  bb[c];
 		c_piece_occupancy_bb = ~bb[PAWN] & c_bb;
 		non_pinned_bb        = ~(pos->state->pinned_bb & c_bb);
-		mobility_mask        = ~(full_bb | ev->p_atks_bb[!c]);
+		mobility_mask        = ~(c_bb | ev->p_atks_bb[!c]);
 
+		// Knight
 		curr_bb = bb[KNIGHT] & c_bb & non_pinned_bb;
 		while (curr_bb) {
 			sq       = bitscan(curr_bb);
@@ -187,6 +191,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			eval[c] += mobility[KNIGHT][popcnt(atk_bb)];
 		}
 
+		// Bishop
 		curr_bb = bb[BISHOP] & c_bb & non_pinned_bb;
 		while (curr_bb) {
 			sq       = bitscan(curr_bb);
@@ -199,6 +204,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				eval[c] += popcnt(color_sq_mask[sq_color[sq]] & ev->pawn_bb[c]) * pawn_blocked_bishop;
 		}
 
+		// Rook
 		curr_bb = bb[ROOK] & c_bb & non_pinned_bb;
 		while (curr_bb) {
 			sq       = bitscan(curr_bb);
@@ -208,12 +214,13 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			atk_bb  &= mobility_mask;
 			eval[c] += mobility[ROOK][popcnt(atk_bb)];
 			if (!(file_mask[file_of(sq)] & ev->pawn_bb[c])) {
-				eval[c] += !(file_mask[file_of(sq)] & ev->pawn_bb[!c])
+				eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
 					? rook_open_file
 					: rook_semi_open;
 			}
 		}
 
+		// Queen
 		curr_bb = bb[QUEEN] & c_bb & non_pinned_bb;
 		while (curr_bb) {
 			sq       = bitscan(curr_bb);
@@ -224,6 +231,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			eval[c] += mobility[QUEEN][popcnt(atk_bb)];
 		}
 
+		// Pinned
 		curr_bb  = c_bb & ~non_pinned_bb;
 		eval[c] += popcnt(curr_bb) * pinned_piece;
 		while (curr_bb) {
