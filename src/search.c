@@ -258,7 +258,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	int checked = pos->state->checkers_bb > 0ULL;
 
 	// Futility pruning
-	if (    depth <= 2
+	if (    depth <= 6
 	    && !ss->pv_node
 	    && !checked
 	    &&  ss->early_prune
@@ -398,13 +398,12 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			ss[1].pv_node = 0;
 		} else {
 			// Late Move Reduction (LMR) -- Not completely confident of this yet
-			if (0 &&    depth_left > 2
-			    &&  legal_moves > 3
-			    &&  move_type(*move) == NORMAL
+			if (    depth_left > 2
+			    &&  legal_moves > 1
 			    &&  order(*move) < INTERESTING
 			    && !ext
 			    && !checked) {
-				int reduction = 1 + (reduced_moves / 8) + (depth / 8);
+				int reduction = 1;// + (reduced_moves / 8) + (depth / 8);
 				++reduced_moves;
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
