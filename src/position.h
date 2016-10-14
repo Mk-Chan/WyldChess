@@ -51,28 +51,28 @@ typedef struct Movelist_s {
 
 typedef struct State_s {
 
-	Move     move;
-	u64      pinned_bb;
-	u64      checkers_bb;
-	u64      ep_sq_bb;
-	HashKey  pos_key;
-	u32      castling_rights;
-	u32      fifty_moves;
-	u32      full_moves;
-	int      phase;
-	int      piece_psq_eval[2];
+	Move    move;
+	u64     pinned_bb;
+	u64     checkers_bb;
+	u64     ep_sq_bb;
+	HashKey pos_key;
+	u32     castling_rights;
+	u32     fifty_moves;
+	u32     full_moves;
+	int     phase;
+	int     piece_psq_eval[2];
 
 } State;
 
 typedef struct Position_s {
 
-	u64      bb[9];
-	u32      hist_size;
-	u32      stm;
-	u32      king_sq[2];
-	u32      board[64];
-	State*   state;
-	State    hist[MAX_MOVES + MAX_PLY];
+	u64    bb[9];
+	u32    hist_size;
+	u32    stm;
+	u32    king_sq[2];
+	u32    board[64];
+	State* state;
+	State  hist[MAX_MOVES + MAX_PLY];
 
 #ifdef STATS
 	Stats    stats;

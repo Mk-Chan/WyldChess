@@ -258,7 +258,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	int checked = pos->state->checkers_bb > 0ULL;
 
 	// Futility pruning
-	if (    depth <= 6
+	if (    depth <= 2
 	    && !ss->pv_node
 	    && !checked
 	    &&  ss->early_prune
@@ -379,6 +379,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	int depth_left = depth - 1;
 	int ext;
+	int reduced_moves = 0;
 	for (move = list->moves; move != list->end; ++move) {
 		ext = 0;
 
@@ -403,7 +404,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			    &&  order(*move) < INTERESTING
 			    && !ext
 			    && !checked) {
-				int reduction = 1 + (legal_moves / 8) + (depth / 8);
+				int reduction = 1 + (reduced_moves / 8) + (depth / 8);
+				++reduced_moves;
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
 			else
@@ -492,13 +494,10 @@ static int search_root(Engine* const engine, Search_Stack* ss, int alpha, int be
 	    best_val    = -INFINITY,
 	    best_move   = 0,
 	    old_alpha   = alpha,
-	    legal_moves = 0;;
+	    legal_moves = 0;
 
-	//char str[5];
 	Move* move;
 	for (move = list->moves; move != list->end; ++move) {
-		//move_str(*move, str);
-		//fprintf(stdout, "%s = %llu\n", str, order(*move));
 		*move = get_move(*move);
 		if (!do_move(pos, *move))
 			continue;
@@ -535,6 +534,9 @@ static int search_root(Engine* const engine, Search_Stack* ss, int alpha, int be
 		tt_store(&tt, alpha, FLAG_UPPER, depth, get_move(best_move), pos->state->pos_key);
 	else
 		tt_store(&tt, alpha, FLAG_EXACT, depth, get_move(best_move), pos->state->pos_key);
+
+	if (legal_moves == 1)
+		ctlr->is_stopped = 1;
 
 	return alpha;
 }
