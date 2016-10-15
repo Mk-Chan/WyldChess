@@ -136,9 +136,9 @@ static int king_atk_wt[7]      = { 0, 0, 0, 4, 3, 2, 4 };
 static int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
 static int doubled_pawns       = S(-20, -30);
 static int isolated_pawn       = S(-10, -20);
-static int rook_7th_rank       = S(40, 0);
-static int rook_open_file      = S(20, 0);
-static int rook_semi_open      = S(10, 0);
+static int rook_7th_rank       = S(20, 5);
+static int rook_open_file      = S(30, 20);
+static int rook_semi_open      = S(10, 5);
 static int pinned_piece        = S(-10, -5);
 static int pawn_blocked_bishop = S(-5, -5);
 static int dual_bishops        = S(30, 50);
@@ -188,10 +188,11 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	eval[WHITE] += popcnt((pos->bb[ROOK] & pos->bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
 	eval[BLACK] += popcnt((pos->bb[ROOK] & pos->bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
 	int sq, c, pt;
-	u64* bb     = pos->bb;
-	u64 full_bb = pos->bb[FULL];
+	int king_atkrs[2] = { 0, 0 };
+	u64* bb           = pos->bb;
+	u64 full_bb       = pos->bb[FULL];
 	u64 curr_bb, c_bb, atk_bb, c_piece_occupancy_bb,
-	    non_pinned_bb, mobility_mask;
+	    non_pinned_bb, mobility_mask, king_atks;
 	for (c = WHITE; c <= BLACK; ++c) {
 		c_bb                 =  bb[c];
 		c_piece_occupancy_bb = ~bb[PAWN] & c_bb;
@@ -204,7 +205,9 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			sq                = bitscan(curr_bb);
 			curr_bb          &= curr_bb - 1;
 			atk_bb            = n_atks[sq];
-			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[KNIGHT];
+			king_atks         = atk_bb & ev->king_danger_zone[!c];
+			king_atkrs[c]    += king_atks > 0ULL;
+			ev->king_atks[c] += popcnt(king_atks) * king_atk_wt[KNIGHT];
 			atk_bb           &= mobility_mask;
 			eval[c]          += mobility[KNIGHT][popcnt(atk_bb)];
 		}
@@ -224,7 +227,9 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			sq                = bitscan(curr_bb);
 			curr_bb          &= curr_bb - 1;
 			atk_bb            = Bmagic(sq, full_bb);
-			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[BISHOP];
+			king_atks         = atk_bb & ev->king_danger_zone[!c];
+			king_atkrs[c]    += king_atks > 0ULL;
+			ev->king_atks[c] += popcnt(king_atks) * king_atk_wt[BISHOP];
 			atk_bb           |= Bmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
 			atk_bb           &= mobility_mask;
 			eval[c]          += mobility[BISHOP][popcnt(atk_bb)];
@@ -236,7 +241,9 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			sq                = bitscan(curr_bb);
 			curr_bb          &= curr_bb - 1;
 			atk_bb            = Rmagic(sq, full_bb);
-			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[ROOK];
+			king_atks         = atk_bb & ev->king_danger_zone[!c];
+			king_atkrs[c]    += king_atks > 0ULL;
+			ev->king_atks[c] += popcnt(king_atks) * king_atk_wt[ROOK];
 			atk_bb           |= Rmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
 			atk_bb           &= mobility_mask;
 			eval[c]          += mobility[ROOK][popcnt(atk_bb)];
@@ -253,7 +260,9 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			sq                = bitscan(curr_bb);
 			curr_bb          &= curr_bb - 1;
 			atk_bb            = Qmagic(sq, full_bb);
-			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[QUEEN];
+			king_atks         = atk_bb & ev->king_danger_zone[!c];
+			king_atkrs[c]    += king_atks > 0ULL;
+			ev->king_atks[c] += popcnt(king_atks) * king_atk_wt[QUEEN];
 			atk_bb           |= Qmagic(sq, full_bb ^ (atk_bb & c_piece_occupancy_bb));
 			atk_bb           &= mobility_mask;
 			eval[c]          += mobility[QUEEN][popcnt(atk_bb)];
@@ -267,10 +276,15 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			curr_bb          &= curr_bb - 1;
 			pt                = piece_type(pos->board[sq]);
 			atk_bb            = get_atks(sq, pt, full_bb);
-			ev->king_atks[c] += popcnt(atk_bb & ev->king_danger_zone[!c]) * king_atk_wt[pt];
+			king_atks         = atk_bb & ev->king_danger_zone[!c];
+			king_atkrs[c]    += king_atks > 0ULL;
+			ev->king_atks[c] += popcnt(king_atks) * king_atk_wt[pt];
 			atk_bb           &= dirn_sqs[sq][pos->king_sq[c]] & mobility_mask;
 			eval[c]          += mobility[pt][popcnt(atk_bb)];
 		}
+
+		if (king_atkrs[c] < 3)
+			ev->king_atks[c] = 0;
 	}
 
 	return eval[WHITE] - eval[BLACK];
@@ -307,6 +321,7 @@ int evaluate(Position* const pos)
 
 	for (c = WHITE; c <= BLACK; ++c)
 		ev.king_atks[c] = min(max(ev.king_atks[c], 0), 99);
+
 	int king_atk_diff = king_atk_table[ev.king_atks[WHITE]] - king_atk_table[ev.king_atks[BLACK]];
 	eval += phased_val((S(king_atk_diff, 0)), pos->state->phase);
 
