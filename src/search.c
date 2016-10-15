@@ -191,18 +191,18 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		order_cap(pos, move);
 	sort_moves(list->moves, list->end);
 
-	u32 legal = 0;
+	u32 legal_moves = 0;
 	for (move = list->moves; move != list->end; ++move) {
 		if (!do_move(pos, *move))
 			continue;
-		++legal;
+		++legal_moves;
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
 		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
 		if (val >= beta) {
 #ifdef STATS
-			if (legal == 1)
+			if (legal_moves == 1)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
 #endif
@@ -211,6 +211,10 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		if (val > alpha)
 			alpha = val;
 	}
+
+	if (    pos->state->checkers_bb
+	    && !legal_moves)
+		return -INFINITY + ss->ply;
 
 	return alpha;
 }
