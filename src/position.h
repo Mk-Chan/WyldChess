@@ -51,28 +51,28 @@ typedef struct Movelist_s {
 
 typedef struct State_s {
 
-	Move     move;
-	u64      pinned_bb;
-	u64      checkers_bb;
-	u64      ep_sq_bb;
-	HashKey  pos_key;
-	u32      castling_rights;
-	u32      fifty_moves;
-	u32      full_moves;
-	int      phase;
-	int      piece_psq_eval[2];
+	Move    move;
+	u64     pinned_bb;
+	u64     checkers_bb;
+	u64     ep_sq_bb;
+	HashKey pos_key;
+	u32     castling_rights;
+	u32     fifty_moves;
+	u32     full_moves;
+	int     phase;
+	int     piece_psq_eval[2];
 
 } State;
 
 typedef struct Position_s {
 
-	u64      bb[9];
-	u32      hist_size;
-	u32      stm;
-	u32      king_sq[2];
-	u32      board[64];
-	State*   state;
-	State    hist[MAX_MOVES + MAX_PLY];
+	u64    bb[9];
+	u32    hist_size;
+	u32    stm;
+	u32    king_sq[2];
+	u32    board[64];
+	State* state;
+	State  hist[MAX_MOVES + MAX_PLY];
 
 #ifdef STATS
 	Stats    stats;
@@ -254,6 +254,23 @@ static inline void set_pinned(Position* const pos)
 static inline void set_checkers(Position* pos)
 {
 	pos->state->checkers_bb = checkers(pos, !pos->stm);
+}
+
+static int insufficient_material(Position* const pos)
+{
+	u64 const * const bb = pos->bb;
+	if (bb[PAWN] || bb[QUEEN] || bb[ROOK])
+		return 0;
+	if (   popcnt(bb[BISHOP] & bb[WHITE]) > 2
+	    || popcnt(bb[BISHOP] & bb[BLACK]) > 2)
+		return 0;
+	if (   popcnt(bb[KNIGHT] & bb[WHITE]) > 2
+	    || popcnt(bb[KNIGHT] & bb[BLACK]) > 2)
+		return 0;
+	if (   popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[WHITE]) > 1
+	    || popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[BLACK]) > 1)
+		return 0;
+	return 1;
 }
 
 static inline void move_str(Move move, char str[6])
