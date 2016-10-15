@@ -40,6 +40,8 @@ u64 const MINOR_PROM  = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
 u64 const INTERESTING = 5000ULL;
 
+static int equal_cap_bound = 50;
+
 int min_attacker(Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {
 	u64 tmp;
 	int pt = PAWN - 1;
@@ -101,7 +103,6 @@ int see(Position const * const pos, Move move)
 
 static inline void order_cap(Position const * const pos, Move* const m)
 {
-	static int equal_cap_bound = 50;
 	int see_val = see(pos, *m);
 	if (see_val > equal_cap_bound)
 		encode_order(*m, (GOOD_CAP + see_val));
@@ -176,13 +177,14 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	if (eval > alpha)
 		alpha = eval;
 
-	int val;
+	int val, checked;
 	Movelist* list = &ss->list;
 	list->end      = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
+	checked = pos->state->checkers_bb > 0ULL;
 	Move* move;
-	if (pos->state->checkers_bb)
+	if (checked)
 		gen_check_evasions(pos, list);
 	else
 		gen_captures(pos, list);
@@ -193,6 +195,9 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 	u32 legal_moves = 0;
 	for (move = list->moves; move != list->end; ++move) {
+		if (  !checked
+		    && order(*move) < BAD_CAP)
+			break;
 		if (!do_move(pos, *move))
 			continue;
 		++legal_moves;
@@ -392,8 +397,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		++legal_moves;
 
 		// Check extension
-		if (checkers(pos, !pos->stm))
+		if (checkers(pos, !pos->stm)) {
+		    if ( (cap_type(*move) && order(*move) < BAD_CAP)
+		       || see(pos, *move) < -equal_cap_bound)
 			ext = 1;
+		}
 
 		// Principal Variation Search
 		if (legal_moves == 1) {
