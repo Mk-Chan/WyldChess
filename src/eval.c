@@ -141,6 +141,7 @@ static int rook_open_file      = S(20, 0);
 static int rook_semi_open      = S(10, 0);
 static int pinned_piece        = S(-10, -5);
 static int pawn_blocked_bishop = S(-5, -5);
+static int dual_bishops        = S(30, 50);
 
 typedef struct Eval_s {
 
@@ -209,9 +210,16 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		}
 
 		// Bishop
-		curr_bb = bb[BISHOP] & c_bb & non_pinned_bb;
-		if (popcnt(curr_bb) == 1)
+		curr_bb = bb[BISHOP] & c_bb;
+
+		if (   (curr_bb & color_sq_mask[WHITE])
+		    && (curr_bb & color_sq_mask[BLACK]))
+			eval[c] += dual_bishops;
+
+		else if (popcnt(curr_bb) == 1)
 			eval[c] += popcnt(color_sq_mask[sq_color[bitscan(curr_bb)]] & ev->pawn_bb[c]) * pawn_blocked_bishop;
+
+		curr_bb &= non_pinned_bb;
 		while (curr_bb) {
 			sq                = bitscan(curr_bb);
 			curr_bb          &= curr_bb - 1;
