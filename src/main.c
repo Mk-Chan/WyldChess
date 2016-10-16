@@ -1,5 +1,5 @@
 /*
- * WyldChess, a free Xboard/Winboard compatible chess engine
+ * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016  Manik Charan
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,6 +23,46 @@
 #include "tt.h"
 #include "engine.h"
 #include "timer.h"
+#include "tune.h"
+
+#define TUNABLES (6)
+
+typedef void (*fxn_ptr)(int, int);
+
+static char* eval_terms[TUNABLES] = {
+	"dp_mg",
+	"dp_eg",
+	"ip_mg",
+	"ip_eg",
+	"pb_mg",
+	"pb_eg"
+};
+
+static fxn_ptr fxns[TUNABLES / 2] = {
+	&set_param_doubled_pawns,
+	&set_param_isolated_pawn,
+	&set_param_pawn_blocked_bishop
+};
+
+void parse_tuner_input(char* ptr)
+{
+	static int mg = -1,
+		   eg = -1;
+	int i;
+	for (i = 0; i != TUNABLES; ++i) {
+		if (!strncmp(ptr, eval_terms[i], 4)) {
+			if (i & 1) {
+				eg = atoi(ptr + 5);
+				fprintf(stdout, "got %d\n", eg);
+				(*fxns[i >> 1])(mg, eg);
+			} else {
+				mg = atoi(ptr + 5);
+				fprintf(stdout, "got %d\n", mg);
+			}
+			break;
+		}
+	}
+}
 
 int main()
 {
@@ -37,14 +77,21 @@ int main()
 	init_masks();
 	tt_init(&tt, 1000000);
 
-	char input[8];
-	fgets(input, 8, stdin);
-	if (!strncmp(input, "xboard", 6))
-		cecp_loop();
-	else if (!strncmp(input, "uci", 3))
-		uci_loop();
-	else
-		fprintf(stdout, "Protocol not found!\n");
+	char input[100];
+	while (1) {
+		fgets(input, 100, stdin);
+		if (!strncmp(input, "setvalue", 8)) {
+			parse_tuner_input(input + 9);
+		} else if (!strncmp(input, "xboard", 6)) {
+			cecp_loop();
+			break;
+		} else if (!strncmp(input, "uci", 3)) {
+			uci_loop();
+			break;
+		} else {
+			fprintf(stdout, "Protocol not found!\n");
+		}
+	}
 
 	tt_destroy(&tt);
 	return 0;

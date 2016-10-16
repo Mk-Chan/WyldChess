@@ -1,5 +1,5 @@
 /*
- * WyldChess, a free Xboard/Winboard compatible chess engine
+ * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016  Manik Charan
  *
  * This program is free software: you can redistribute it and/or modify
@@ -39,6 +39,8 @@ u64 const KILLER_OLD  = 30000ULL;
 u64 const MINOR_PROM  = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
 u64 const INTERESTING = 5000ULL;
+
+static int equal_cap_bound = 50;
 
 int min_attacker(Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {
 	u64 tmp;
@@ -101,7 +103,6 @@ int see(Position const * const pos, Move move)
 
 static inline void order_cap(Position const * const pos, Move* const m)
 {
-	static int equal_cap_bound = 50;
 	int see_val = see(pos, *m);
 	if (see_val > equal_cap_bound)
 		encode_order(*m, (GOOD_CAP + see_val));
@@ -176,13 +177,14 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	if (eval > alpha)
 		alpha = eval;
 
-	int val;
+	int val, checked;
 	Movelist* list = &ss->list;
 	list->end      = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
+	checked = pos->state->checkers_bb > 0ULL;
 	Move* move;
-	if (pos->state->checkers_bb)
+	if (checked)
 		gen_check_evasions(pos, list);
 	else
 		gen_captures(pos, list);
@@ -191,18 +193,21 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		order_cap(pos, move);
 	sort_moves(list->moves, list->end);
 
-	u32 legal = 0;
+	u32 legal_moves = 0;
 	for (move = list->moves; move != list->end; ++move) {
+		if (  !checked
+		    && order(*move) < BAD_CAP)
+			break;
 		if (!do_move(pos, *move))
 			continue;
-		++legal;
+		++legal_moves;
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
 		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
 		if (val >= beta) {
 #ifdef STATS
-			if (legal == 1)
+			if (legal_moves == 1)
 				++pos->stats.first_beta_cutoffs;
 			++pos->stats.beta_cutoffs;
 #endif
@@ -211,6 +216,10 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		if (val > alpha)
 			alpha = val;
 	}
+
+	if (    pos->state->checkers_bb
+	    && !legal_moves)
+		return -INFINITY + ss->ply;
 
 	return alpha;
 }
@@ -388,8 +397,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		++legal_moves;
 
 		// Check extension
-		if (checkers(pos, !pos->stm))
+		if (checkers(pos, !pos->stm)) {
+		    if ( (cap_type(*move) && order(*move) < BAD_CAP)
+		       || see(pos, *move) < -equal_cap_bound)
 			ext = 1;
+		}
 
 		// Principal Variation Search
 		if (legal_moves == 1) {
