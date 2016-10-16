@@ -1,4 +1,5 @@
-CC_LINUX = clang
+CC_BASE  = clang
+CC_LINUX = gcc
 CC_WIN32 = mingw32-gcc
 CC_WIN64 = x86_64-w64-mingw32-gcc
 CFLAGS = -static -std=c11 -O3 -march=native
@@ -12,15 +13,12 @@ EXEC_WIN32 = binaries/$(MAKE_DATE)/$(EXEC_BASE)_win32_$(MAKE_DATE).exe
 EXEC_WIN64 = binaries/$(MAKE_DATE)/$(EXEC_BASE)_win64_$(MAKE_DATE).exe
 
 all:
-	$(CC_LINUX) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS)
+	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS)
 stats:
-	$(CC_LINUX) $(CFLAGS) $(SRC) -o $(EXEC_LINUX) $(DEPS) -DSTATS
-linux:
+	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS) -DSTATS
+targets:
+	$(shell rm -rf binaries)
 	$(shell mkdir -p binaries/$(MAKE_DATE))
-	$(CC_LINUX) $(CFLAGS) $(SRC) -o $(EXEC_LINUX) $(DEPS)
-win32:
-	$(shell mkdir -p binaries/$(MAKE_DATE))
+	$(CC_LINUX) $(CFLAGS_DIST) $(SRC) -o $(EXEC_LINUX) $(DEPS)
 	$(CC_WIN32) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN32) $(DEPS)
-win64:
-	$(shell mkdir -p binaries/$(MAKE_DATE))
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN64) $(DEPS)

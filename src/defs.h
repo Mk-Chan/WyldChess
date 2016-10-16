@@ -121,6 +121,9 @@ enum PromotionTypes {
 	TO_QUEEN  = QUEEN  << PROM_TYPE_SHIFT
 };
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
 #define make_piece(pt, c)  (pt | (c << 3))
 #define piece_type(piece)  (piece & 7)
 #define piece_color(piece) (piece >> 3)
