@@ -246,18 +246,24 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #ifdef STATS
 	++pos->stats.hash_probes;
 #endif
-	if (  (entry.key ^ entry.data) == pos->state->pos_key
-	    && DEPTH(entry.data) >= depth) {
+	if (   !ss->pv_node
+	    && (entry.key ^ entry.data) == pos->state->pos_key
+	    &&  DEPTH(entry.data) >= depth) {
 #ifdef STATS
-		++pos->stats.hash_hits;
+		++pos->stats.hash_cutoffs;
 #endif
 		int val  = SCORE(entry.data);
 		u64 flag = FLAG(entry.data);
 
-		if (flag == FLAG_LOWER && val >= beta)
+		if (flag == FLAG_EXACT)
+			return val;
+		else if (flag == FLAG_LOWER)
+			alpha = max(alpha, val);
+		else if (flag == FLAG_UPPER)
+			beta = min(beta, val);
+
+		if (alpha >= beta)
 			return beta;
-		else if (flag == FLAG_UPPER && val <= alpha)
-			return alpha;
 	}
 
 	++ctlr->nodes_searched;
@@ -485,7 +491,7 @@ static int search_root(Engine* const engine, Search_Stack* ss, int alpha, int be
 	if (  (entry.key ^ entry.data) == pos->state->pos_key
 	    && DEPTH(entry.data) >= depth) {
 #ifdef STATS
-		++pos->stats.hash_hits;
+		++pos->stats.hash_cutoffs;
 #endif
 		int val  = SCORE(entry.data);
 		u64 flag = FLAG(entry.data);
@@ -615,7 +621,7 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	pos->stats.first_beta_cutoffs = 0;
 	pos->stats.beta_cutoffs       = 0;
 	pos->stats.hash_probes        = 0;
-	pos->stats.hash_hits          = 0;
+	pos->stats.hash_cutoffs       = 0;
 #endif
 	u32 i;
 	Search_Stack* curr;
@@ -690,8 +696,8 @@ int begin_search(Engine* const engine)
 		((double)pos->stats.futility_cutoffs) / pos->stats.futility_tries);
 	fprintf(stdout, "null cutoff rate=%lf\n",
 		((double)pos->stats.null_cutoffs) / pos->stats.null_tries);
-	fprintf(stdout, "hash hit rate=%lf\n",
-		((double)pos->stats.hash_hits) / pos->stats.hash_probes);
+	fprintf(stdout, "hash cutoff rate=%lf\n",
+		((double)pos->stats.hash_cutoffs) / pos->stats.hash_probes);
 	fprintf(stdout, "ordering=%lf\n",
 		((double)pos->stats.first_beta_cutoffs) / (pos->stats.beta_cutoffs));
 #endif

@@ -34,14 +34,14 @@ int psq_val[8][64] = {
 	{ 0 },
 	{ 0 },
 	{	 // Pawn
-		S(0, 0),  S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S(0,  0),
-		S(0, -5), S(10, -5), S( 5, -5), S( 0, -5), S( 0, -5), S( 5, -5), S(10, -5), S(0, -5),
-		S(0, 5),  S( 0,  5), S(-5,  5), S( 0,  5), S( 0,  5), S(-5,  5), S( 0,  5), S(0,  5),
+		S(0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S(0,  0),
+		S(0, -5), S( 5, -5), S( 5, -5), S( 0, -5), S( 0, -5), S( 5, -5), S( 5, -5), S(0, -5),
+		S(0,  5), S( 0,  5), S( 0,  5), S( 0,  5), S( 0,  5), S( 0,  5), S( 0,  5), S(0,  5),
 		S(0, 10), S( 0, 10), S( 0, 10), S(20, 10), S(20, 10), S( 0, 10), S( 0, 10), S(0, 10),
 		S(0, 30), S( 0, 30), S( 0, 30), S(20, 30), S(20, 30), S( 0, 30), S( 0, 30), S(0, 30),
 		S(0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S(0, 50),
 		S(0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S(0, 80),
-		S(0, 0),  S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S(0,  0)
+		S(0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S(0,  0)
 	},
 	{	 // Knight
 		S(-50, -50), S(-30, -50), S(-10, -10), S(-10, -10), S(-10, -10), S(-20, -20), S(-30, -30), S(-50, -50),
@@ -136,9 +136,9 @@ int king_atk_wt[7]      = { 0, 0, 0, 4, 3, 2, 4 };
 int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
 int doubled_pawns       = S(-20, -30);
 int isolated_pawn       = S(-10, -20);
-int rook_7th_rank       = S(20, 5);
-int rook_open_file      = S(30, 20);
-int rook_semi_open      = S(10, 5);
+int rook_7th_rank       = S(40, 0);
+int rook_open_file      = S(30, 0);
+int rook_semi_open      = S(10, 0);
 int pinned_piece        = S(-10, -5);
 int pawn_blocked_bishop = S(-5, -5);
 int dual_bishops        = S(30, 50);
@@ -288,16 +288,6 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	}
 
 	return eval[WHITE] - eval[BLACK];
-}
-
-static inline int min(int a, int b)
-{
-	return (a < b ? a : b);
-}
-
-static inline int max(int a, int b)
-{
-	return (a > b ? a : b);
 }
 
 int evaluate(Position* const pos)
