@@ -2,7 +2,7 @@
 #define TT_H
 
 /*
- * WyldChess, a free Xboard/Winboard compatible chess engine
+ * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016  Manik Charan
  *
  * This program is free software: you can redistribute it and/or modify
