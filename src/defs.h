@@ -2,7 +2,7 @@
 #define DEF_H
 
 /*
- * WyldChess, a free Xboard/Winboard compatible chess engine
+ * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016  Manik Charan
  *
  * This program is free software: you can redistribute it and/or modify
@@ -161,5 +161,7 @@ enum PromotionTypes {
 #define eg_val(val) ((int)((val + 0x8000) >> 16))
 
 #define phased_val(val, phase) ((((mg_val(val) * phase) + (eg_val(val) * (MAX_PHASE - phase))) / MAX_PHASE))
+
+#define set_tunable(param) static inline void set_param_##param(int mg, int eg) { param = S(mg, eg); }
 
 #endif
