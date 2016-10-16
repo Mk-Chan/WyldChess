@@ -1,5 +1,5 @@
-#ifndef RANDOM_H
-#define RANDOM_H
+#ifndef TUNE_H
+#define TUNE_H
 
 /*
  * WyldChess, a free UCI/Xboard compatible chess engine
@@ -21,14 +21,22 @@
 
 #include "defs.h"
 
-extern void init_genrand64(u64 seed);
-extern u64 genrand64_int64(void);
-extern void init_zobrist_keys();
+extern int doubled_pawns;
+extern int isolated_pawn;
+extern int rook_7th_rank;
+extern int rook_open_file;
+extern int rook_semi_open;
+extern int pinned_piece;
+extern int pawn_blocked_bishop;
+extern int dual_bishops;
 
-extern HashKey psq_keys[2][8][64];
-extern HashKey castle_keys[16];
-extern HashKey stm_key;
-
-#define rng(void) (genrand64_int64())
+set_tunable(doubled_pawns)
+set_tunable(isolated_pawn)
+set_tunable(rook_7th_rank)
+set_tunable(rook_open_file)
+set_tunable(rook_semi_open)
+set_tunable(pinned_piece)
+set_tunable(pawn_blocked_bishop)
+set_tunable(dual_bishops)
 
 #endif

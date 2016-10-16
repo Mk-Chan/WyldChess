@@ -1,5 +1,5 @@
 /*
- * WyldChess, a free Xboard/Winboard compatible chess engine
+ * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016  Manik Charan
  *
  * This program is free software: you can redistribute it and/or modify
@@ -34,14 +34,14 @@ int psq_val[8][64] = {
 	{ 0 },
 	{ 0 },
 	{	 // Pawn
-		S(0, 0),  S( 0,  0), S(0,  0), S( 0,  0), S( 0,  0), S(0,  0), S( 0,  0), S(0,  0),
-		S(0, -5), S(10, -5), S(5, -5), S( 0, -5), S( 0, -5), S(5, -5), S(10, -5), S(0, -5),
-		S(0, 5),  S( 0,  5), S(0,  5), S( 0,  5), S( 0,  5), S(0,  5), S( 0,  5), S(0,  5),
-		S(0, 10), S( 0, 10), S(0, 10), S(20, 10), S(20, 10), S(0, 10), S( 0, 10), S(0, 10),
-		S(0, 30), S( 0, 30), S(0, 30), S(20, 30), S(20, 30), S(0, 30), S( 0, 30), S(0, 30),
-		S(0, 50), S( 0, 50), S(0, 50), S( 0, 50), S( 0, 50), S(0, 50), S( 0, 50), S(0, 50),
-		S(0, 80), S( 0, 80), S(0, 80), S( 0, 80), S( 0, 80), S(0, 80), S( 0, 80), S(0, 80),
-		S(0, 0),  S( 0,  0), S(0,  0), S( 0,  0), S( 0,  0), S(0,  0), S( 0,  0), S(0,  0)
+		S(0, 0),  S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S(0,  0),
+		S(0, -5), S(10, -5), S( 5, -5), S( 0, -5), S( 0, -5), S( 5, -5), S(10, -5), S(0, -5),
+		S(0, 5),  S( 0,  5), S(-5,  5), S( 0,  5), S( 0,  5), S(-5,  5), S( 0,  5), S(0,  5),
+		S(0, 10), S( 0, 10), S( 0, 10), S(20, 10), S(20, 10), S( 0, 10), S( 0, 10), S(0, 10),
+		S(0, 30), S( 0, 30), S( 0, 30), S(20, 30), S(20, 30), S( 0, 30), S( 0, 30), S(0, 30),
+		S(0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S( 0, 50), S(0, 50),
+		S(0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S( 0, 80), S(0, 80),
+		S(0, 0),  S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S( 0,  0), S(0,  0)
 	},
 	{	 // Knight
 		S(-50, -50), S(-30, -50), S(-10, -10), S(-10, -10), S(-10, -10), S(-20, -20), S(-30, -30), S(-50, -50),
@@ -97,7 +97,7 @@ int psq_val[8][64] = {
 	}
 };
 
-static int mobility[7][32] = {
+int mobility[7][32] = {
 	{ 0 }, { 0 }, { 0 },
 	{	// Knight
 		S(-20, -30), S(-10, -10), S(0, 0), S(10, 5), S(15, 10), S(20, 15), S(25, 20), S(30, 25), S(30, 30)
@@ -119,7 +119,7 @@ static int mobility[7][32] = {
 	}
 };
 
-static int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
+int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
 	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
 	 55,  62,  70,  80,  90, 100, 110, 120, 130, 140,
@@ -132,16 +132,16 @@ static int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
 
-static int king_atk_wt[7]      = { 0, 0, 0, 4, 3, 2, 4 };
-static int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
-static int doubled_pawns       = S(-20, -30);
-static int isolated_pawn       = S(-10, -20);
-static int rook_7th_rank       = S(20, 5);
-static int rook_open_file      = S(30, 20);
-static int rook_semi_open      = S(10, 5);
-static int pinned_piece        = S(-10, -5);
-static int pawn_blocked_bishop = S(-5, -5);
-static int dual_bishops        = S(30, 50);
+int king_atk_wt[7]      = { 0, 0, 0, 4, 3, 2, 4 };
+int passed_pawn[8]      = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 50), S(50, 80), S(80, 100), 0 };
+int doubled_pawns       = S(-20, -30);
+int isolated_pawn       = S(-10, -20);
+int rook_7th_rank       = S(20, 5);
+int rook_open_file      = S(30, 20);
+int rook_semi_open      = S(10, 5);
+int pinned_piece        = S(-10, -5);
+int pawn_blocked_bishop = S(-5, -5);
+int dual_bishops        = S(30, 50);
 
 typedef struct Eval_s {
 
