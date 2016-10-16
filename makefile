@@ -1,5 +1,4 @@
 CC_BASE  = clang
-CC_LINUX = gcc
 CC_WIN32 = mingw32-gcc
 CC_WIN64 = x86_64-w64-mingw32-gcc
 CFLAGS = -static -std=c11 -O3 -march=native
@@ -8,7 +7,6 @@ SRC = src/*.c
 DEPS = -pthread
 MAKE_DATE := $(shell date -Idate)
 EXEC_BASE  = wyldchess
-EXEC_LINUX = binaries/$(MAKE_DATE)/$(EXEC_BASE)_linux_$(MAKE_DATE)
 EXEC_WIN32 = binaries/$(MAKE_DATE)/$(EXEC_BASE)_win32_$(MAKE_DATE).exe
 EXEC_WIN64 = binaries/$(MAKE_DATE)/$(EXEC_BASE)_win64_$(MAKE_DATE).exe
 
@@ -19,6 +17,5 @@ stats:
 targets:
 	$(shell rm -rf binaries)
 	$(shell mkdir -p binaries/$(MAKE_DATE))
-	$(CC_LINUX) $(CFLAGS_DIST) $(SRC) -o $(EXEC_LINUX) $(DEPS)
 	$(CC_WIN32) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN32) $(DEPS)
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN64) $(DEPS)
