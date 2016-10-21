@@ -198,6 +198,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		if (  !checked
 		    && order(*move) < BAD_CAP)
 			break;
+
 		if (!do_move(pos, *move))
 			continue;
 		++legal_moves;
@@ -217,7 +218,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 			alpha = val;
 	}
 
-	if (    pos->state->checkers_bb
+	if (    checked
 	    && !legal_moves)
 		return -INFINITY + ss->ply;
 
@@ -466,7 +467,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	}
 
 	if (!legal_moves) {
-		if (pos->state->checkers_bb)
+		if (checked)
 			return -INFINITY + ss->ply;
 		else
 			return 0;
@@ -645,7 +646,7 @@ void setup_root_moves(Position* const pos, Search_Stack* const ss)
 
 int begin_search(Engine* const engine)
 {
-	int val, depth;
+	int val;
 	int best_move = 0;
 	u64 time;
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
@@ -655,9 +656,24 @@ int begin_search(Engine* const engine)
 	Controller* const ctlr = engine->ctlr;
 	setup_root_moves(pos, ss + 2);
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
+	int alpha, beta;
+	int asp_win_tries;
+	static int asp_wins[3] = { 50, 200, INFINITY };
+	int depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
-
-		val = search_root(engine, ss + 2, -INFINITY, +INFINITY, depth);
+		if (depth < 5) {
+			val = search_root(engine, ss + 2, -INFINITY, +INFINITY, depth);
+		} else {
+			asp_win_tries = 0;
+			while (1) {
+				alpha = val - asp_wins[asp_win_tries];
+				beta  = val + asp_wins[asp_win_tries];
+				val   = search_root(engine, ss + 2, alpha, beta, depth);
+				if (val > alpha && val < beta)
+					break;
+				++asp_win_tries;
+			}
+		}
 
 		if (   depth > 1
 		    && ctlr->is_stopped)
