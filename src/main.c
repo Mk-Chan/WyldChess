@@ -25,39 +25,78 @@
 #include "timer.h"
 #include "tune.h"
 
-#define TUNABLES (6)
-
 typedef void (*fxn_ptr)(int, int);
-
-static char* eval_terms[TUNABLES] = {
-	"dp_mg",
-	"dp_eg",
-	"ip_mg",
-	"ip_eg",
-	"pb_mg",
-	"pb_eg"
-};
-
-static fxn_ptr fxns[TUNABLES / 2] = {
-	&set_param_doubled_pawns,
-	&set_param_isolated_pawn,
-	&set_param_pawn_blocked_bishop
-};
 
 void parse_tuner_input(char* ptr)
 {
+	static char* eval_terms[10] = {
+		"dp_mg",
+		"dp_eg",
+		"ip_mg",
+		"ip_eg",
+		"pb_mg",
+		"pb_eg",
+		"nb_mg",
+		"nb_eg",
+		"do_mg",
+		"do_eg",
+	};
+
+	static fxn_ptr fxns[5] = {
+		&set_param_doubled_pawns,
+		&set_param_isolated_pawn,
+		&set_param_blocked_bishop,
+		&set_param_knight_blockade,
+		&set_param_defended_outpost
+	};
+
 	static int mg = -1,
 		   eg = -1;
+	char str[3];
+	str[2] = '\0';
 	int i;
-	for (i = 0; i != TUNABLES; ++i) {
+	for (i = 0; i != 10; ++i) {
 		if (!strncmp(ptr, eval_terms[i], 4)) {
 			if (i & 1) {
 				eg = atoi(ptr + 5);
-				fprintf(stdout, "got %d\n", eg);
 				(*fxns[i >> 1])(mg, eg);
+				str[0] = ptr[0];
+				str[1] = ptr[1];
+				fprintf(stdout, "set %s=%d,%d\n", str, mg, eg);
 			} else {
 				mg = atoi(ptr + 5);
-				fprintf(stdout, "got %d\n", mg);
+			}
+			break;
+		}
+	}
+}
+
+void parse_piece_val_tuner_input(char* ptr)
+{
+	static char* eval_terms[10] = {
+		"p_mg",
+		"p_eg",
+		"n_mg",
+		"n_eg",
+		"b_mg",
+		"b_eg",
+		"r_mg",
+		"r_eg",
+		"q_mg",
+		"q_eg"
+	};
+
+	static int mg    = -1,
+		   eg    = -1;
+	int i;
+	for (i = 0; i != 10; ++i) {
+		if (!strncmp(ptr, eval_terms[i], 4)) {
+			if (i & 1) {
+				eg = atoi(ptr + 5);
+				set_param_piece_val((i >> 1), mg, eg);
+				fprintf(stdout, "set %c=%d,%d\n", *ptr, mg, eg);
+			} else {
+				mg = atoi(ptr + 5);
 			}
 			break;
 		}
@@ -82,6 +121,8 @@ int main()
 		fgets(input, 100, stdin);
 		if (!strncmp(input, "setvalue", 8)) {
 			parse_tuner_input(input + 9);
+		} else if (!strncmp(input, "setpieceval", 11)) {
+			parse_piece_val_tuner_input(input + 12);
 		} else if (!strncmp(input, "xboard", 6)) {
 			cecp_loop();
 			break;

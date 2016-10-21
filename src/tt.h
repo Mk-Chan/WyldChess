@@ -34,13 +34,13 @@
 #define DEPTH(data) (((data) >> DEPTH_SHIFT) & 0x7f)
 #define SCORE(data) ((data) >> SCORE_SHIFT)
 
-typedef struct Entry_s {
+typedef struct TT_Entry_s {
 	u64 data;
 	u64 key; // Try implementing HashKey instead of just u64 later
-} Entry;
+} TT_Entry;
 
 typedef struct TT_s {
-	Entry* table;
+	TT_Entry* table;
 	u32    size;
 } TT;
 
@@ -48,7 +48,7 @@ TT tt;
 
 static inline void tt_init(TT* tt, u32 size)
 {
-	tt->table = malloc(sizeof(Entry) * size);
+	tt->table = malloc(sizeof(TT_Entry) * size);
 	tt->size  = size;
 }
 
@@ -59,14 +59,14 @@ static inline void tt_destroy(TT* tt)
 
 static inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
 {
-	u32 index    = key < tt->size ? key : key % tt->size;
-	Entry* entry = tt->table + index;
-	entry->data  = move | flag | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
-	entry->key   = key ^ entry->data;
+	u32 index       = key < tt->size ? key : key % tt->size;
+	TT_Entry* entry = tt->table + index;
+	entry->data     = move | flag | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
+	entry->key      = key ^ entry->data;
 }
 
 // Return a value instead of reference for thread safety
-static inline Entry tt_probe(TT* tt, u64 key)
+static inline TT_Entry tt_probe(TT* tt, u64 key)
 {
 	return tt->table[(key < tt->size ? key : key % tt->size)];
 }
