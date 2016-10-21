@@ -21,22 +21,16 @@
 
 #include "defs.h"
 
-extern int doubled_pawns;
-extern int isolated_pawn;
-extern int rook_7th_rank;
-extern int rook_open_file;
-extern int rook_semi_open;
-extern int pinned_piece;
-extern int pawn_blocked_bishop;
-extern int dual_bishops;
-
+set_tunable_arr(piece_val, 7)
 set_tunable(doubled_pawns)
 set_tunable(isolated_pawn)
 set_tunable(rook_7th_rank)
 set_tunable(rook_open_file)
 set_tunable(rook_semi_open)
 set_tunable(pinned_piece)
-set_tunable(pawn_blocked_bishop)
+set_tunable(blocked_bishop)
 set_tunable(dual_bishops)
+set_tunable(knight_blockade)
+set_tunable(defended_outpost)
 
 #endif
