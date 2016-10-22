@@ -300,11 +300,12 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    &&  ss->early_prune
 	    && !checked
 	    &&  pos->state->phase > (MAX_PHASE / 4)
-	    &&  evaluate(pos) >= beta) {
+	    &&  evaluate(pos) >= beta - mg_val(piece_val[PAWN])) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
-		int reduction = 4;
+		static int null_reduction[16] = { 0, 0, 0, 0, 4, 5, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 };
+		int reduction = (depth > 15 ? null_reduction[15] : null_reduction[depth]);
 		do_null_move(pos);
 		ss[1].early_prune = 0;
 		val = -search(engine, ss + 1, -beta, -beta + 1, depth - reduction);
@@ -396,7 +397,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	int depth_left = depth - 1;
 	int ext;
-	int reduced_moves = 0;
 	for (move = list->moves; move != list->end; ++move) {
 		ext = 0;
 
@@ -420,11 +420,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			// Late Move Reduction (LMR) -- Not completely confident of this yet
 			if (    depth_left > 2
 			    &&  legal_moves > 1
+			    &&  move_type(*move) == NORMAL
 			    &&  order(*move) < INTERESTING
 			    && !ext
 			    && !checked) {
-				int reduction = 1;// + (reduced_moves / 8) + (depth / 8);
-				++reduced_moves;
+				int reduction = ss->pv_node ? 1 : 1 + (legal_moves > 6) + (depth > 8);
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
 			else
