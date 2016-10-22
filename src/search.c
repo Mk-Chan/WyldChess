@@ -300,7 +300,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    &&  ss->early_prune
 	    && !checked
 	    &&  pos->state->phase > (MAX_PHASE / 4)
-	    &&  evaluate(pos) >= beta) {
+	    &&  evaluate(pos) >= beta - mg_val(piece_val[PAWN])) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
