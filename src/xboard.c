@@ -113,11 +113,12 @@ void* engine_loop_cecp(void* args)
 		switch (engine->target_state) {
 		case WAITING:
 			engine->curr_state = WAITING;
-			// Condition variable here is an ELO hit at lightning(1s + 0.01s) time controls
+#ifndef TEST
 			pthread_mutex_lock(&engine->mutex);
 			while (engine->target_state == WAITING)
 				pthread_cond_wait(&engine->sleep_cv, &engine->mutex);
 			pthread_mutex_unlock(&engine->mutex);
+#endif
 			break;
 
 		case THINKING:

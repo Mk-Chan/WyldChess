@@ -29,7 +29,7 @@ typedef void (*fxn_ptr)(int, int);
 
 void parse_tuner_input(char* ptr)
 {
-	static char* eval_terms[10] = {
+	static char* eval_terms[12] = {
 		"dp_mg",
 		"dp_eg",
 		"ip_mg",
@@ -40,14 +40,17 @@ void parse_tuner_input(char* ptr)
 		"nb_eg",
 		"do_mg",
 		"do_eg",
+		"pp_mg",
+		"pp_eg"
 	};
 
-	static fxn_ptr fxns[5] = {
+	static fxn_ptr fxns[6] = {
 		&set_param_doubled_pawns,
 		&set_param_isolated_pawn,
 		&set_param_blocked_bishop,
 		&set_param_knight_blockade,
-		&set_param_defended_outpost
+		&set_param_defended_outpost,
+		&set_param_pinned_piece
 	};
 
 	static int mg = -1,
@@ -114,7 +117,7 @@ int main()
 	init_atks();
 	init_intervening_sqs();
 	init_masks();
-	tt_init(&tt, 1000000);
+	tt_init(&tt, 10000000);
 
 	char input[100];
 	while (1) {
