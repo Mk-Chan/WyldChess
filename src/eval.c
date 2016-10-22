@@ -140,11 +140,11 @@ int isolated_pawn     = S(-10, -20);
 int rook_7th_rank     = S( 40,   0);
 int rook_open_file    = S( 30,   0);
 int rook_semi_open    = S( 10,   0);
-int pinned_piece      = S(-10,  -5);
 int blocked_bishop    = S( -5,  -5);
 int dual_bishops      = S( 30,  50);
-int knight_blockade   = S( 10,  12);
-int defended_outpost  = S(  3,   4);
+int knight_blockade   = S(  0,   0);
+int defended_outpost  = S(  0,   0);
+int pinned_piece      = S(  0,   0);
 
 typedef struct Eval_s {
 

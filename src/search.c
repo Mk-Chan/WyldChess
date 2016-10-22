@@ -396,7 +396,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	int depth_left = depth - 1;
 	int ext;
-	int reduced_moves = 0;
 	for (move = list->moves; move != list->end; ++move) {
 		ext = 0;
 
@@ -420,11 +419,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			// Late Move Reduction (LMR) -- Not completely confident of this yet
 			if (    depth_left > 2
 			    &&  legal_moves > 1
+			    &&  move_type(*move) == NORMAL
 			    &&  order(*move) < INTERESTING
 			    && !ext
 			    && !checked) {
-				int reduction = 1;// + (reduced_moves / 8) + (depth / 8);
-				++reduced_moves;
+				int reduction = ss->pv_node ? 1 : 1 + (legal_moves > 6) + (depth > 8);
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
 			else

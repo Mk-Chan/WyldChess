@@ -12,6 +12,8 @@ EXEC_WIN64 = binaries/$(MAKE_DATE)/$(EXEC_BASE)_win64_$(MAKE_DATE).exe
 
 all:
 	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS)
+test:
+	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS) -DTEST
 stats:
 	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS) -DSTATS
 targets:
