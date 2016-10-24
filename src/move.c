@@ -223,7 +223,6 @@ u32 do_move(Position* const pos, Move const m)
 		break;
 	}
 
-
 	pos->stm ^= 1;
 
 	next->castling_rights =  (curr->castling_rights & castle_perms[from]) & castle_perms[to];
