@@ -102,7 +102,7 @@ extern u32  do_usermove(Position* const pos, Move const m);
 
 extern void gen_quiets(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
-
+extern void gen_legal_moves(Position* pos, Movelist* list);
 extern void gen_check_evasions(Position* pos, Movelist* list);
 
 extern int evaluate(Position* const pos);
@@ -204,11 +204,12 @@ static inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 
 static inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
 {
-	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
-		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
-		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, occupancy))
-		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, occupancy))
-		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
+	return (  ( pos->bb[KNIGHT]                   & n_atks[sq])
+		| ( pos->bb[PAWN]                     & p_atks[!by_color][sq])
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & Rmagic(sq, occupancy))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & Bmagic(sq, occupancy))
+		| ( pos->bb[KING]                     & k_atks[sq]))
+		& pos->bb[by_color];
 }
 
 static inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
@@ -224,11 +225,12 @@ static inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occup
 static inline u64 checkers(Position const * const pos, u32 by_color)
 {
 	const u32 sq = pos->king_sq[!by_color];
-	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
-		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
-		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
-		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
-		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
+	return (  ( pos->bb[KNIGHT]                   & n_atks[sq])
+		| ( pos->bb[PAWN]                     & p_atks[!by_color][sq])
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & Rmagic(sq, pos->bb[FULL]))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & Bmagic(sq, pos->bb[FULL]))
+		| ( pos->bb[KING]                     & k_atks[sq]))
+		& pos->bb[by_color];
 }
 
 static inline void set_pinned(Position* const pos)

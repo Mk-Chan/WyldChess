@@ -33,23 +33,18 @@ static u64 perft_parallel(Position* const pos, int thread_num, int ply, u32 dept
 	list->end = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
-	}
-	else {
-		gen_quiets(pos, list);
-		gen_captures(pos, list);
-	}
-
 	u64 count = 0ULL;
-	Move* move;
 	if (depth == 1) {
-		for(move = list->moves; move < list->end; ++move) {
-			if(!do_move(pos, *move)) continue;
-			undo_move(pos);
-			++count;
-		}
+		gen_legal_moves(pos, list);
+		return list->end - list->moves;
 	} else {
+		Move* move;
+		if (pos->state->checkers_bb) {
+			gen_check_evasions(pos, list);
+		} else {
+			gen_quiets(pos, list);
+			gen_captures(pos, list);
+		}
 		if (ply) {
 			for(move = list->moves; move < list->end; ++move) {
 				if(!do_move(pos, *move)) continue;
@@ -67,7 +62,6 @@ static u64 perft_parallel(Position* const pos, int thread_num, int ply, u32 dept
 			}
 		}
 	}
-
 
 	return count;
 }
@@ -96,8 +90,7 @@ static u64 perft(Position* const pos, Movelist* list, u32 depth)
 	set_checkers(pos);
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
-	}
-	else {
+	} else {
 		gen_quiets(pos, list);
 		gen_captures(pos, list);
 	}

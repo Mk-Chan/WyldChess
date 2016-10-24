@@ -223,7 +223,7 @@ static void gen_pawn_quiets(Position* pos, Movelist* list)
 			if (   (single_push & rank_mask[RANK_1])
 			    || (single_push & rank_mask[RANK_8])) {
 				u32 const fr = bitscan(from),
-				    to = bitscan(single_push);
+				          to = bitscan(single_push);
 				add_move(move_prom(fr, to, TO_QUEEN), list);
 				add_move(move_prom(fr, to, TO_KNIGHT), list);
 				add_move(move_prom(fr, to, TO_ROOK), list);
@@ -299,4 +299,50 @@ void gen_quiets(Position* pos, Movelist* list)
 	}
 	from = pos->king_sq[c];
 	extract_moves(from, k_atks[from] & vacancy_mask, list);
+}
+
+// Idea from Stockfish 6
+static int legal_move(Position* const pos, Move move)
+{
+	u32 c    = pos->stm;
+	u32 from = from_sq(move);
+	u32 ksq  = pos->king_sq[c];
+	if (move_type(move) == ENPASSANT) {
+		u64 to_bb  = pos->state->ep_sq_bb;
+		u64 cap_bb = pawn_shift(to_bb, !c);
+		u64 pieces = (pos->bb[FULL] ^ BB(from) ^ cap_bb) | to_bb;
+
+		return     !(Rmagic(ksq, pieces) & ((pos->bb[QUEEN] | pos->bb[ROOK]) & pos->bb[!c]))
+			&& !(Bmagic(ksq, pieces) & ((pos->bb[QUEEN] | pos->bb[BISHOP]) & pos->bb[!c]));
+	} else if (from == ksq) {
+		return      move_type(move) == CASTLE
+			|| !atkers_to_sq(pos, to_sq(move), !c, pos->bb[FULL]);
+	} else {
+		return    !(pos->state->pinned_bb & BB(from))
+			|| (BB(to_sq(move)) & dirn_sqs[from][ksq]);
+	}
+}
+
+void gen_legal_moves(Position* pos, Movelist* list)
+{
+	if (pos->state->checkers_bb) {
+		gen_check_evasions(pos, list);
+	} else {
+		gen_quiets(pos, list);
+		gen_captures(pos, list);
+	}
+	int ksq       = pos->king_sq[pos->stm];
+	u64 pinned_bb = pos->state->pinned_bb;
+	Move* move;
+	for (move = list->moves; move < list->end;) {
+		if (  ((pinned_bb & BB(from_sq(*move)))
+		     || from_sq(*move) == ksq
+		     || move_type(*move) == ENPASSANT)
+		    && !legal_move(pos, *move)) {
+			--list->end;
+			*move = *list->end;
+		}
+		else
+			++move;
+	}
 }
