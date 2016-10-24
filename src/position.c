@@ -52,6 +52,20 @@ static inline u32 get_cr_from_char(char c)
 	}
 }
 
+Position get_position_copy(Position const * const pos)
+{
+	Position copy_pos;
+	memcpy(copy_pos.board, pos->board, sizeof(pos->board));
+	copy_pos.hist_size = pos->hist_size;
+	memcpy(copy_pos.bb, pos->bb, sizeof(pos->bb));
+	copy_pos.king_sq[WHITE] = pos->king_sq[WHITE];
+	copy_pos.king_sq[BLACK] = pos->king_sq[BLACK];
+	copy_pos.stm = pos->stm;
+	copy_pos.state = &copy_pos.hist[copy_pos.hist_size];
+	memcpy(copy_pos.state, pos->state, sizeof(State));
+	return copy_pos;
+}
+
 void init_pos(Position* pos)
 {
 	u32 i;
