@@ -86,9 +86,13 @@ extern int phase[7];
 extern void print_board(Position* pos);
 
 extern void performance_test(Position* const pos, u32 max_depth);
+#ifdef THREADS
+extern void performance_test_parallel(Position* const pos, u32 max_depth);
+#endif
 
 extern void init_pos(Position* pos);
 extern int set_pos(Position* pos, char* fen);
+extern Position get_position_copy(Position const * const pos);
 
 extern void do_null_move(Position* const pos);
 extern void undo_null_move(Position* const pos);

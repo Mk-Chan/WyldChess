@@ -27,10 +27,7 @@ set_tunable(isolated_pawn)
 set_tunable(rook_7th_rank)
 set_tunable(rook_open_file)
 set_tunable(rook_semi_open)
-set_tunable(pinned_piece)
 set_tunable(blocked_bishop)
 set_tunable(dual_bishops)
-set_tunable(knight_blockade)
-set_tunable(defended_outpost)
 
 #endif
