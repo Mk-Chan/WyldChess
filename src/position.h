@@ -100,6 +100,7 @@ extern void undo_move(Position* const pos);
 extern u32  do_move(Position* const pos, Move const m);
 extern u32  do_usermove(Position* const pos, Move const m);
 
+extern void gen_pseudo_legal_moves(Position* pos, Movelist* list);
 extern void gen_quiets(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
 extern void gen_legal_moves(Position* pos, Movelist* list);

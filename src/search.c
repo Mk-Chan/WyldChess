@@ -189,8 +189,14 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	else
 		gen_captures(pos, list);
 
-	for (move = list->moves; move < list->end; ++move)
-		order_cap(pos, move);
+	for (move = list->moves; move < list->end; ++move) {
+		if (   cap_type(*move)
+		    || move_type(*move) == ENPASSANT) {
+			order_cap(pos, move);
+		} else if (move_type(*move) == PROMOTION) {
+			encode_order(*move, (prom_type(*move) == QUEEN ? QUEEN_PROM : MINOR_PROM));
+		}
+	}
 	sort_moves(list->moves, list->end);
 
 	u32 legal_moves = 0;
@@ -201,6 +207,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 		if (!do_move(pos, *move))
 			continue;
+
 		++legal_moves;
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
 		undo_move(pos);
@@ -330,15 +337,10 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
-	Move* quiets;
-	if (checked) {
+	if (checked)
 		gen_check_evasions(pos, list);
-		quiets = list->moves;
-	} else {
-		gen_captures(pos, list);
-		quiets = list->end;
-		gen_quiets(pos, list);
-	}
+	else
+		gen_pseudo_legal_moves(pos, list);
 
 	// Internal iterative deepening
 #ifdef STATS
@@ -373,7 +375,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	for (move = list->moves; move != list->end; ++move) {
 		if (*move == tt_move) {
 			encode_order(*move, HASH_MOVE);
-		} else if (move < quiets) {
+		} else if (   cap_type(*move)
+			   || move_type(*move) == ENPASSANT) {
 			order_cap(pos, move);
 		} else {
 			if (*move == ss->killers[0])
