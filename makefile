@@ -20,7 +20,7 @@ test:
 stats:
 	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS) -DSTATS
 perft:
-	$(CC_PERFT) $(CFLAGS_PERFT) $(SRC) -o $(EXEC_BASE) $(DEPS_PERFT) -DPERFT -DTHREADS=2
+	$(CC_PERFT) $(CFLAGS_PERFT) $(SRC) -o $(EXEC_BASE) $(DEPS_PERFT) -DPERFT -DTHREADS=3
 targets:
 	$(shell rm -rf binaries)
 	$(shell mkdir -p binaries/$(MAKE_DATE))
