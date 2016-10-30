@@ -37,9 +37,8 @@ u64 const KILLER_OLD  = 40000ULL;
 u64 const QUEEN_PROM  = 30000ULL;
 u64 const EQUAL_CAP   = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
-u64 const INTERESTING = 9000ULL;
-u64 const PASSER_PUSH = 8000ULL;
-u64 const CASTLING    = 7000ULL;
+u64 const PASSER_PUSH = 9000ULL;
+u64 const CASTLING    = 8000ULL;
 
 static int equal_cap_bound = 50;
 
