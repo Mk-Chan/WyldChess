@@ -32,13 +32,13 @@ typedef struct Search_Stack_s {
 
 u64 const HASH_MOVE   = 60000ULL;
 u64 const GOOD_CAP    = 50000ULL;
-u64 const QUEEN_PROM  = 45000ULL;
-u64 const EQUAL_CAP   = 40000ULL;
-u64 const KILLER_PLY  = 35000ULL;
-u64 const KILLER_OLD  = 30000ULL;
-u64 const MINOR_PROM  = 20000ULL;
+u64 const KILLER_PLY  = 45000ULL;
+u64 const KILLER_OLD  = 40000ULL;
+u64 const QUEEN_PROM  = 30000ULL;
+u64 const EQUAL_CAP   = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
-u64 const INTERESTING = 5000ULL;
+u64 const PASSER_PUSH = 9000ULL;
+u64 const CASTLING    = 8000ULL;
 
 static int equal_cap_bound = 50;
 
@@ -189,8 +189,15 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	else
 		gen_captures(pos, list);
 
-	for (move = list->moves; move < list->end; ++move)
-		order_cap(pos, move);
+	for (move = list->moves; move < list->end; ++move) {
+		if (   cap_type(*move)
+		    || move_type(*move) == ENPASSANT) {
+			order_cap(pos, move);
+		} else if (   move_type(*move) == PROMOTION
+			   && prom_type(*move) == QUEEN) {
+			encode_order(*move, QUEEN_PROM);
+		}
+	}
 	sort_moves(list->moves, list->end);
 
 	u32 legal_moves = 0;
@@ -201,6 +208,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 		if (!do_move(pos, *move))
 			continue;
+
 		++legal_moves;
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
 		undo_move(pos);
@@ -243,12 +251,14 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	if (ss->ply >= MAX_PLY)
 		return evaluate(pos);
 
+	int pv_node = ss->pv_node;
+
 	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
 	Move tt_move   = 0;
 #ifdef STATS
 	++pos->stats.hash_probes;
 #endif
-	if (   !ss->pv_node
+	if (   !pv_node
 	    && (entry.key ^ entry.data) == pos->state->pos_key
 	    &&  DEPTH(entry.data) >= depth) {
 #ifdef STATS
@@ -278,7 +288,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	// Futility pruning
 	if (    depth <= 6
-	    && !ss->pv_node
+	    && !pv_node
 	    && !checked
 	    &&  ss->early_prune) {
 #ifdef STATS
@@ -296,7 +306,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	// Null move pruning
 	if (    depth >= 4
-	    && !ss->pv_node
+	    && !pv_node
 	    &&  ss->early_prune
 	    && !checked
 	    &&  pos->state->phase > (MAX_PHASE / 4)
@@ -305,7 +315,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		++pos->stats.null_tries;
 #endif
 		static int null_reduction[16] = { 0, 0, 0, 0, 4, 5, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 };
-		int reduction = (depth > 15 ? null_reduction[15] : null_reduction[depth]);
+		int reduction = null_reduction[min(depth, 15)];
 		do_null_move(pos);
 		ss[1].early_prune = 0;
 		val = -search(engine, ss + 1, -beta, -beta + 1, depth - reduction);
@@ -322,6 +332,25 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		}
 	}
 
+	// Internal iterative deepening
+#ifdef STATS
+	int iid = 0;
+#endif
+	if (   !tt_move
+	    &&  depth > (pv_node ? 3 : 5)) {
+#ifdef STATS
+		iid = 1;
+		++pos->stats.iid_tries;
+#endif
+		ss->early_prune = 0;
+		ss->pv_node     = 1;
+		search(engine, ss, alpha, beta, depth - 2);
+		ss->pv_node     = pv_node;
+		ss->early_prune = 1;
+
+		tt_move = get_move(entry.data);
+	}
+
 	int old_alpha   = alpha,
 	    best_move   = 0,
 	    best_val    = -INFINITY,
@@ -330,50 +359,31 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
-	Move* quiets;
-	if (checked) {
+	if (checked)
 		gen_check_evasions(pos, list);
-		quiets = list->moves;
-	} else {
-		gen_captures(pos, list);
-		quiets = list->end;
-		gen_quiets(pos, list);
-	}
-
-	// Internal iterative deepening
-#ifdef STATS
-	int iid = 0;
-#endif
-	if (   !tt_move
-	    &&  depth > (ss->pv_node ? 3 : 5)) {
-#ifdef STATS
-		iid = 1;
-		++pos->stats.iid_tries;
-#endif
-		ss->early_prune = 0;
-		search(engine, ss, alpha, beta, depth - 2);
-		ss->early_prune = 1;
-
-		tt_move = get_move(entry.data);
-	}
+	else
+		gen_pseudo_legal_moves(pos, list);
 
 	/*
 	 *  Move ordering:
-	 *  1. Hash move
-	 *  2. Good captures
-	 *  3. Queen promotions
-	 *  4. Equal captures
-	 *  5. Killer moves
-	 *  6. Killer moves from 2 plies ago
-	 *  7. Minor promotions
-	 *  8. Bad captures
-	 *  9. Rest
+	 *   1. Hash move
+	 *   2. Good captures
+	 *   3. Queen promotions
+	 *   4. Equal captures
+	 *   5. Killer moves
+	 *   6. Killer moves from 2 plies ago
+	 *   7. Minor promotions
+	 *   8. Bad captures
+	 *   9. Passed pawn push
+	 *  10. Castling
+	 *  11. Rest
 	 */
 	Move* move;
 	for (move = list->moves; move != list->end; ++move) {
 		if (*move == tt_move) {
 			encode_order(*move, HASH_MOVE);
-		} else if (move < quiets) {
+		} else if (   cap_type(*move)
+			   || move_type(*move) == ENPASSANT) {
 			order_cap(pos, move);
 		} else {
 			if (*move == ss->killers[0])
@@ -388,26 +398,34 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			else if (*move == (ss - 2)->killers[1])
 				encode_order(*move, KILLER_OLD);
 
-			else if (move_type(*move) == PROMOTION)
-				encode_order(*move, (prom_type(*move) == QUEEN ? QUEEN_PROM : MINOR_PROM));
+			else if (   move_type(*move) == PROMOTION
+				 && prom_type(*move) == QUEEN)
+				encode_order(*move, QUEEN_PROM);
+
+			else if (move_type(*move) == CASTLE)
+				encode_order(*move, CASTLING);
+
+			else if (     piece_type(*move) == PAWN
+				 && !(passed_pawn_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[!pos->stm]))
+				encode_order(*move, PASSER_PUSH);
 		}
 	}
 
 	sort_moves(list->moves, list->end);
 
 	int depth_left = depth - 1;
-	int ext;
+	int ext, checking_move;
 	for (move = list->moves; move != list->end; ++move) {
 		ext = 0;
 
 		if (!do_move(pos, *move))
 			continue;
 		++legal_moves;
+		checking_move = (checkers(pos, !pos->stm) > 0ULL);
 
 		// Check extension
-		if (checkers(pos, !pos->stm)) {
-		    if ( (cap_type(*move) && order(*move) > BAD_CAP)
-		       || see(pos, *move) >= -equal_cap_bound)
+		if (checking_move) {
+		    if ((cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound))
 			ext = 1;
 		}
 
@@ -420,11 +438,13 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			// Late Move Reduction (LMR) -- Not completely confident of this yet
 			if (    depth_left > 2
 			    &&  legal_moves > 1
-			    &&  move_type(*move) == NORMAL
-			    &&  order(*move) < INTERESTING
-			    && !ext
+			    && !cap_type(*move)
+			    &&  move_type(*move) != PROMOTION
+			    && *move != ss->killers[0]
+			    && *move != ss->killers[1]
+			    && !checking_move
 			    && !checked) {
-				int reduction = ss->pv_node ? 1 : 1 + (legal_moves > 6) + (depth > 8);
+				int reduction = pv_node ? 1 : 1 + (legal_moves > 6) + (depth > 8);
 				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
 			}
 			else
@@ -438,6 +458,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		}
 
 		undo_move(pos);
+		*move = get_move(*move);
 
 		if (ctlr->is_stopped)
 			return 0;
@@ -453,9 +474,9 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			if (  !cap_type(*move)
 			    && move_type(*move) != PROMOTION) {
 				ss->killers[1] = ss->killers[0];
-				ss->killers[0] = get_move(*move);
+				ss->killers[0] = *move;
 			}
-			tt_store(&tt, val, FLAG_LOWER, depth, get_move(*move), pos->state->pos_key);
+			tt_store(&tt, val, FLAG_LOWER, depth, *move, pos->state->pos_key);
 			return beta;
 		}
 		if (val > best_val) {
@@ -474,9 +495,9 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	}
 
 	if (old_alpha == alpha)
-		tt_store(&tt, alpha, FLAG_UPPER, depth, get_move(best_move), pos->state->pos_key);
+		tt_store(&tt, alpha, FLAG_UPPER, depth, best_move, pos->state->pos_key);
 	else
-		tt_store(&tt, alpha, FLAG_EXACT, depth, get_move(best_move), pos->state->pos_key);
+		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
 
 	return alpha;
 }
@@ -639,8 +660,9 @@ void setup_root_moves(Position* const pos, Search_Stack* const ss)
 	for (move = list->moves; move != list->end; ++move) {
 		if (move < quiets)
 			order_cap(pos, move);
-		else if (move_type(*move) == PROMOTION)
-			encode_order(*move, (prom_type(*move) == QUEEN ? QUEEN_PROM : MINOR_PROM));
+		else if (   move_type(*move) == PROMOTION
+			 && prom_type(*move) == QUEEN)
+			encode_order(*move, QUEEN_PROM);
 	}
 }
 
@@ -679,9 +701,9 @@ int begin_search(Engine* const engine)
 		    && ctlr->is_stopped)
 			break;
 
-		time = (curr_time() - ctlr->search_start_time) / 10;
+		time = curr_time() - ctlr->search_start_time;
 		if (engine->protocol == CECP)
-			fprintf(stdout, "%d %d %llu %llu", depth, val, time, ctlr->nodes_searched);
+			fprintf(stdout, "%d %d %llu %llu", depth, val, time / 10, ctlr->nodes_searched);
 		else if (engine->protocol == UCI)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);

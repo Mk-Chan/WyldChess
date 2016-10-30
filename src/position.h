@@ -86,9 +86,13 @@ extern int phase[7];
 extern void print_board(Position* pos);
 
 extern void performance_test(Position* const pos, u32 max_depth);
+#ifdef THREADS
+extern void performance_test_parallel(Position* const pos, u32 max_depth);
+#endif
 
 extern void init_pos(Position* pos);
 extern int set_pos(Position* pos, char* fen);
+extern Position get_position_copy(Position const * const pos);
 
 extern void do_null_move(Position* const pos);
 extern void undo_null_move(Position* const pos);
@@ -96,9 +100,10 @@ extern void undo_move(Position* const pos);
 extern u32  do_move(Position* const pos, Move const m);
 extern u32  do_usermove(Position* const pos, Move const m);
 
+extern void gen_pseudo_legal_moves(Position* pos, Movelist* list);
 extern void gen_quiets(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
-
+extern void gen_legal_moves(Position* pos, Movelist* list);
 extern void gen_check_evasions(Position* pos, Movelist* list);
 
 extern int evaluate(Position* const pos);
@@ -200,11 +205,12 @@ static inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 
 static inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
 {
-	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
-		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
-		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, occupancy))
-		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, occupancy))
-		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
+	return (  ( pos->bb[KNIGHT]                   & n_atks[sq])
+		| ( pos->bb[PAWN]                     & p_atks[!by_color][sq])
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & Rmagic(sq, occupancy))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & Bmagic(sq, occupancy))
+		| ( pos->bb[KING]                     & k_atks[sq]))
+		& pos->bb[by_color];
 }
 
 static inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
@@ -220,11 +226,12 @@ static inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occup
 static inline u64 checkers(Position const * const pos, u32 by_color)
 {
 	const u32 sq = pos->king_sq[!by_color];
-	return (  ( pos->bb[KNIGHT]                   & pos->bb[by_color] & n_atks[sq])
-		| ( pos->bb[PAWN]                     & pos->bb[by_color] & p_atks[!by_color][sq])
-		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & pos->bb[by_color] & Rmagic(sq, pos->bb[FULL]))
-		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & pos->bb[by_color] & Bmagic(sq, pos->bb[FULL]))
-		| ( pos->bb[KING]                     & pos->bb[by_color] & k_atks[sq]));
+	return (  ( pos->bb[KNIGHT]                   & n_atks[sq])
+		| ( pos->bb[PAWN]                     & p_atks[!by_color][sq])
+		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & Rmagic(sq, pos->bb[FULL]))
+		| ((pos->bb[BISHOP] | pos->bb[QUEEN]) & Bmagic(sq, pos->bb[FULL]))
+		| ( pos->bb[KING]                     & k_atks[sq]))
+		& pos->bb[by_color];
 }
 
 static inline void set_pinned(Position* const pos)
@@ -256,16 +263,13 @@ static inline void set_checkers(Position* pos)
 	pos->state->checkers_bb = checkers(pos, !pos->stm);
 }
 
-static int insufficient_material(Position* const pos)
+static inline int insufficient_material(Position* const pos)
 {
 	u64 const * const bb = pos->bb;
 	if (bb[PAWN] || bb[QUEEN] || bb[ROOK])
 		return 0;
-	if (   popcnt(bb[BISHOP] & bb[WHITE]) > 2
-	    || popcnt(bb[BISHOP] & bb[BLACK]) > 2)
-		return 0;
-	if (   popcnt(bb[KNIGHT] & bb[WHITE]) > 2
-	    || popcnt(bb[KNIGHT] & bb[BLACK]) > 2)
+	if (   popcnt(bb[BISHOP] & bb[WHITE]) > 1
+	    || popcnt(bb[BISHOP] & bb[BLACK]) > 1)
 		return 0;
 	if (   popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[WHITE]) > 1
 	    || popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[BLACK]) > 1)

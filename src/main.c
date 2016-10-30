@@ -29,28 +29,19 @@ typedef void (*fxn_ptr)(int, int);
 
 void parse_tuner_input(char* ptr)
 {
-	static char* eval_terms[12] = {
+	static char* eval_terms[6] = {
 		"dp_mg",
 		"dp_eg",
 		"ip_mg",
 		"ip_eg",
 		"pb_mg",
 		"pb_eg",
-		"nb_mg",
-		"nb_eg",
-		"do_mg",
-		"do_eg",
-		"pp_mg",
-		"pp_eg"
 	};
 
-	static fxn_ptr fxns[6] = {
+	static fxn_ptr fxns[3] = {
 		&set_param_doubled_pawns,
 		&set_param_isolated_pawn,
 		&set_param_blocked_bishop,
-		&set_param_knight_blockade,
-		&set_param_defended_outpost,
-		&set_param_pinned_piece
 	};
 
 	static int mg = -1,
@@ -58,7 +49,7 @@ void parse_tuner_input(char* ptr)
 	char str[3];
 	str[2] = '\0';
 	int i;
-	for (i = 0; i != 10; ++i) {
+	for (i = 0; i != 6; ++i) {
 		if (!strncmp(ptr, eval_terms[i], 4)) {
 			if (i & 1) {
 				eg = atoi(ptr + 5);
@@ -96,8 +87,8 @@ void parse_piece_val_tuner_input(char* ptr)
 		if (!strncmp(ptr, eval_terms[i], 4)) {
 			if (i & 1) {
 				eg = atoi(ptr + 5);
-				set_param_piece_val((i >> 1), mg, eg);
-				fprintf(stdout, "set %c=%d,%d\n", *ptr, mg, eg);
+				set_param_piece_val((i >> 1) + 2, mg, eg);
+				fprintf(stdout, "set %c=%d,%d\n", *ptr, mg_val(piece_val[(i >> 1) + 2]), eg_val(piece_val[(i >> 1) + 2]));
 			} else {
 				mg = atoi(ptr + 5);
 			}
@@ -106,7 +97,7 @@ void parse_piece_val_tuner_input(char* ptr)
 	}
 }
 
-int main()
+int main(int argc, char** argv)
 {
 	setbuf(stdout, NULL);
 	setbuf(stdin, NULL);
@@ -117,8 +108,25 @@ int main()
 	init_atks();
 	init_intervening_sqs();
 	init_masks();
+#ifdef PERFT
+	Position pos;
+	init_pos(&pos);
+	set_pos(&pos, INITIAL_POSITION);
+	int depth;
+	if (argc > 1) {
+		depth = atoi(argv[1]);
+	} else {
+		fprintf(stdout, "Usage: ./wyldchess <depth>\n");
+		return 1;
+	}
+#ifdef THREADS
+	performance_test_parallel(&pos, atoi(argv[1]));
+#else
+	performance_test(&pos, atoi(argv[1]));
+#endif
+	return 0;
+#endif
 	tt_init(&tt, 10000000);
-
 	char input[100];
 	while (1) {
 		fgets(input, 100, stdin);
