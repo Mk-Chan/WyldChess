@@ -359,10 +359,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
-	if (checked)
-		gen_check_evasions(pos, list);
-	else
-		gen_pseudo_legal_moves(pos, list);
+	gen_pseudo_legal_moves(pos, list);
 
 	/*
 	 *  Move ordering:
@@ -572,12 +569,7 @@ static int valid_move(Position* const pos, Move* move)
 	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, &list);
-	} else {
-		gen_quiets(pos, &list);
-		gen_captures(pos, &list);
-	}
+	gen_pseudo_legal_moves(pos, &list);
 	for (Move* m = list.moves; m != list.end; ++m) {
 		if (   from_sq(*m) == from
 		    && to_sq(*m) == to
@@ -645,20 +637,13 @@ void setup_root_moves(Position* const pos, Search_Stack* const ss)
 {
 	Movelist* list = &ss->list;
 	list->end      = list->moves;
-	Move* quiets;
 	set_pinned(pos);
 	set_checkers(pos);
-	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, list);
-	} else {
-		gen_captures(pos, list);
-		quiets = list->end;
-		gen_quiets(pos, list);
-	}
+	gen_pseudo_legal_moves(pos, list);
 
 	Move* move;
 	for (move = list->moves; move != list->end; ++move) {
-		if (move < quiets)
+		if (cap_type(*move))
 			order_cap(pos, move);
 		else if (   move_type(*move) == PROMOTION
 			 && prom_type(*move) == QUEEN)

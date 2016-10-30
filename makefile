@@ -8,7 +8,7 @@ DEPS_PERFT = -pthread -fopenmp
 EXEC_BASE  = wyldchess
 
 CC_WIN64 = x86_64-w64-mingw32-gcc
-CC_LINUX = gcc
+CC_LINUX = clang
 MAKE_DATE := $(shell date -Idate)
 CFLAGS_DIST = -static -std=c11 -O3
 EXEC_WIN64 = binaries/$(MAKE_DATE)/$(EXEC_BASE)_win64_$(MAKE_DATE).exe
