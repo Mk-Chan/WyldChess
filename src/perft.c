@@ -82,12 +82,16 @@ static u64 perft(Position* const pos, Movelist* list, u32 depth)
 	list->end = list->moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	gen_legal_moves(pos, list);
+	gen_pseudo_legal_moves(pos, list);
 
 	u64 count = 0ULL;
 	Move* move;
 	if (depth == 1) {
-		count = list->end - list->moves;
+		for(move = list->moves; move < list->end; ++move) {
+			if(!do_move(pos, *move)) continue;
+			undo_move(pos);
+			++count;
+		}
 	} else {
 		for(move = list->moves; move < list->end; ++move) {
 			if(!do_move(pos, *move)) continue;
