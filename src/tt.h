@@ -41,7 +41,7 @@ typedef struct TT_Entry_s {
 
 typedef struct TT_s {
 	TT_Entry* table;
-	u32    size;
+	u32 size;
 } TT;
 
 TT tt;
