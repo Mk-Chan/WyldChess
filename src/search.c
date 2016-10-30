@@ -701,9 +701,9 @@ int begin_search(Engine* const engine)
 		    && ctlr->is_stopped)
 			break;
 
-		time = (curr_time() - ctlr->search_start_time) / 10;
+		time = curr_time() - ctlr->search_start_time;
 		if (engine->protocol == CECP)
-			fprintf(stdout, "%d %d %llu %llu", depth, val, time, ctlr->nodes_searched);
+			fprintf(stdout, "%d %d %llu %llu", depth, val, time / 10, ctlr->nodes_searched);
 		else if (engine->protocol == UCI)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
