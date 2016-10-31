@@ -254,7 +254,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	int pv_node = ss->pv_node;
 
 	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
-	Move tt_move   = 0;
+	Move tt_move   = get_move(entry.data);
 #ifdef STATS
 	++pos->stats.hash_probes;
 #endif
@@ -276,8 +276,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 		if (alpha >= beta)
 			return beta;
-
-		tt_move = get_move(entry.data);
 	}
 
 	++ctlr->nodes_searched;
@@ -332,25 +330,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		}
 	}
 
-	// Internal iterative deepening
-#ifdef STATS
-	int iid = 0;
-#endif
-	if (   !tt_move
-	    &&  depth > (pv_node ? 3 : 5)) {
-#ifdef STATS
-		iid = 1;
-		++pos->stats.iid_tries;
-#endif
-		ss->early_prune = 0;
-		ss->pv_node     = 1;
-		search(engine, ss, alpha, beta, depth - 2);
-		ss->pv_node     = pv_node;
-		ss->early_prune = 1;
-
-		tt_move = get_move(entry.data);
-	}
-
 	int old_alpha   = alpha,
 	    best_move   = 0,
 	    best_val    = -INFINITY,
@@ -376,9 +355,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	 *  11. Rest
 	 */
 	Move* move;
+	int tt_move_set = 0;
 	for (move = list->moves; move != list->end; ++move) {
 		if (*move == tt_move) {
 			encode_order(*move, HASH_MOVE);
+			tt_move_set = 1;
 		} else if (   cap_type(*move)
 			   || move_type(*move) == ENPASSANT) {
 			order_cap(pos, move);
@@ -408,6 +389,34 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		}
 	}
 
+	// Internal iterative deepening
+#ifdef STATS
+	int iid = 0;
+#endif
+	if (   !tt_move_set
+	    &&  depth > (pv_node ? 3 : 5)) {
+#ifdef STATS
+		iid = 1;
+		++pos->stats.iid_tries;
+#endif
+		ss->early_prune = 0;
+		ss->pv_node     = 1;
+		search(engine, ss, alpha, beta, depth - 2);
+		ss->pv_node     = pv_node;
+		ss->early_prune = 1;
+
+		entry   = tt_probe(&tt, pos->state->pos_key);
+		tt_move = get_move(entry.data);
+		for (move = list->moves; move != list->end; ++move) {
+			if (*move == tt_move) {
+				encode_order(*move, HASH_MOVE);
+				tt_move_set = 1;
+				break;
+			}
+		}
+	}
+
+	// Reorder moves(will change this soon)
 	sort_moves(list->moves, list->end);
 
 	int depth_left = depth - 1;
