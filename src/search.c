@@ -262,7 +262,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    && (entry.key ^ entry.data) == pos->state->pos_key
 	    &&  DEPTH(entry.data) >= depth) {
 #ifdef STATS
-		++pos->stats.hash_cutoffs;
+		++pos->stats.hash_hits;
 #endif
 		int val  = SCORE(entry.data);
 		u64 flag = FLAG(entry.data);
@@ -416,7 +416,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		}
 	}
 
-	// Reorder moves(will change this soon)
 	sort_moves(list->moves, list->end);
 
 	int depth_left = depth - 1;
@@ -626,7 +625,7 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	pos->stats.first_beta_cutoffs = 0;
 	pos->stats.beta_cutoffs       = 0;
 	pos->stats.hash_probes        = 0;
-	pos->stats.hash_cutoffs       = 0;
+	pos->stats.hash_hits          = 0;
 #endif
 	u32 i;
 	Search_Stack* curr;
@@ -710,8 +709,8 @@ int begin_search(Engine* const engine)
 		((double)pos->stats.futility_cutoffs) / pos->stats.futility_tries);
 	fprintf(stdout, "null cutoff rate=%lf\n",
 		((double)pos->stats.null_cutoffs) / pos->stats.null_tries);
-	fprintf(stdout, "hash cutoff rate=%lf\n",
-		((double)pos->stats.hash_cutoffs) / pos->stats.hash_probes);
+	fprintf(stdout, "hash hit rate=%lf\n",
+		((double)pos->stats.hash_hits) / pos->stats.hash_probes);
 	fprintf(stdout, "ordering=%lf\n",
 		((double)pos->stats.first_beta_cutoffs) / (pos->stats.beta_cutoffs));
 #endif
