@@ -69,7 +69,6 @@ typedef struct State_s {
 typedef struct Position_s {
 
 	u64    bb[9];
-	u32    hist_size;
 	u32    stm;
 	u32    king_sq[2];
 	u32    board[64];
@@ -270,11 +269,16 @@ static inline int insufficient_material(Position* const pos)
 	u64 const * const bb = pos->bb;
 	if (bb[PAWN] || bb[QUEEN] || bb[ROOK])
 		return 0;
-	if (   popcnt(bb[BISHOP] & bb[WHITE]) > 1
-	    || popcnt(bb[BISHOP] & bb[BLACK]) > 1)
+	if (popcnt(bb[KNIGHT]) > 1)
 		return 0;
-	if (   popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[WHITE]) > 1
-	    || popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[BLACK]) > 1)
+	if (   popcnt(bb[BISHOP] & bb[WHITE]) == 1
+	    && popcnt(bb[KNIGHT] & bb[BLACK]) == 1)
+		return 0;
+	if (   popcnt(bb[BISHOP] & bb[BLACK]) == 1
+	    && popcnt(bb[KNIGHT] & bb[WHITE]) == 1)
+		return 0;
+	if (   popcnt(bb[BISHOP]) > 1
+	    && sq_color[bitscan((bb[BISHOP] & bb[WHITE]))] != sq_color[bitscan((bb[BISHOP] & bb[BLACK]))])
 		return 0;
 	return 1;
 }
