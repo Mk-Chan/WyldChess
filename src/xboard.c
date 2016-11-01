@@ -133,6 +133,8 @@ void* engine_loop_cecp(void* args)
 			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
 			engine->ctlr->time_left += engine->ctlr->increment;
 			engine->target_state     = WAITING;
+			if (check_result(engine->pos) != NO_RESULT)
+				engine->game_over = 1;
 			break;
 
 		case QUITTING:
@@ -271,7 +273,10 @@ void cecp_loop()
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
 			transition(&engine, WAITING);
-			if (check_result(&pos) != NO_RESULT)
+
+			if (engine.game_over)
+				check_result(&pos);
+			else if (check_result(&pos) != NO_RESULT)
 				engine.game_over = 1;
 			else
 				start_thinking(&engine);
@@ -298,7 +303,9 @@ void cecp_loop()
 				fprintf(stdout, "Illegal move: %s\n", input);
 
 			transition(&engine, WAITING);
-			if (check_result(&pos) != NO_RESULT)
+			if (engine.game_over)
+				check_result(&pos);
+			else if (check_result(&pos) != NO_RESULT)
 				engine.game_over = 1;
 			else if (engine.side == pos.stm)
 				start_thinking(&engine);

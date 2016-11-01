@@ -129,6 +129,7 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 int king_atk_wt[7]    = { 0, 0, 0, 4, 3, 3, 5 };
 int passed_pawn[8]    = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 70), S(50, 120), S(80, 200), 0 };
 int knight_outpost[8] = { S(0, 0), S(0, 0), S(0, 0), S(20, 0), S(25, 0), S(30, 0), S(0, 0), S(0, 0) };
+int king_cover[4]     = { 5, 3, 2, 0 };
 int doubled_pawns     = S(-20, -30);
 int isolated_pawn     = S(-10, -20);
 int rook_7th_rank     = S( 40,   0);
@@ -136,7 +137,6 @@ int rook_open_file    = S( 30,   0);
 int rook_semi_open    = S( 10,   0);
 int blocked_bishop    = S( -5,  -5);
 int dual_bishops      = S( 20,  30);
-int king_cover        = S( -5,  -5);
 int backward_pawn     = S(-10, -20);
 
 typedef struct Eval_s {
@@ -204,7 +204,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		mobility_mask        = ~(c_bb | ev->p_atks_bb[!c]);
 		ksq                  = pos->king_sq[c];
 
-		eval[c]             -= king_cover * (3 - popcnt(passed_pawn_mask[c][ksq] & k_atks[ksq] & ev->pawn_bb[c]));
+		ev->king_atks[!c]   += king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks[ksq] & ev->pawn_bb[c])];
 		ev->piece_atks[c]   |= k_atks[ksq];
 
 		// Knight

@@ -240,10 +240,3 @@ u32 do_move(Position* const pos, Move const m)
 
 	return 1;
 }
-
-u32 do_usermove(Position* const pos, Move const move) {
-	if (!do_move(pos, move))
-		return 0;
-	++pos->hist_size;
-	return 1;
-}

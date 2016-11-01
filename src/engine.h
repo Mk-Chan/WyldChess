@@ -52,7 +52,7 @@ typedef struct Engine_s {
 	u32         volatile side;
 	int         volatile target_state;
 	int         volatile curr_state;
-	int                  game_over;
+	int         volatile game_over;
 	int                  protocol;
 	pthread_mutex_t      mutex;
 	pthread_cond_t       sleep_cv;
@@ -84,9 +84,6 @@ static inline void transition(Engine* const engine, int target_state)
 
 static inline void start_thinking(Engine* const engine)
 {
-	if (engine->game_over)
-		return;
-
 	Controller* const ctlr  = engine->ctlr;
 	ctlr->search_start_time = curr_time();
 	ctlr->search_end_time   =  ctlr->search_start_time
