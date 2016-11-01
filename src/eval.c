@@ -325,7 +325,8 @@ int eval_passed_pawns(Position* const pos, Eval* const ev)
 				step2 = step1  >> 8;
 				step3 = step2  >> 8;
 			}
-			if (!((nc_atks | occupancy) & step1)) {
+			if (   !(occupancy & step1)
+			    && !((nc_atks & step1) && !(c_atks & step1))) {
 				bonus = passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
 				if (     step2
 				    && !(occupancy & step2)
@@ -333,7 +334,7 @@ int eval_passed_pawns(Position* const pos, Eval* const ev)
 					bonus <<= 1;
 					if (   step3
 					    && !(occupancy & step3)
-					    && !((nc_atks & step3) && !(c_atks & step2)))
+					    && !((nc_atks & step3) && !(c_atks & step3)))
 						bonus += (bonus >> 1);
 				}
 			}
