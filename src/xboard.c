@@ -133,8 +133,6 @@ void* engine_loop_cecp(void* args)
 			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
 			engine->ctlr->time_left += engine->ctlr->increment;
 			engine->target_state     = WAITING;
-			if (check_result(engine->pos) != NO_RESULT)
-				engine->game_over = 1;
 			break;
 
 		case QUITTING:
