@@ -24,6 +24,7 @@
 #include "bitboard.h"
 #include "magicmoves.h"
 
+#ifdef STATS
 typedef struct Stats_s {
 
 	u64 iid_cutoffs;
@@ -35,10 +36,11 @@ typedef struct Stats_s {
 	u64 first_beta_cutoffs;
 	u64 beta_cutoffs;
 	u64 hash_probes;
-	u64 hash_cutoffs;
+	u64 hash_hits;
 	u64 total_nodes;
 
 } Stats;
+#endif
 
 typedef u64 Move;
 
@@ -275,6 +277,28 @@ static inline int insufficient_material(Position* const pos)
 	    || popcnt((bb[BISHOP] ^ bb[KNIGHT]) & bb[BLACK]) > 1)
 		return 0;
 	return 1;
+}
+
+// Idea from Stockfish 6
+static inline int legal_move(Position* const pos, Move move)
+{
+	u32 c    = pos->stm;
+	u32 from = from_sq(move);
+	u32 ksq  = pos->king_sq[c];
+	if (move_type(move) == ENPASSANT) {
+		u64 to_bb  = pos->state->ep_sq_bb;
+		u64 cap_bb = pawn_shift(to_bb, !c);
+		u64 pieces = (pos->bb[FULL] ^ BB(from) ^ cap_bb) | to_bb;
+
+		return     !(Rmagic(ksq, pieces) & ((pos->bb[QUEEN] | pos->bb[ROOK]) & pos->bb[!c]))
+			&& !(Bmagic(ksq, pieces) & ((pos->bb[QUEEN] | pos->bb[BISHOP]) & pos->bb[!c]));
+	} else if (from == ksq) {
+		return      move_type(move) == CASTLE
+			|| !atkers_to_sq(pos, to_sq(move), !c, pos->bb[FULL]);
+	} else {
+		return    !(pos->state->pinned_bb & BB(from))
+			|| (BB(to_sq(move)) & dirn_sqs[from][ksq]);
+	}
 }
 
 static inline void move_str(Move move, char str[6])
