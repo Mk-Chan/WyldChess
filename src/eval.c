@@ -129,7 +129,7 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 int king_atk_wt[7]    = { 0, 0, 0, 4, 3, 3, 5 };
 int passed_pawn[8]    = { 0, S(0, 0), S(0, 0), S(20, 30), S(30, 70), S(50, 120), S(80, 200), 0 };
 int knight_outpost[8] = { S(0, 0), S(0, 0), S(0, 0), S(20, 0), S(25, 0), S(30, 0), S(0, 0), S(0, 0) };
-int king_cover[4]     = { 5, 3, 2, 0 };
+int king_cover[4]     = { 6, 4, 2, 0 };
 int doubled_pawns     = S(-20, -30);
 int isolated_pawn     = S(-10, -20);
 int rook_7th_rank     = S( 40,   0);
@@ -166,11 +166,11 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 			bb    &= bb - 1;
 			atk_bb = p_atks[c][sq];
 			ev->p_atks_bb[c] |= atk_bb;
-			if (file_forward_mask[c][sq] & pawn_bb)
-				eval[c] += doubled_pawns;
 			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
-			if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
+			if (file_forward_mask[c][sq] & pawn_bb) {
+				eval[c] += doubled_pawns;
+			} else if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				ev->passed_pawn_bb[c] |= BB(sq);
 				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
 			} else if (    (opp_pawn_bb & (c == WHITE ? p_atks[c][sq + 8] | BB((sq + 8)) : p_atks[c][sq - 8] | BB((sq - 8))))

@@ -272,6 +272,12 @@ static inline int insufficient_material(Position* const pos)
 	if (popcnt(bb[KNIGHT]) > 1)
 		return 0;
 	if (   popcnt(bb[BISHOP] & bb[WHITE]) == 1
+	    && popcnt(bb[KNIGHT] & bb[WHITE]) == 1)
+		return 0;
+	if (   popcnt(bb[BISHOP] & bb[BLACK]) == 1
+	    && popcnt(bb[KNIGHT] & bb[BLACK]) == 1)
+		return 0;
+	if (   popcnt(bb[BISHOP] & bb[WHITE]) == 1
 	    && popcnt(bb[KNIGHT] & bb[BLACK]) == 1)
 		return 0;
 	if (   popcnt(bb[BISHOP] & bb[BLACK]) == 1
