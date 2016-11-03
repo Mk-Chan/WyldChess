@@ -71,4 +71,14 @@ static inline TT_Entry tt_probe(TT* tt, u64 key)
 	return tt->table[(key < tt->size ? key : key % tt->size)];
 }
 
+static inline void tt_clear(TT* tt)
+{
+	TT_Entry* curr = tt->table;
+	TT_Entry* end  = curr + tt->size;
+	for (; curr != end; ++curr) {
+		curr->data = 0ULL;
+		curr->key  = 0ULL;
+	}
+}
+
 #endif
