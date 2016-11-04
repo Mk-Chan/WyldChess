@@ -11,8 +11,12 @@ CC_WIN64 = x86_64-w64-mingw32-gcc
 CC_LINUX = clang
 MAKE_DATE := $(shell date -Idate)
 CFLAGS_DIST = -static -std=c11 -O3
-EXEC_WIN64 = binaries/$(MAKE_DATE)/$(EXEC_BASE)_win64_$(MAKE_DATE).exe
-EXEC_LINUX = binaries/$(MAKE_DATE)/$(EXEC_BASE)_linux_$(MAKE_DATE)
+CFLAG_POPCNT = $(CFLAGS_DIST) -mpopcnt
+BIN_PATH = binaries/$(MAKE_DATE)
+EXEC = $(BIN_PATH)/$(EXEC_BASE)
+EXT_WIN64 = _win64.exe
+EXT_LINUX = _linux
+EXT_POPCNT = _popcnt
 
 all:
 	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS)
@@ -25,5 +29,7 @@ perft:
 targets:
 	$(shell rm -rf binaries)
 	$(shell mkdir -p binaries/$(MAKE_DATE))
-	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN64) $(DEPS)
-	$(CC_LINUX) $(CFLAGS_DIST) $(SRC) -o $(EXEC_LINUX) $(DEPS)
+	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(EXT_WIN64) $(DEPS)
+	$(CC_WIN64) $(CFLAG_POPCNT) $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_WIN64) $(DEPS)
+	$(CC_LINUX) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(EXT_LINUX) $(DEPS)
+	$(CC_LINUX) $(CFLAG_POPCNT) $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_LINUX) $(DEPS)
