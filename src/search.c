@@ -385,7 +385,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			else if (move_type(*move) == CASTLE)
 				encode_order(*move, CASTLING);
 
-			else if (     piece_type(*move) == PAWN
+			else if (     piece_type(pos->board[from_sq(*move)]) == PAWN
+				 && !(file_forward_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[pos->stm])
 				 && !(passed_pawn_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[!pos->stm]))
 				encode_order(*move, PASSER_PUSH);
 		}
