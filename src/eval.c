@@ -126,10 +126,13 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
 
+// King eval terms
 int king_atk_wt[7]    = { 0, 0, 0, 4, 3, 3, 5 };
+int king_cover[4]     = { 6, 4, 2, 0 };
+
+// Miscellaneous eval terms
 int passed_pawn[8]    = { 0, S(5, 10), S(10, 20), S(20, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
 int knight_outpost[8] = { S(0, 0), S(0, 0), S(0, 0), S(20, 0), S(25, 0), S(30, 0), S(0, 0), S(0, 0) };
-int king_cover[4]     = { 6, 4, 2, 0 };
 int doubled_pawns     = S(-20, -30);
 int isolated_pawn     = S(-10, -20);
 int rook_7th_rank     = S( 40,   0);
@@ -354,7 +357,7 @@ int evaluate(Position* const pos)
 	for (c = WHITE; c <= BLACK; ++c) {
 		ksq                    = pos->king_sq[c];
 		ev.king_atks[c]        = 0;
-		ev.king_danger_zone[c] = k_atks[ksq];
+		ev.king_danger_zone[c] = k_atks[ksq] | BB(ksq);
 		ev.pawn_bb[c]          = pos->bb[PAWN] & pos->bb[c];
 	}
 
