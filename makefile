@@ -11,7 +11,7 @@ CC_WIN64 = x86_64-w64-mingw32-gcc
 CC_LINUX = clang
 MAKE_DATE := $(shell date -Idate)
 CFLAGS_DIST = -static -std=c11 -O3
-CFLAG_POPCNT = $(CFLAGS_DIST) -mpopcnt
+CFLAGS_DIST_LINUX = -std=c11 -O3
 BIN_PATH = binaries/$(MAKE_DATE)
 EXEC = $(BIN_PATH)/$(EXEC_BASE)
 EXT_WIN64 = _win64.exe
@@ -30,6 +30,6 @@ targets:
 	$(shell rm -rf binaries)
 	$(shell mkdir -p binaries/$(MAKE_DATE))
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(EXT_WIN64) $(DEPS)
-	$(CC_WIN64) $(CFLAG_POPCNT) $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_WIN64) $(DEPS)
-	$(CC_LINUX) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(EXT_LINUX) $(DEPS)
-	$(CC_LINUX) $(CFLAG_POPCNT) $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_LINUX) $(DEPS)
+	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_WIN64) $(DEPS)
+	$(CC_LINUX) $(CFLAGS_DIST_LINUX) $(SRC) -o $(EXEC)$(EXT_LINUX) $(DEPS)
+	$(CC_LINUX) $(CFLAGS_DIST_LINUX) -mpopcnt $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_LINUX) $(DEPS)
