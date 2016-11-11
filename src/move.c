@@ -24,6 +24,7 @@ void do_null_move(Position* const pos)
 	State*  const curr = pos->state;
 	State*  const next = ++pos->state;
 
+	curr->move                  = 0;
 	next->full_moves            = curr->full_moves;
 	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
 	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
@@ -31,10 +32,9 @@ void do_null_move(Position* const pos)
 	next->ep_sq_bb              = 0;
 	next->castling_rights       = curr->castling_rights;
 	pos->stm                   ^= 1;
+	next->pos_key               = curr->pos_key ^ stm_key;
 	if (curr->ep_sq_bb)
-		next->pos_key = curr->pos_key ^ stm_key ^ psq_keys[0][0][bitscan(curr->ep_sq_bb)];
-	else
-		next->pos_key = curr->pos_key ^ stm_key;
+		next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
 }
 
 void undo_null_move(Position* const pos)
@@ -231,7 +231,7 @@ u32 do_move(Position* const pos, Move const m)
 		                ^ castle_keys[next->castling_rights];
 
 #ifndef PERFT
-	if ( (check_illegal || (BB(from) & curr->pinned_bb) > 0)
+	if ( (check_illegal || (BB(from) & curr->pinned_bb) > 0ULL)
 	   && checkers(pos, pos->stm)) {
 		undo_move(pos);
 		return 0;
