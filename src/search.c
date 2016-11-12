@@ -212,7 +212,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #endif
 		ss->early_prune = 0;
 		ss->pv_node     = 1;
-		int reduction   = depth / 2;
+		int reduction   = 2;
 		search(engine, ss, alpha, beta, depth - reduction);
 		entry   = tt_probe(&tt, pos->state->pos_key);
 		tt_move = get_move(entry.data);
