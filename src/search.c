@@ -120,28 +120,30 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	int pv_node = ss->pv_node;
 
 	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
-	Move tt_move   = get_move(entry.data);
+	Move tt_move   = 0;
 #ifdef STATS
 	++pos->stats.hash_probes;
 #endif
-	if (   !pv_node
-	    && (entry.key ^ entry.data) == pos->state->pos_key
-	    &&  DEPTH(entry.data) >= depth) {
+	if ((entry.key ^ entry.data) == pos->state->pos_key) {
+		tt_move = get_move(entry.data);
+		if (   !pv_node
+		    &&  DEPTH(entry.data) >= depth) {
 #ifdef STATS
-		++pos->stats.hash_hits;
+			++pos->stats.hash_hits;
 #endif
-		int val  = SCORE(entry.data);
-		u64 flag = FLAG(entry.data);
+			int val  = SCORE(entry.data);
+			u64 flag = FLAG(entry.data);
 
-		if (flag == FLAG_EXACT)
-			return val;
-		else if (flag == FLAG_LOWER)
-			alpha = max(alpha, val);
-		else if (flag == FLAG_UPPER)
-			beta = min(beta, val);
+			if (flag == FLAG_EXACT)
+				return val;
+			else if (flag == FLAG_LOWER)
+				alpha = max(alpha, val);
+			else if (flag == FLAG_UPPER)
+				beta = min(beta, val);
 
-		if (alpha >= beta)
-			return beta;
+			if (alpha >= beta)
+				return beta;
+		}
 	}
 
 	++ctlr->nodes_searched;
@@ -169,16 +171,16 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	}
 
 	// Null move pruning
-	if (    depth >= 4
-	    && !pv_node
-	    &&  ss->early_prune
-	    && !checked
-	    &&  pos->state->phase > (MAX_PHASE / 4)
-	    &&  evaluate(pos) >= beta - mg_val(piece_val[PAWN])) {
+	if (      depth >= 4
+	    &&   !pv_node
+	    &&    ss->early_prune
+	    &&   !checked
+	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL
+	    &&    evaluate(pos) >= beta - mg_val(piece_val[PAWN])) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
-		int reduction = 3;
+		int reduction = 4;
 		do_null_move(pos);
 		ss[1].pv_node = 0;
 		ss[1].early_prune = 0;
@@ -194,6 +196,26 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #endif
 			return val;
 		}
+	}
+
+	// Internal iterative deepening
+#ifdef STATS
+	int iid = 0;
+#endif
+	// Conditions similar to stockfish as of now, seems to be effective
+	if (   !tt_move
+	    &&  depth > 5
+	    && (pv_node || evaluate(pos) + mg_val(piece_val[PAWN]) >= beta)) {
+#ifdef STATS
+		iid = 1;
+		++pos->stats.iid_tries;
+#endif
+		ss->early_prune = 0;
+		ss->pv_node     = 1;
+		int reduction   = 2;
+		search(engine, ss, alpha, beta, depth - reduction);
+		entry   = tt_probe(&tt, pos->state->pos_key);
+		tt_move = get_move(entry.data);
 	}
 
 	int old_alpha   = alpha,
@@ -221,11 +243,9 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	 *  11. Rest
 	 */
 	Move* move;
-	int tt_move_set = 0;
 	for (move = list->moves; move != list->end; ++move) {
 		if (*move == tt_move) {
 			encode_order(*move, HASH_MOVE);
-			tt_move_set = 1;
 		} else if (   cap_type(*move)
 			   || move_type(*move) == ENPASSANT) {
 			order_cap(pos, move);
@@ -256,32 +276,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		}
 	}
 
-	// Internal iterative deepening
-#ifdef STATS
-	int iid = 0;
-#endif
-	if (   !tt_move_set
-	    &&  ss->ply
-	    &&  depth > (pv_node ? 3 : 5)) {
-#ifdef STATS
-		iid = 1;
-		++pos->stats.iid_tries;
-#endif
-		ss->early_prune = 0;
-		ss->pv_node     = 1;
-		search(engine, ss, alpha, beta, depth - 2);
-
-		entry   = tt_probe(&tt, pos->state->pos_key);
-		tt_move = get_move(entry.data);
-		for (move = list->moves; move != list->end; ++move) {
-			if (*move == tt_move) {
-				encode_order(*move, HASH_MOVE);
-				tt_move_set = 1;
-				break;
-			}
-		}
-	}
-
 	sort_moves(list->moves, list->end);
 
 	int depth_left = depth - 1;
@@ -291,12 +285,14 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 		if (!do_move(pos, *move))
 			continue;
+
 		++legal_moves;
-		checking_move = (checkers(pos, !pos->stm) > 0ULL);
 
 		// Check extension
-		if (checking_move) {
-		    if ((cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound))
+		checking_move = (checkers(pos, !pos->stm) > 0ULL);
+		if (    pv_node
+		    &&  checking_move
+		    && (cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound)) {
 			ext = 1;
 		}
 
@@ -305,7 +301,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			ss[1].pv_node = 1;
 			val = -search(engine, ss + 1, -beta, -alpha, depth_left + ext);
 		} else {
-			ss[1].pv_node = 0;
+			ss[1].pv_node     = 0;
 			ss[1].early_prune = 1;
 			// Late Move Reduction (LMR) -- Not completely confident of this yet
 			if (    ss->ply
