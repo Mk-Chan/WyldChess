@@ -125,12 +125,12 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	++pos->stats.hash_probes;
 #endif
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
+#ifdef STATS
+		++pos->stats.hash_hits;
+#endif
 		tt_move = get_move(entry.data);
 		if (   !pv_node
 		    &&  DEPTH(entry.data) >= depth) {
-#ifdef STATS
-			++pos->stats.hash_hits;
-#endif
 			int val  = SCORE(entry.data);
 			u64 flag = FLAG(entry.data);
 
@@ -175,8 +175,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    &&   !pv_node
 	    &&    ss->early_prune
 	    &&   !checked
-	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL
-	    &&    evaluate(pos) >= beta - mg_val(piece_val[PAWN])) {
+	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
@@ -384,7 +383,7 @@ int begin_search(Engine* const engine)
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	int alpha, beta;
 	int asp_win_tries;
-	static int asp_wins[3] = { 50, 200, INFINITY };
+	static int asp_wins[] = { 10, 50, 200, INFINITY };
 	int depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
 		if (depth < 5) {
