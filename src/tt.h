@@ -36,7 +36,7 @@
 
 typedef struct TT_Entry_s {
 	u64 data;
-	u64 key; // Try implementing HashKey instead of just u64 later
+	u64 key;
 } TT_Entry;
 
 typedef struct TT_s {
