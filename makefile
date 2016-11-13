@@ -17,6 +17,7 @@ EXEC = $(BIN_PATH)/$(EXEC_BASE)
 EXT_WIN64 = _win64.exe
 EXT_LINUX = _linux
 EXT_POPCNT = _popcnt
+FAST = _fast_tc
 
 all:
 	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS)
@@ -31,5 +32,9 @@ targets:
 	$(shell mkdir -p binaries/$(MAKE_DATE))
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(EXT_WIN64) $(DEPS)
 	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_WIN64) $(DEPS)
+	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(FAST)$(EXT_WIN64) $(DEPS) -DTEST
+	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC)$(EXT_POPCNT)$(FAST)$(EXT_WIN64) $(DEPS) -DTEST
 	$(CC_LINUX) $(CFLAGS_DIST_LINUX) $(SRC) -o $(EXEC)$(EXT_LINUX) $(DEPS)
 	$(CC_LINUX) $(CFLAGS_DIST_LINUX) -mpopcnt $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_LINUX) $(DEPS)
+	$(CC_LINUX) $(CFLAGS_DIST_LINUX) $(SRC) -o $(EXEC)$(FAST)$(EXT_LINUX) $(DEPS) -DTEST
+	$(CC_LINUX) $(CFLAGS_DIST_LINUX) -mpopcnt $(SRC) -o $(EXEC)$(EXT_POPCNT)$(FAST)$(EXT_LINUX) $(DEPS) -DTEST
