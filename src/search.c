@@ -415,15 +415,15 @@ int begin_search(Engine* const engine)
 		fprintf(stdout, "\n");
 	}
 #ifdef STATS
-	fprintf(stdout, "iid cutoff rate=%lf\n",
+	fprintf(stdout, "iid cutoff rate:       %lf\n",
 		((double)pos->stats.iid_cutoffs) / pos->stats.iid_tries);
-	fprintf(stdout, "futility cutoff rate=%lf\n",
+	fprintf(stdout, "futility cutoff rate:  %lf\n",
 		((double)pos->stats.futility_cutoffs) / pos->stats.futility_tries);
-	fprintf(stdout, "null cutoff rate=%lf\n",
+	fprintf(stdout, "null cutoff rate:      %lf\n",
 		((double)pos->stats.null_cutoffs) / pos->stats.null_tries);
-	fprintf(stdout, "hash hit rate=%lf\n",
+	fprintf(stdout, "hash hit rate:         %lf\n",
 		((double)pos->stats.hash_hits) / pos->stats.hash_probes);
-	fprintf(stdout, "ordering=%lf\n",
+	fprintf(stdout, "ordering at cut nodes: %lf\n",
 		((double)pos->stats.first_beta_cutoffs) / (pos->stats.beta_cutoffs));
 #endif
 
