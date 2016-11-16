@@ -99,8 +99,16 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, int depth)
 {
-	if (depth <= 0)
-		return qsearch(engine, ss, alpha, beta);
+	int check_at_leaf = 0;
+	if (depth <= 0) {
+		set_checkers(engine->pos);
+		if (engine->pos->state->checkers_bb) {
+			check_at_leaf = 1;
+			depth         = 1;
+		} else {
+			return qsearch(engine, ss, alpha, beta);
+		}
+	}
 
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
@@ -149,7 +157,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	++ctlr->nodes_searched;
 
 	int val;
-	set_checkers(pos);
+	if (!check_at_leaf)
+		set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
 
 	// Futility pruning
@@ -278,10 +287,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	sort_moves(list->moves, list->end);
 
 	int depth_left = depth - 1;
-	int ext, checking_move;
+	int checking_move;
 	for (move = list->moves; move != list->end; ++move) {
-		ext = 0;
-
 		if (!do_move(pos, *move))
 			continue;
 
@@ -289,35 +296,37 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 		// Check extension
 		checking_move = (checkers(pos, !pos->stm) > 0ULL);
-		if (    pv_node
-		    &&  checking_move
+		if (    checking_move
 		    && (cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound)) {
-			ext = 1;
+			depth_left = depth;
+		} else if (    ss->ply
+			   &&  depth_left > 2
+			   &&  legal_moves > 1
+			   &&  order(*move) <= PASSER_PUSH
+			   && !checking_move
+			   && !checked) {
+			depth_left = depth - 2 - (legal_moves / 8);
+		} else {
+			depth_left = depth - 1;
 		}
 
 		// Principal Variation Search
-		if (legal_moves == 1) {
-			ss[1].pv_node = 1;
-			val = -search(engine, ss + 1, -beta, -alpha, depth_left + ext);
+		if (legal_moves == 1 || !pv_node) {
+			ss[1].pv_node     = pv_node;
+			ss[1].early_prune = 1;
+			val = -search(engine, ss + 1, -beta, -alpha, depth_left);
+			if (   val > alpha
+			    && depth_left < depth - 1) {
+				ss[1].pv_node = 1;
+				val = -search(engine, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
+			}
 		} else {
 			ss[1].pv_node     = 0;
 			ss[1].early_prune = 1;
-			// Late Move Reduction (LMR) -- Not completely confident of this yet
-			if (    ss->ply
-			    &&  depth_left > 2
-			    &&  legal_moves > 1
-			    &&  order(*move) <= PASSER_PUSH
-			    && !checking_move
-			    && !checked) {
-				int reduction = pv_node ? 1 : 1 + (legal_moves > 6) + (depth > 8);
-				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left - reduction);
-			}
-			else
-				val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left + ext);
-
+			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left);
 			if (val > alpha) {
 				ss[1].pv_node = 1;
-				val = -search(engine, ss + 1, -beta, -alpha, depth_left + ext);
+				val = -search(engine, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
 			}
 		}
 
@@ -408,7 +417,7 @@ int begin_search(Engine* const engine)
 
 		time = curr_time() - ctlr->search_start_time;
 		if (engine->protocol == CECP)
-			fprintf(stdout, "%d %d %llu %llu", depth, val, time / 10, ctlr->nodes_searched);
+			fprintf(stdout, "%3d %5d %5llu %llu", depth, val, time / 10, ctlr->nodes_searched);
 		else if (engine->protocol == UCI)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
