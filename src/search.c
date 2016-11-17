@@ -141,25 +141,27 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		    &&  DEPTH(entry.data) >= depth) {
 			int val  = SCORE(entry.data);
 			u64 flag = FLAG(entry.data);
+			int a    = alpha,
+			    b    = beta;
 
 			if (flag == FLAG_EXACT)
 				return val;
 			else if (flag == FLAG_LOWER)
-				alpha = max(alpha, val);
+				a = max(alpha, val);
 			else if (flag == FLAG_UPPER)
-				beta = min(beta, val);
+				b = min(beta, val);
 
-			if (alpha >= beta)
-				return beta;
+			if (a >= b)
+				return val;
 		}
 	}
 
 	++ctlr->nodes_searched;
 
-	int val;
 	if (!check_at_leaf)
 		set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
+	int val;
 
 	// Futility pruning
 	if (    depth <= 6
@@ -226,13 +228,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		tt_move = get_move(entry.data);
 	}
 
-	int old_alpha   = alpha,
-	    best_move   = 0,
-	    best_val    = -INFINITY,
-	    legal_moves = 0;
-
-	Movelist* list  = &ss->list;
-	list->end       = list->moves;
+	Movelist* list = &ss->list;
+	list->end      = list->moves;
 	set_pinned(pos);
 	gen_pseudo_legal_moves(pos, list);
 
@@ -286,8 +283,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	sort_moves(list->moves, list->end);
 
-	int depth_left = depth - 1;
-	int checking_move;
+	int old_alpha   = alpha,
+	    best_move   = 0,
+	    best_val    = -INFINITY,
+	    legal_moves = 0;
+	int checking_move, depth_left;
 	for (move = list->moves; move != list->end; ++move) {
 		if (!do_move(pos, *move))
 			continue;
@@ -300,12 +300,12 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		    && (cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound)) {
 			depth_left = depth;
 		} else if (    ss->ply
-			   &&  depth_left > 2
+			   &&  depth > 2
 			   &&  legal_moves > 1
 			   &&  order(*move) <= PASSER_PUSH
 			   && !checking_move
 			   && !checked) {
-			depth_left = depth - 2 - (legal_moves / 8);
+			depth_left = depth - 2 - (legal_moves / 10);
 		} else {
 			depth_left = depth - 1;
 		}
@@ -372,7 +372,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	}
 
 	if (old_alpha == alpha)
-		tt_store(&tt, alpha, FLAG_UPPER, depth, best_move, pos->state->pos_key);
+		tt_store(&tt, best_val, FLAG_UPPER, depth, best_move, pos->state->pos_key);
 	else
 		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
 
