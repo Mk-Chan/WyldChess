@@ -146,10 +146,11 @@ static inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 	pos->board[to]       = pos->board[from];
 	pos->board[from]     = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][from] ^ psq_keys[c][pt][to];
-	if (c == WHITE)
-		pos->state->piece_psq_eval[WHITE] += psq_val[pt][to] - psq_val[pt][from];
-	else
-		pos->state->piece_psq_eval[BLACK] += psq_val[pt][to ^ 56] - psq_val[pt][from ^ 56];
+	if (c == BLACK) {
+		from ^= 56;
+		to   ^= 56;
+	}
+	pos->state->piece_psq_eval[c] += psq_val[pt][to] - psq_val[pt][from];
 }
 
 static inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
@@ -161,10 +162,9 @@ static inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->board[sq]       = make_piece(pt, c);
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
 	pos->state->phase   += phase[pt];
-	if (c == WHITE)
-		pos->state->piece_psq_eval[WHITE] += piece_val[pt] + psq_val[pt][sq];
-	else
-		pos->state->piece_psq_eval[BLACK] += piece_val[pt] + psq_val[pt][sq ^ 56];
+	if (c == BLACK)
+		sq ^= 56;
+	pos->state->piece_psq_eval[c] += piece_val[pt] + psq_val[pt][sq];
 }
 
 static inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
@@ -176,10 +176,9 @@ static inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->board[sq]       = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
 	pos->state->phase   -= phase[pt];
-	if (c == WHITE)
-		pos->state->piece_psq_eval[WHITE] -= piece_val[pt] + psq_val[pt][sq];
-	else
-		pos->state->piece_psq_eval[BLACK] -= piece_val[pt] + psq_val[pt][sq ^ 56];
+	if (c == BLACK)
+		sq ^= 56;
+	pos->state->piece_psq_eval[c] -= piece_val[pt] + psq_val[pt][sq];
 }
 
 static inline u64 pawn_shift(u64 bb, u32 c)
@@ -235,19 +234,16 @@ static inline u64 checkers(Position const * const pos, u32 by_color)
 		& pos->bb[by_color];
 }
 
-static inline void set_pinned(Position* const pos)
+static inline u64 get_pinned(Position* const pos, int to_color)
 {
-	u32 const  to_color  = pos->stm,
-	           ksq       = pos->king_sq[to_color];
-	u64* const pinned_bb = &pos->state->pinned_bb;
-	          *pinned_bb = 0ULL;
-
+	u32 const ksq = pos->king_sq[to_color];
 	u32 sq;
-	u64 bb,
-	    pinners_bb = ((pos->bb[ROOK] | pos->bb[QUEEN])
+	u64 bb;
+	u64 pinned_bb  = 0ULL;
+	u64 pinners_bb = ( (pos->bb[ROOK] | pos->bb[QUEEN])
 			  & pos->bb[!to_color]
 			  & r_pseudo_atks[ksq])
-		    | ((pos->bb[BISHOP] | pos->bb[QUEEN])
+		    | ( (pos->bb[BISHOP] | pos->bb[QUEEN])
 		       & pos->bb[!to_color]
 		       & b_pseudo_atks[ksq]);
 	while (pinners_bb) {
@@ -255,8 +251,14 @@ static inline void set_pinned(Position* const pos)
 		pinners_bb &= pinners_bb - 1;
 		bb          = intervening_sqs[sq][ksq] & pos->bb[FULL];
 		if(!(bb & (bb - 1)))
-			*pinned_bb ^= bb & pos->bb[to_color];
+			pinned_bb ^= bb & pos->bb[to_color];
 	}
+	return pinned_bb;
+}
+
+static inline void set_pinned(Position* const pos)
+{
+	pos->state->pinned_bb = get_pinned(pos, pos->stm);
 }
 
 static inline void set_checkers(Position* pos)

@@ -23,11 +23,11 @@
 int piece_val[7] = {
 	0,
 	0,
-	S(100, 100),
-	S(320, 320),
-	S(320, 320),
+	S(90, 100),
+	S(400, 320),
+	S(400, 330),
 	S(500, 550),
-	S(1000, 1100)
+	S(1100, 1000)
 };
 
 int psq_val[8][64] = {
@@ -147,7 +147,7 @@ int knight_outpost[8] = { S(0, 0), S(0, 0), S(0, 0), S(20, 0), S(25, 0), S(30, 0
 
 // Bishop eval terms
 int blocked_bishop = S(-5, -5);
-int dual_bishops   = S(20, 30);
+int dual_bishops   = S(30, 50);
 
 // Rook eval terms
 int rook_7th_rank  = S(40, 0);
@@ -164,6 +164,7 @@ typedef struct Eval_s {
 	u64 p_atks_bb[2];
 	u64 piece_atks[2];
 	u64 king_danger_zone[2];
+	u64 pinned_bb[2];
 	int king_atks[2];
 
 } Eval;
@@ -208,29 +209,16 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	int sq, c, pt, ksq;
 	int king_atkrs[2] = { 0, 0 };
 	u64* bb           = pos->bb;
-	u64 full_bb       = pos->bb[FULL];
-	u64 non_pinned_bb = ~pos->state->pinned_bb;
-	u64 curr_bb, c_bb, atk_bb, c_piece_occupancy_bb,
-	    strong_color_bb, mobility_mask, king_atks;
+	u64  full_bb      = pos->bb[FULL];
+	u64  curr_bb, c_bb, atk_bb, c_piece_occupancy_bb,
+	     strong_color_bb, mobility_mask, king_atks, non_pinned_bb;
 
 	eval[WHITE] += popcnt((pos->bb[ROOK] & pos->bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
 	eval[BLACK] += popcnt((pos->bb[ROOK] & pos->bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
 
-	// Pinned
-	c        = pos->stm;
-	curr_bb  = ~non_pinned_bb;
-	while (curr_bb) {
-		sq                = bitscan(curr_bb);
-		curr_bb          &= curr_bb - 1;
-		pt                = piece_type(pos->board[sq]);
-		atk_bb            = get_atks(sq, pt, full_bb);
-		king_atks         = atk_bb & ev->king_danger_zone[!c];
-		king_atkrs[c]    += king_atks > 0ULL;
-		ev->king_atks[c] += popcnt(king_atks) * king_atk_wt[pt];
-	}
-
 	for (c = WHITE; c <= BLACK; ++c) {
 		ev->piece_atks[c]    = 0ULL;
+		non_pinned_bb        = ~ev->pinned_bb[c];
 		c_bb                 =  bb[c];
 		c_piece_occupancy_bb = ~bb[PAWN] & c_bb;
 		mobility_mask        = ~(c_bb | ev->p_atks_bb[!c]);
@@ -318,9 +306,21 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			eval[c]           += mobility[QUEEN][popcnt(atk_bb)];
 		}
 
-		if (king_atkrs[c] < 3)
-			ev->king_atks[c] = 0;
-	}
+		// Pinned
+		curr_bb = ~non_pinned_bb;
+		while (curr_bb) {
+			sq                = bitscan(curr_bb);
+			curr_bb          &= curr_bb - 1;
+			pt                = piece_type(pos->board[sq]);
+			atk_bb            = get_atks(sq, pt, full_bb);
+			king_atks         = atk_bb & ev->king_danger_zone[!c];
+			king_atkrs[c]    += king_atks > 0ULL;
+			ev->king_atks[c] += popcnt(king_atks) * king_atk_wt[pt];
+		}
+
+			if (king_atkrs[c] < 3)
+				ev->king_atks[c] = 0;
+		}
 
 	return eval[WHITE] - eval[BLACK];
 }
@@ -381,7 +381,8 @@ int evaluate(Position* const pos)
 		ev.pawn_bb[c]          = pos->bb[PAWN] & pos->bb[c];
 	}
 
-	set_pinned(pos);
+	ev.pinned_bb[WHITE] = get_pinned(pos, WHITE);
+	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
 
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
 	eval += eval_pawns(pos, &ev);
