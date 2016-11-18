@@ -305,7 +305,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			   &&  order(*move) <= PASSER_PUSH
 			   && !checking_move
 			   && !checked) {
-			depth_left = depth - 2 - (legal_moves / 10);
+			depth_left = depth - 2;
 		} else {
 			depth_left = depth - 1;
 		}
