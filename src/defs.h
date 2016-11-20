@@ -121,6 +121,12 @@ enum PromotionTypes {
 	TO_QUEEN  = QUEEN  << PROM_TYPE_SHIFT
 };
 
+enum NodeTypes {
+	PV_NODE,
+	CUT_NODE,
+	ALL_NODE
+};
+
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 

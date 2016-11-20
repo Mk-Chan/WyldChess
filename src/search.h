@@ -21,7 +21,7 @@
 
 typedef struct Search_Stack_s {
 
-	u32      pv_node;
+	u32      node_type;
 	u32      early_prune;
 	u32      ply;
 	Move     killers[2];
@@ -38,6 +38,7 @@ u64 const EQUAL_CAP   = 20000ULL;
 u64 const BAD_CAP     = 10000ULL;
 u64 const PASSER_PUSH = 9000ULL;
 u64 const CASTLING    = 8000ULL;
+u64 const REST        = 5000ULL;
 
 static int equal_cap_bound = 50;
 
@@ -217,7 +218,7 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	Search_Stack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
 		curr              = ss + i;
-		curr->pv_node     = 0;
+		curr->node_type   = ALL_NODE;
 		curr->early_prune = 1;
 		curr->ply         = i;
 		curr->killers[0]  = 0;

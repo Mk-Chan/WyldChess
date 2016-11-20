@@ -37,7 +37,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 	int eval = evaluate(pos);
 	if (eval >= beta)
-		return beta;
+		return eval;
 	if (eval > alpha)
 		alpha = eval;
 
@@ -68,7 +68,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	for (move = list->moves; move != list->end; ++move) {
 		if (  !checked
 		    && order(*move) < BAD_CAP)
-			break;
+			continue;
 
 		if (!do_move(pos, *move))
 			continue;
@@ -125,7 +125,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			return evaluate(pos);
 	}
 
-	int pv_node = ss->pv_node;
+	int node_type = ss->node_type;
 
 	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
 	Move tt_move   = 0;
@@ -137,7 +137,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		++pos->stats.hash_hits;
 #endif
 		tt_move = get_move(entry.data);
-		if (   !pv_node
+		if (    node_type != PV_NODE
 		    &&  DEPTH(entry.data) >= depth) {
 			int val  = SCORE(entry.data);
 			u64 flag = FLAG(entry.data);
@@ -164,14 +164,14 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	int val;
 
 	// Futility pruning
-	if (    depth <= 6
-	    && !pv_node
+	if (    depth <= 2
+	    &&  node_type != PV_NODE
 	    && !checked
 	    &&  ss->early_prune) {
 #ifdef STATS
 		++pos->stats.futility_tries;
 #endif
-		val = evaluate(pos) - (mg_val(piece_val[PAWN]) * depth);
+		val = evaluate(pos) - (100 * depth);
 		if (   val >= beta
 		    && abs(val) < MATE_VAL) {
 #ifdef STATS
@@ -183,7 +183,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	// Null move pruning
 	if (      depth >= 4
-	    &&   !pv_node
+	    &&    node_type != PV_NODE
 	    &&    ss->early_prune
 	    &&   !checked
 	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL) {
@@ -192,7 +192,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #endif
 		int reduction = 4;
 		do_null_move(pos);
-		ss[1].pv_node = 0;
+		ss[1].node_type   = CUT_NODE;
 		ss[1].early_prune = 0;
 		val = -search(engine, ss + 1, -beta, -beta + 1, depth - reduction);
 		ss[1].early_prune = 1;
@@ -214,16 +214,22 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #endif
 	// Conditions similar to stockfish as of now, seems to be effective
 	if (   !tt_move
-	    &&  depth > 5
-	    && (pv_node || evaluate(pos) + mg_val(piece_val[PAWN]) >= beta)) {
+	    &&  depth >= 5
+	    && (node_type == PV_NODE || evaluate(pos) + mg_val(piece_val[PAWN]) >= beta)) {
 #ifdef STATS
 		iid = 1;
 		++pos->stats.iid_tries;
 #endif
-		ss->early_prune = 0;
-		ss->pv_node     = 1;
 		int reduction   = 2;
+		int ep          = ss->early_prune;
+		int nt          = ss->node_type;
+		ss->early_prune = 0;
+
 		search(engine, ss, alpha, beta, depth - reduction);
+
+		ss->early_prune = ep;
+		ss->node_type   = nt;
+
 		entry   = tt_probe(&tt, pos->state->pos_key);
 		tt_move = get_move(entry.data);
 	}
@@ -278,14 +284,17 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 				 && !(file_forward_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[pos->stm])
 				 && !(passed_pawn_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[!pos->stm]))
 				encode_order(*move, PASSER_PUSH);
+
+			else
+				encode_order(*move, REST);
 		}
 	}
 
 	sort_moves(list->moves, list->end);
 
 	int old_alpha   = alpha,
-	    best_move   = 0,
 	    best_val    = -INFINITY,
+	    best_move   = 0,
 	    legal_moves = 0;
 	int checking_move, depth_left;
 	for (move = list->moves; move != list->end; ++move) {
@@ -301,31 +310,39 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			depth_left = depth;
 		} else if (    ss->ply
 			   &&  depth > 2
-			   &&  legal_moves > 1
+			   &&  legal_moves > (node_type == PV_NODE ? 3 : 1)
 			   &&  order(*move) <= PASSER_PUSH
 			   && !checking_move
 			   && !checked) {
 			depth_left = depth - 2 - (legal_moves / 10);
+			if (node_type == PV_NODE)
+				++depth_left;
 		} else {
 			depth_left = depth - 1;
 		}
 
 		// Principal Variation Search
-		if (legal_moves == 1 || !pv_node) {
-			ss[1].pv_node     = pv_node;
+		if (legal_moves == 1 || node_type != PV_NODE) {
+			if (node_type == PV_NODE)
+				ss[1].node_type = PV_NODE;
+			else if (node_type == CUT_NODE && legal_moves == 1)
+				ss[1].node_type = ALL_NODE;
+			else
+				ss[1].node_type = CUT_NODE;
 			ss[1].early_prune = 1;
 			val = -search(engine, ss + 1, -beta, -alpha, depth_left);
 			if (   val > alpha
 			    && depth_left < depth - 1) {
-				ss[1].pv_node = 1;
+				ss[1].node_type = node_type == PV_NODE ? PV_NODE : node_type;
+				ss[1].early_prune = 1;
 				val = -search(engine, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
 			}
 		} else {
-			ss[1].pv_node     = 0;
+			ss[1].node_type = CUT_NODE;
 			ss[1].early_prune = 1;
 			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left);
 			if (val > alpha) {
-				ss[1].pv_node = 1;
+				ss[1].node_type = PV_NODE;
 				val = -search(engine, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
 			}
 		}
@@ -358,6 +375,9 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			if (val > alpha)
 				alpha = val;
 		}
+
+		if (node_type == CUT_NODE)
+			node_type = ALL_NODE;
 	}
 
 	if (  !ss->ply
@@ -371,10 +391,14 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			return 0;
 	}
 
-	if (old_alpha == alpha)
+
+	if (old_alpha == alpha) {
+		if (node_type == CUT_NODE)
+			return alpha;
 		tt_store(&tt, best_val, FLAG_UPPER, depth, best_move, pos->state->pos_key);
-	else
+	} else {
 		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
+	}
 
 	return alpha;
 }
@@ -389,6 +413,10 @@ int begin_search(Engine* const engine)
 	clear_search(engine, ss + 2);
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
+	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
+	Move tt_move = get_move(entry.data);
+	if (!valid_move(pos, &tt_move))
+	    tt_clear(&tt);
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	int alpha, beta;
 	int asp_win_tries;
@@ -396,12 +424,12 @@ int begin_search(Engine* const engine)
 	int depth;
 	for (depth = 1; depth <= max_depth; ++depth) {
 		if (depth < 5) {
-			ss[2].pv_node = 1;
+			ss[2].node_type = PV_NODE;
 			val = search(engine, ss + 2, -INFINITY, +INFINITY, depth);
 		} else {
 			asp_win_tries = 0;
 			while (1) {
-				ss[2].pv_node = 1;
+				ss[2].node_type = PV_NODE;
 				alpha = val - asp_wins[asp_win_tries];
 				beta  = val + asp_wins[asp_win_tries];
 				val   = search(engine, ss + 2, alpha, beta, depth);
