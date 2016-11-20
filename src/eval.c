@@ -26,8 +26,8 @@ int piece_val[7] = {
 	S(90, 100),
 	S(400, 320),
 	S(400, 330),
-	S(500, 550),
-	S(1100, 1000)
+	S(600, 550),
+	S(1200, 1000)
 };
 
 int psq_val[8][64] = {
@@ -140,10 +140,9 @@ int king_cover[4]  = { 6, 4, 2, 0 };
 int passed_pawn[8]     = { 0, S(5, 10), S(10, 20), S(20, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
 int doubled_pawns      = S(-20, -30);
 int isolated_pawn      = S(-10, -20);
-int backward_pawn      = S(-10, -20);
+int backward_pawn      = S(-10, -20); // Try S(-15, -25)
 
 // Knight terms
-int knight_outpost[8] = { S(0, 0), S(0, 0), S(0, 0), S(20, 0), S(25, 0), S(30, 0), S(0, 0), S(0, 0) };
 
 // Bishop terms
 int blocked_bishop = S(-5, -5);
@@ -155,6 +154,8 @@ int rook_open_file = S(30, 0);
 int rook_semi_open = S(10, 0);
 
 // Miscellaneous terms
+int outpost[2]          = { S(15, 0), S(25, 0) }; // Bishop, Knight
+int protected_outpost   = S(10, 10);
 int weak_color_occupied = S(5, 5);
 
 typedef struct Eval_s {
@@ -204,12 +205,17 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 {
 	int sq, c, pt, ksq;
 	u64  curr_bb, c_bb, atk_bb, c_piece_occupancy_bb, xrayable_pieces_bb,
-	     strong_color_bb, mobility_mask, non_pinned_bb;
+	     strong_color_bb, mobility_mask, non_pinned_bb, king_atks_bb, sq_bb;
 
 	int eval[2]  = { S(0, 0), S(0, 0) };
 	int king_atkrs[2] = { 0, 0 };
 	u64* bb           = pos->bb;
 	u64  full_bb      = bb[FULL];
+
+	u64 outpost_ranks_mask[2] = {
+		rank_mask[RANK_4] | rank_mask[RANK_5] | rank_mask[RANK_6],
+		rank_mask[RANK_3] | rank_mask[RANK_4] | rank_mask[RANK_5]
+	};
 
 	eval[WHITE] += popcnt((bb[ROOK] & bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
 	eval[BLACK] += popcnt((bb[ROOK] & bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
@@ -239,6 +245,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			curr_bb &= non_pinned_bb;
 			while (curr_bb) {
 				sq       = bitscan(curr_bb);
+				sq_bb    = BB(sq);
 				curr_bb &= curr_bb - 1;
 				atk_bb   = get_atks(sq, pt, full_bb);
 
@@ -247,19 +254,22 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				    || pt == QUEEN)
 					atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 
-				if (atk_bb & ev->king_danger_zone[!c]) {
+				king_atks_bb = atk_bb & ev->king_danger_zone[!c];
+				if (king_atks_bb) {
 					++king_atkrs[c];
-					ev->king_atks[c] += king_atk_wt[pt];
+					ev->king_atks[c] += popcnt(king_atks_bb) * king_atk_wt[pt];
 				}
 
 				atk_bb  &= mobility_mask;
 				eval[c] += mobility[pt][popcnt(atk_bb)];
 
-				if (     pt == KNIGHT
-				    && !(ev->p_atks_bb[!c] & BB(sq))
-				    && !(file_forward_mask[c][sq] & ev->pawn_bb[c])
-				    &&  (file_forward_mask[c][sq] & ev->pawn_bb[!c])) {
-					eval[c] += knight_outpost[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
+				if (   (pt == KNIGHT || pt == BISHOP)
+				    && (~ev->p_atks_bb[!c] & sq_bb)
+				    && (sq_bb & outpost_ranks_mask[c])) {
+					eval[c] += outpost[pt & 1];
+
+					if (ev->p_atks_bb[c] & sq_bb)
+						eval[c] += protected_outpost;
 				}
 
 				if (     pt == ROOK
@@ -274,18 +284,16 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		// Pinned
 		curr_bb = ~non_pinned_bb;
 		while (curr_bb) {
-			sq       = bitscan(curr_bb);
-			curr_bb &= curr_bb - 1;
-			pt       = piece_type(pos->board[sq]);
-			atk_bb   = get_atks(sq, pt, full_bb);
-			if (atk_bb & ev->king_danger_zone[!c]) {
+			sq           = bitscan(curr_bb);
+			curr_bb     &= curr_bb - 1;
+			pt           = piece_type(pos->board[sq]);
+			atk_bb       = get_atks(sq, pt, full_bb);
+			king_atks_bb = atk_bb & ev->king_danger_zone[!c];
+			if (king_atks_bb) {
 				++king_atkrs[c];
-				ev->king_atks[c] += king_atk_wt[pt];
+				ev->king_atks[c] += popcnt(king_atks_bb) * king_atk_wt[pt];
 			}
 		}
-
-		if (king_atkrs[c] < 3)
-			ev->king_atks[c] = 0;
 	}
 
 	return eval[WHITE] - eval[BLACK];
