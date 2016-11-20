@@ -4,9 +4,9 @@ A free chess engine in C. It does not provide a GUI (Graphical User Interface)
 but can be linked to one that supports either the UCI or the Xboard/Winboard protocol.
 ### Usage
 #### GNU/Linux
-The 64-bit executable is available in the `binaries` folder.
+The 64-bit executable is available in the `binaries/linux` folder.
 #### Windows
-The 64-bit executable is available in the `binaries` folder.
+The 64-bit executable is available in the `binaries/win64` folder.
 ### Files
 * `binaries`: A subdirectory containing the Windows and GNU/Linux 64-bit executables.
 * `src`: A subdirectory containing the source code of the program.
@@ -14,7 +14,9 @@ The 64-bit executable is available in the `binaries` folder.
 * `README.md`: The file you're currently reading.
 * `makefile`: The file outlining the automated build process.
 
-### Release System
-A single(the latest) binary release for Windows and GNU/Linux will be available in the `binaries`
-subdirectory until the engine has achieved a strength of approximately 2400 ELO after which I will
-make the first official release and start recording version numbers for the following releases.
+### Binaries
+There are 4 types of binaries available for Windows and GNU/Linux each:
+* `fast_tc`: Appropriate for less than 1-minute long games(Busy waits the engine thread).
+* `popcnt`: Compiled with the -mpopcnt option.
+* `popcnt_fast_tc`: Includes both of the above
+* `No extension`: Includes none of the above
