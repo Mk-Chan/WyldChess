@@ -18,5 +18,5 @@ The 64-bit executable is available in the `binaries/win64` folder.
 There are 4 types of binaries available for Windows and GNU/Linux each:
 * `fast_tc`: Appropriate for less than 1-minute long games(Busy waits the engine thread).
 * `popcnt`: Compiled with the -mpopcnt option.
-* `popcnt_fast_tc`: Includes both of the above
-* `No extension`: Includes none of the above
+* `popcnt_fast_tc`: Includes both of the above.
+* `No extension`: Includes none of the above.
