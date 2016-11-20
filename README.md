@@ -2,7 +2,7 @@
 ### Overview
 A free chess engine in C. It does not provide a GUI (Graphical User Interface)
 but can be linked to one that supports either the UCI or the Xboard/Winboard protocol.
-### Usage
+
 ### Files
 * `src`: A subdirectory containing the source code of the program.
 * `LICENSE`: A file containing a copy of the GNU Public License.
