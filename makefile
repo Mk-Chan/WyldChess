@@ -1,3 +1,5 @@
+VERSION = 1.0
+
 CC_BASE  = clang
 CC_PERFT  = gcc
 CFLAGS = -std=c11 -O3 -mpopcnt
@@ -9,11 +11,10 @@ EXEC_BASE  = wyldchess
 
 CC_WIN64 = x86_64-w64-mingw32-gcc
 CC_LINUX = clang
-MAKE_DATE := $(shell date -Idate)
 CFLAGS_DIST = -static -std=c11 -O3
 CFLAGS_DIST_LINUX = -std=c11 -O3
-BIN_PATH = binaries/$(MAKE_DATE)
-EXEC = $(BIN_PATH)/$(EXEC_BASE)
+BIN_PATH = binaries/v$(VERSION)
+EXEC = $(BIN_PATH)/$(EXEC_BASE)$(VERSION)
 EXT_WIN64 = _win64.exe
 EXT_LINUX = _linux
 EXT_POPCNT = _popcnt
@@ -28,8 +29,7 @@ stats:
 perft:
 	$(CC_PERFT) $(CFLAGS_PERFT) $(SRC) -o $(EXEC_BASE) $(DEPS_PERFT) -DPERFT -DTHREADS=3
 targets:
-	$(shell rm -rf binaries)
-	$(shell mkdir -p binaries/$(MAKE_DATE))
+	$(shell mkdir -p binaries/v$(VERSION))
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(EXT_WIN64) $(DEPS)
 	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC)$(EXT_POPCNT)$(EXT_WIN64) $(DEPS)
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC)$(FAST)$(EXT_WIN64) $(DEPS) -DTEST
