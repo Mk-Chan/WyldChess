@@ -21,6 +21,9 @@ EXT_LINUX =
 EXT_POPCNT = _popcnt
 FAST = _fast_tc
 
+$(shell mkdir -p binaries/v$(VERSION)/win64)
+$(shell mkdir -p binaries/v$(VERSION)/linux)
+
 all:
 	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS)
 test:
@@ -30,13 +33,11 @@ stats:
 perft:
 	$(CC_PERFT) $(CFLAGS_PERFT) $(SRC) -o $(EXEC_BASE) $(DEPS_PERFT) -DPERFT -DTHREADS=3
 targets:
-	$(shell mkdir -p binaries/v$(VERSION)/win64)
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN64)$(EXT_WIN64) $(DEPS)
 	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN64)$(FAST)$(EXT_WIN64) $(DEPS) -DTEST
 	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC_WIN64)$(EXT_POPCNT)$(EXT_WIN64) $(DEPS)
 	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC_WIN64)$(EXT_POPCNT)$(FAST)$(EXT_WIN64) $(DEPS) -DTEST
 
-	$(shell mkdir -p binaries/v$(VERSION)/linux)
 	$(CC_LINUX) $(CFLAGS_DIST_LINUX) $(SRC) -o $(EXEC_LINUX)$(EXT_LINUX) $(DEPS)
 	$(CC_LINUX) $(CFLAGS_DIST_LINUX) $(SRC) -o $(EXEC_LINUX)$(FAST)$(EXT_LINUX) $(DEPS) -DTEST
 	$(CC_LINUX) $(CFLAGS_DIST_LINUX) -mpopcnt $(SRC) -o $(EXEC_LINUX)$(EXT_POPCNT)$(EXT_LINUX) $(DEPS)
