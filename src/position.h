@@ -27,6 +27,7 @@
 #ifdef STATS
 typedef struct Stats_s {
 
+	u64 correct_nt_guess;
 	u64 iid_cutoffs;
 	u64 iid_tries;
 	u64 futility_cutoffs;
