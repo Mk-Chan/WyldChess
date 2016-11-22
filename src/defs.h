@@ -27,13 +27,13 @@
 #define AUTHOR_NAME (("Manik Charan"))
 #define INITIAL_POSITION (("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
 
-#define MAX_MOVES   (2048)
-#define MAX_PLY     (128)
-#define BB(x)       (1ULL << (x))
-#define INFINITY    (30000)
-#define MATE_VAL    (INFINITY - MAX_PLY)
-#define S(mg, eg)   (((mg) + (((unsigned int)eg) << 16)))
-#define MAX_PHASE   (256)
+#define MAX_MOVES    (2048)
+#define MAX_PLY      (128)
+#define BB(x)        (1ULL << (x))
+#define INFINITY     (30000)
+#define MAX_MATE_VAL (INFINITY - MAX_PLY)
+#define S(mg, eg)    (((mg) + (((unsigned int)eg) << 16)))
+#define MAX_PHASE    (256)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
@@ -127,8 +127,8 @@ enum NodeTypes {
 	ALL_NODE
 };
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define min(a, b) ((a) < (b) ? (a) : (b))
+static inline int max(int a, int b) { return a > b ? a : b; }
+static inline int min(int a, int b) { return a < b ? a : b; }
 
 #define make_piece(pt, c)  (pt | (c << 3))
 #define piece_type(piece)  (piece & 7)

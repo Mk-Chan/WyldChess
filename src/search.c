@@ -124,6 +124,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 		if (ss->ply >= MAX_PLY)
 			return evaluate(pos);
+
+		alpha = max((-MAX_MATE_VAL + ss->ply), alpha);
+		beta  = min((MAX_MATE_VAL - ss->ply), beta);
+		if (alpha >= beta)
+			return alpha;
 	}
 
 	int node_type = ss->node_type;
@@ -174,7 +179,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #endif
 		val = evaluate(pos) - (100 * depth);
 		if (   val >= beta
-		    && abs(val) < MATE_VAL) {
+		    && abs(val) < MAX_MATE_VAL) {
 #ifdef STATS
 			++pos->stats.futility_cutoffs;
 #endif
@@ -201,7 +206,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		if (ctlr->is_stopped)
 			return 0;
 		if (   val >= beta
-		    && abs(val) < MATE_VAL) {
+		    && abs(val) < MAX_MATE_VAL) {
 #ifdef STATS
 			++pos->stats.null_cutoffs;
 #endif
