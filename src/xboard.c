@@ -45,16 +45,10 @@ static int check_stale_and_mate(Position* const pos)
 	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, &list);
-	} else {
-		gen_quiets(pos, &list);
-		gen_captures(pos, &list);
-	}
+	gen_pseudo_legal_moves(pos, &list);
 	for (Move* move = list.moves; move != list.end; ++move) {
-		if (!do_move(pos, *move))
+		if (!legal_move(pos, *move))
 			continue;
-		undo_move(pos);
 		return NO_RESULT;
 	}
 	return pos->state->checkers_bb ? CHECKMATE : DRAW;
@@ -125,10 +119,11 @@ void* engine_loop_cecp(void* args)
 			engine->curr_state = THINKING;
 			move = begin_search(engine);
 			move_str(move, mstr);
-			if (!do_move(pos, move)) {
+			if (!legal_move(pos, move)) {
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
 				pthread_exit(0);
 			}
+			do_move(pos, move);
 			fprintf(stdout, "move %s\n", mstr);
 			engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
 			engine->ctlr->time_left += engine->ctlr->increment;
@@ -297,8 +292,10 @@ void cecp_loop()
 
 			move = parse_move(&pos, input);
 			if (  !move
-			   || !do_move(&pos, move))
+			   || !legal_move(&pos, move))
 				fprintf(stdout, "Illegal move: %s\n", input);
+			else
+				do_move(&pos, move);
 
 			transition(&engine, WAITING);
 			if (engine.game_over)

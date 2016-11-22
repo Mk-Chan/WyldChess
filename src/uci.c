@@ -108,7 +108,7 @@ void uci_loop()
 				while ((ptr = strstr(ptr, " "))) {
 					++ptr;
 					move = parse_move(&pos, ptr);
-					if (!do_move(&pos, move)) {
+					if (!legal_move(&pos, move)) {
 						char mstr[6];
 						move_str(move, mstr);
 						fprintf(stdout, "Illegal move: %s\n", mstr);

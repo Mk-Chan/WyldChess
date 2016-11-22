@@ -184,8 +184,9 @@ static int get_stored_moves(Position* const pos, int depth)
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
 		Move move = get_move(entry.data);
 		if (  !valid_move(pos, &move)
-		   || !do_move(pos, move))
+		   || !legal_move(pos, move))
 			return 0;
+		do_move(pos, move);
 		fprintf(stdout, " ");
 		move_str(move, mstr);
 		fprintf(stdout, "%s", mstr);

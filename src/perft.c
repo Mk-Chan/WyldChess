@@ -88,13 +88,16 @@ static u64 perft(Position* const pos, Movelist* list, u32 depth)
 	Move* move;
 	if (depth == 1) {
 		for(move = list->moves; move < list->end; ++move) {
-			if(!do_move(pos, *move)) continue;
+			if (!legal_move(pos, *move))
+				continue;
+			do_move(pos, *move);
 			undo_move(pos);
 			++count;
 		}
 	} else {
 		for(move = list->moves; move < list->end; ++move) {
-			if(!do_move(pos, *move)) continue;
+			if (!legal_move(pos, *move)) continue;
+			do_move(pos, *move);
 			count += perft(pos, list + 1, depth - 1);
 			undo_move(pos);
 		}

@@ -137,10 +137,10 @@ int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
 int king_cover[4]  = { 6, 4, 2, 0 };
 
 // Pawn terms
-int passed_pawn[8]     = { 0, S(5, 10), S(10, 20), S(20, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
-int doubled_pawns      = S(-20, -30);
-int isolated_pawn      = S(-10, -20);
-int backward_pawn      = S(-10, -20); // Try S(-15, -25)
+int passed_pawn[8] = { 0, S(5, 10), S(10, 20), S(20, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
+int doubled_pawns  = S(-20, -30);
+int isolated_pawn  = S(-10, -20);
+int backward_pawn  = S(-10, -20);
 
 // Knight terms
 
@@ -154,9 +154,9 @@ int rook_open_file = S(30, 0);
 int rook_semi_open = S(10, 0);
 
 // Miscellaneous terms
-int outpost[2]          = { S(15, 0), S(25, 0) }; // Bishop, Knight
-int protected_outpost   = S(10, 10);
-int weak_color_occupied = S(5, 5);
+int outpost[2]           = { S(15, 0), S(15, 10) }; // Bishop, Knight
+int protected_outpost[2] = { S(10, 5), S(15, 10) }; // Bishop, Knight
+int weak_color_occupied  = S(5, 5);
 
 typedef struct Eval_s {
 
@@ -269,7 +269,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 					eval[c] += outpost[pt & 1];
 
 					if (ev->p_atks_bb[c] & sq_bb)
-						eval[c] += protected_outpost;
+						eval[c] += protected_outpost[pt & 1];
 				}
 
 				if (     pt == ROOK

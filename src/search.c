@@ -70,10 +70,11 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		    && order(*move) < BAD_CAP)
 			continue;
 
-		if (!do_move(pos, *move))
+		if (!legal_move(pos, *move))
 			continue;
-
 		++legal_moves;
+
+		do_move(pos, *move);
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
 		undo_move(pos);
 		if (ctlr->is_stopped)
@@ -298,10 +299,10 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    legal_moves = 0;
 	int checking_move, depth_left;
 	for (move = list->moves; move != list->end; ++move) {
-		if (!do_move(pos, *move))
+		if (!legal_move(pos, *move))
 			continue;
-
 		++legal_moves;
+		do_move(pos, *move);
 
 		// Check extension
 		checking_move = (checkers(pos, !pos->stm) > 0ULL);

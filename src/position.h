@@ -98,11 +98,9 @@ extern Position get_position_copy(Position const * const pos);
 extern void do_null_move(Position* const pos);
 extern void undo_null_move(Position* const pos);
 extern void undo_move(Position* const pos);
-extern u32  do_move(Position* const pos, Move const m);
-extern u32  do_usermove(Position* const pos, Move const m);
+extern void  do_move(Position* const pos, Move const m);
 
 extern void gen_pseudo_legal_moves(Position* pos, Movelist* list);
-extern void gen_quiets(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
 extern void gen_legal_moves(Position* pos, Movelist* list);
 extern void gen_check_evasions(Position* pos, Movelist* list);
@@ -353,12 +351,7 @@ static inline int parse_move(Position* pos, char* str)
 	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	if (pos->state->checkers_bb) {
-		gen_check_evasions(pos, &list);
-	} else {
-		gen_quiets(pos, &list);
-		gen_captures(pos, &list);
-	}
+	gen_pseudo_legal_moves(pos, &list);
 	for(Move* move = list.moves; move != list.end; ++move) {
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {

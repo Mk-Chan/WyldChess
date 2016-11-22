@@ -279,28 +279,6 @@ static void gen_castling(Position* pos, Movelist* list)
 		add_move(move_castle(castling_king_sqs[c][1][0], castling_king_sqs[c][1][1]), list);
 }
 
-void gen_quiets(Position* pos, Movelist* list)
-{
-	u32 from, pt;
-	u32 const c            = pos->stm;
-	u64 const full_bb      = pos->bb[FULL],
-	          vacancy_mask = ~full_bb,
-	          us_mask      = pos->bb[c];
-	gen_castling(pos, list);
-	gen_pawn_quiets(pos, list);
-	u64 curr_piece_bb;
-	for (pt = KNIGHT; pt != KING; ++pt) {
-		curr_piece_bb = pos->bb[pt] & us_mask;
-		while (curr_piece_bb) {
-			from           = bitscan(curr_piece_bb);
-			curr_piece_bb &= curr_piece_bb - 1;
-			extract_moves(from, get_atks(from, pt, full_bb) & vacancy_mask, list);
-		}
-	}
-	from = pos->king_sq[c];
-	extract_moves(from, k_atks[from] & vacancy_mask, list);
-}
-
 void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 {
 	if (pos->state->checkers_bb) {

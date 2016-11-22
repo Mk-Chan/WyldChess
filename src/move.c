@@ -113,7 +113,7 @@ void undo_move(Position* const pos)
 	}
 }
 
-u32 do_move(Position* const pos, Move const m)
+void do_move(Position* const pos, Move const m)
 {
 	static u32 const castle_perms[64] = {
 		13, 15, 15, 15, 12, 15, 15, 14,
@@ -137,7 +137,6 @@ u32 do_move(Position* const pos, Move const m)
 	next->ep_sq_bb              = 0ULL;
 	next->phase                 = curr->phase;
 
-	u32 check_illegal = 0;
 	u32 const from    = from_sq(m),
 	          to      = to_sq(m),
 	          c       = pos->stm,
@@ -161,10 +160,8 @@ u32 do_move(Position* const pos, Move const m)
 				remove_piece(pos, to, piece_type(pos->board[to]), !c);
 				move_piece(pos, from, to, pt, c);
 			}
-			if (pt == KING) {
+			if (pt == KING)
 				pos->king_sq[c] = to;
-				check_illegal   = 1;
-			}
 		}
 		break;
 	case DOUBLE_PUSH:
@@ -183,7 +180,6 @@ u32 do_move(Position* const pos, Move const m)
 		{
 			move_piece(pos, from, to, PAWN, c);
 			remove_piece(pos, (c == WHITE ? to - 8 : to + 8), PAWN, !c);
-			check_illegal = 1;
 		}
 		break;
 	case CASTLE:
@@ -229,14 +225,4 @@ u32 do_move(Position* const pos, Move const m)
 	next->pos_key        ^=   stm_key
 		                ^ castle_keys[curr->castling_rights]
 		                ^ castle_keys[next->castling_rights];
-
-#ifndef PERFT
-	if ( (check_illegal || (BB(from) & curr->pinned_bb) > 0ULL)
-	   && checkers(pos, pos->stm)) {
-		undo_move(pos);
-		return 0;
-	}
-#endif
-
-	return 1;
 }
