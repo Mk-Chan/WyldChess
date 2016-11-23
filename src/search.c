@@ -128,6 +128,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		if (ss->ply >= MAX_PLY)
 			return evaluate(pos);
 
+		// Mate distance pruning
 		alpha = max((-MAX_MATE_VAL + ss->ply), alpha);
 		beta  = min((MAX_MATE_VAL - ss->ply), beta);
 		if (alpha >= beta)

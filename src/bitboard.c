@@ -22,14 +22,14 @@
 #include "bitboard.h"
 #include "magicmoves.h"
 
-u64 p_atks[2][64];
-u64 n_atks[64];
-u64 k_atks[64];
-u64 b_pseudo_atks[64];
-u64 r_pseudo_atks[64];
-u64 q_pseudo_atks[64];
-u64 dirn_sqs[64][64];
-u64 intervening_sqs[64][64];
+u64 p_atks_bb[2][64];
+u64 n_atks_bb[64];
+u64 k_atks_bb[64];
+u64 b_pseudo_atks_bb[64];
+u64 r_pseudo_atks_bb[64];
+u64 q_pseudo_atks_bb[64];
+u64 dirn_sqs_bb[64][64];
+u64 intervening_sqs_bb[64][64];
 
 u64 rank_mask[8] = {
 	0xffULL,
@@ -122,23 +122,23 @@ void init_atks()
 	    sq = 0;
 
 	for (; sq != 64; ++sq) {
-		k_atks[sq] = 0ULL;
-		n_atks[sq] = 0ULL;
-		p_atks[WHITE][sq] = 0ULL;
-		p_atks[BLACK][sq] = 0ULL;
+		k_atks_bb[sq] = 0ULL;
+		n_atks_bb[sq] = 0ULL;
+		p_atks_bb[WHITE][sq] = 0ULL;
+		p_atks_bb[BLACK][sq] = 0ULL;
 
 		for (off = 0; off != 8; ++off) {
 			ksq = sq + king_offsets[off];
 			if (   ksq <= H8
 			    && ksq >= A1
 			    && file_diff(sq, ksq) <= 1)
-				k_atks[sq] |= BB(ksq);
+				k_atks_bb[sq] |= BB(ksq);
 
 			nsq = sq + knight_offsets[off];
 			if (   nsq <= H8
 			    && nsq >= A1
 			    && file_diff(sq, nsq) <= 2)
-				n_atks[sq] |= BB(nsq);
+				n_atks_bb[sq] |= BB(nsq);
 		}
 
 		for (off = 0; off != 2; ++off) {
@@ -147,13 +147,13 @@ void init_atks()
 				if (   psq <= H8
 				    && psq >= A1
 				    && file_diff(sq, psq) <= 1)
-					p_atks[c][sq] |= BB(psq);
+					p_atks_bb[c][sq] |= BB(psq);
 			}
 		}
 
-		b_pseudo_atks[sq] = Bmagic(sq, 0ULL);
-		r_pseudo_atks[sq] = Rmagic(sq, 0ULL);
-		q_pseudo_atks[sq] = Qmagic(sq, 0ULL);
+		b_pseudo_atks_bb[sq] = Bmagic(sq, 0ULL);
+		r_pseudo_atks_bb[sq] = Rmagic(sq, 0ULL);
+		q_pseudo_atks_bb[sq] = Qmagic(sq, 0ULL);
 	}
 }
 
@@ -162,7 +162,7 @@ void init_intervening_sqs()
 	int i, j, high, low;
 	for (i = 0; i < 64; i++) {
 		for (j = 0; j < 64; j++) {
-			intervening_sqs[i][j] = 0ULL;
+			intervening_sqs_bb[i][j] = 0ULL;
 			if (i == j)
 				continue;
 			high = j;
@@ -173,24 +173,24 @@ void init_intervening_sqs()
 			else
 				low = i;
 			if (file_of(high) == file_of(low)) {
-				dirn_sqs[i][j] = Rmagic(high, 0ULL) & Rmagic(low, 0ULL);
+				dirn_sqs_bb[i][j] = Rmagic(high, 0ULL) & Rmagic(low, 0ULL);
 				for (high -= 8; high != low; high -= 8)
-					intervening_sqs[i][j] |= BB(high);
+					intervening_sqs_bb[i][j] |= BB(high);
 			}
 			else if (rank_of(high) == rank_of(low)) {
-				dirn_sqs[i][j] = Rmagic(high, 0ULL) & Rmagic(low, 0ULL);
+				dirn_sqs_bb[i][j] = Rmagic(high, 0ULL) & Rmagic(low, 0ULL);
 				for (--high; high != low; high--)
-					intervening_sqs[i][j] |= BB(high);
+					intervening_sqs_bb[i][j] |= BB(high);
 			}
 			else if (rank_of(high) - rank_of(low) == file_of(high) - file_of(low)) {
-				dirn_sqs[i][j] = Bmagic(high, 0ULL) & Bmagic(low, 0ULL);
+				dirn_sqs_bb[i][j] = Bmagic(high, 0ULL) & Bmagic(low, 0ULL);
 				for (high -= 9; high != low; high -= 9)
-					intervening_sqs[i][j] |= BB(high);
+					intervening_sqs_bb[i][j] |= BB(high);
 			}
 			else if (rank_of(high) - rank_of(low) == file_of(low) - file_of(high)) {
-				dirn_sqs[i][j] = Bmagic(high, 0ULL) & Bmagic(low, 0ULL);
+				dirn_sqs_bb[i][j] = Bmagic(high, 0ULL) & Bmagic(low, 0ULL);
 				for (high -= 7; high != low; high -= 7)
-					intervening_sqs[i][j] |= BB(high);
+					intervening_sqs_bb[i][j] |= BB(high);
 			}
 		}
 	}

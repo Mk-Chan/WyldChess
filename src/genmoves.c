@@ -26,29 +26,29 @@ static inline void add_move(u32 m, Movelist* list)
 	++list->end;
 }
 
-static void extract_moves(u32 from, u64 atks, Movelist* list)
+static void extract_moves(u32 from, u64 atks_bb, Movelist* list)
 {
 	u32 to;
-	while (atks) {
-		to    = bitscan(atks);
-		atks &= atks - 1;
+	while (atks_bb) {
+		to    = bitscan(atks_bb);
+		atks_bb &= atks_bb - 1;
 		add_move(move_normal(from, to), list);
 	}
 }
 
-static void extract_caps(Position* const pos, u32 from, u64 atks, Movelist* list)
+static void extract_caps(Position* const pos, u32 from, u64 atks_bb, Movelist* list)
 {
 	u32 to;
-	while (atks) {
-		to    = bitscan(atks);
-		atks &= atks - 1;
+	while (atks_bb) {
+		to    = bitscan(atks_bb);
+		atks_bb &= atks_bb - 1;
 		add_move(move_cap(from, to, piece_type(pos->board[to])), list);
 	}
 }
 
 static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list)
 {
-	u64 blockers_poss, pawn_block_poss;
+	u64 blockers_poss_bb, pawn_block_poss_bb;
 	u32 blocking_sq, blocker;
 	u32 const c              = pos->stm;
 	u64       pawns_bb       = pos->bb[PAWN] & pos->bb[c];
@@ -56,11 +56,11 @@ static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list
 	          full_bb        = pos->bb[FULL],
 	          vacancy_mask   = ~full_bb;
 	while (blocking_poss_bb) {
-		blocking_sq       = bitscan(blocking_poss_bb);
-		blocking_poss_bb &= blocking_poss_bb - 1;
-		pawn_block_poss   = pawn_shift(BB(blocking_sq), !c);
-		if (pawn_block_poss & pawns_bb) {
-			blocker = bitscan(pawn_block_poss);
+		blocking_sq         = bitscan(blocking_poss_bb);
+		blocking_poss_bb   &= blocking_poss_bb - 1;
+		pawn_block_poss_bb  = pawn_shift(BB(blocking_sq), !c);
+		if (pawn_block_poss_bb & pawns_bb) {
+			blocker = bitscan(pawn_block_poss_bb);
 			if (blocking_sq < 8 || blocking_sq > 55) {
 				add_move(move_prom(blocker, blocking_sq, TO_QUEEN), list);
 				add_move(move_prom(blocker, blocking_sq, TO_KNIGHT), list);
@@ -71,14 +71,14 @@ static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list
 			}
 		} else if (((c == WHITE && rank_of(blocking_sq) == RANK_4)
 			 || (c == BLACK && rank_of(blocking_sq) == RANK_5))
-			   && (pawn_block_poss & vacancy_mask)
-			   && (pawn_block_poss = pawn_shift(pawn_block_poss, !c) & pawns_bb)) {
-			add_move(move_double_push(bitscan(pawn_block_poss), blocking_sq), list);
+			   && (pawn_block_poss_bb & vacancy_mask)
+			   && (pawn_block_poss_bb = pawn_shift(pawn_block_poss_bb, !c) & pawns_bb)) {
+			add_move(move_double_push(bitscan(pawn_block_poss_bb), blocking_sq), list);
 		}
-		blockers_poss = atkers_to_sq(pos, blocking_sq, c, full_bb) & inlcusion_mask;
-		while (blockers_poss) {
-			add_move(move_normal(bitscan(blockers_poss), blocking_sq), list);
-			blockers_poss &= blockers_poss - 1;
+		blockers_poss_bb = atkers_to_sq(pos, blocking_sq, c, full_bb) & inlcusion_mask;
+		while (blockers_poss_bb) {
+			add_move(move_normal(bitscan(blockers_poss_bb), blocking_sq), list);
+			blockers_poss_bb &= blockers_poss_bb - 1;
 		}
 	}
 }
@@ -95,7 +95,7 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 	if (    ep_sq_bb
 	    && (pawn_shift(ep_sq_bb, !c) & checkers_bb)) {
 		u32 const ep_sq = bitscan(ep_sq_bb);
-		u64 ep_poss     = pawns_bb & p_atks[!c][ep_sq];
+		u64 ep_poss     = pawns_bb & p_atks_bb[!c][ep_sq];
 		while (ep_poss) {
 			atker    = bitscan(ep_poss);
 			ep_poss &= ep_poss - 1;
@@ -125,18 +125,20 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 
 void gen_check_evasions(Position* pos, Movelist* list)
 {
-	u32 const c         = pos->stm,
-	          ksq       = pos->king_sq[c];
-	u64 checkers_bb     = pos->state->checkers_bb,
-	    evasions_bb     = k_atks[ksq] & ~pos->bb[c];
-	u64 const full_bb   = pos->bb[FULL];
-	u64 const sans_king = full_bb ^ (pos->bb[c] & pos->bb[KING]);
+	u32 const c   = pos->stm,
+	          ksq = pos->king_sq[c];
+
+	u64 checkers_bb = pos->state->checkers_bb,
+	    evasions_bb = k_atks_bb[ksq] & ~pos->bb[c];
+
+	u64 const full_bb      = pos->bb[FULL];
+	u64 const sans_king_bb = full_bb ^ BB(ksq);
 
 	u32 sq;
 	while (evasions_bb) {
 		sq = bitscan(evasions_bb);
 		evasions_bb &= evasions_bb - 1;
-		if (!atkers_to_sq(pos, sq, !c, sans_king))
+		if (!atkers_to_sq(pos, sq, !c, sans_king_bb))
 			add_move(move_cap(ksq, sq, piece_type(pos->board[sq])), list);
 	}
 
@@ -145,10 +147,10 @@ void gen_check_evasions(Position* pos, Movelist* list)
 
 	gen_checker_caps(pos, checkers_bb, list);
 
-	if (checkers_bb & k_atks[ksq])
+	if (checkers_bb & k_atks_bb[ksq])
 		return;
 
-	u64 const blocking_poss_bb = intervening_sqs[bitscan(checkers_bb)][ksq];
+	u64 const blocking_poss_bb = intervening_sqs_bb[bitscan(checkers_bb)][ksq];
 	if (blocking_poss_bb)
 		gen_check_blocks(pos, blocking_poss_bb, list);
 }
@@ -161,7 +163,7 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 	u64        pawns_bb = pos->bb[PAWN] & pos->bb[c];
 	if (pos->state->ep_sq_bb) {
 		u32 const ep_sq   = bitscan(pos->state->ep_sq_bb);
-		u64       ep_poss = pawns_bb & p_atks[!c][ep_sq];
+		u64       ep_poss = pawns_bb & p_atks_bb[!c][ep_sq];
 		while (ep_poss) {
 			from     = bitscan(ep_poss);
 			ep_poss &= ep_poss - 1;
@@ -171,7 +173,7 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 	while (pawns_bb) {
 		from           = bitscan(pawns_bb);
 		pawns_bb      &= pawns_bb - 1;
-		cap_candidates = p_atks[c][from] & pos->bb[!c];
+		cap_candidates = p_atks_bb[c][from] & pos->bb[!c];
 		while (cap_candidates) {
 			to              = bitscan(cap_candidates);
 			cap_pt          = piece_type(pos->board[to]);
@@ -206,7 +208,7 @@ void gen_captures(Position* pos, Movelist* list)
 		}
 	}
 	from = pos->king_sq[c];
-	extract_caps(pos, from, k_atks[from] & enemy_mask, list);
+	extract_caps(pos, from, k_atks_bb[from] & enemy_mask, list);
 }
 
 static void gen_pawn_quiets(Position* pos, Movelist* list)
@@ -304,8 +306,8 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 			}
 		}
 		from = pos->king_sq[c];
-		extract_caps(pos, from, k_atks[from] & enemy_mask, list);
-		extract_moves(from, k_atks[from] & vacancy_mask, list);
+		extract_caps(pos, from, k_atks_bb[from] & enemy_mask, list);
+		extract_moves(from, k_atks_bb[from] & vacancy_mask, list);
 	}
 }
 

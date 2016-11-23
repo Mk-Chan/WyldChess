@@ -21,14 +21,14 @@
 
 #include "defs.h"
 
-extern u64 p_atks[2][64];
-extern u64 n_atks[64];
-extern u64 k_atks[64];
-extern u64 b_pseudo_atks[64];
-extern u64 r_pseudo_atks[64];
-extern u64 q_pseudo_atks[64];
-extern u64 dirn_sqs[64][64];
-extern u64 intervening_sqs[64][64];
+extern u64 p_atks_bb[2][64];
+extern u64 n_atks_bb[64];
+extern u64 k_atks_bb[64];
+extern u64 b_pseudo_atks_bb[64];
+extern u64 r_pseudo_atks_bb[64];
+extern u64 q_pseudo_atks_bb[64];
+extern u64 dirn_sqs_bb[64][64];
+extern u64 intervening_sqs_bb[64][64];
 
 extern u64 rank_mask[8];
 extern u64 file_mask[8];

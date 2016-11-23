@@ -162,7 +162,7 @@ typedef struct Eval_s {
 
 	u64 pawn_bb[2];
 	u64 p_atks_bb[2];
-	u64 king_danger_zone[2];
+	u64 king_danger_zone_bb[2];
 	u64 pinned_bb[2];
 	u64 blocked_pawns_bb[2];
 	int king_atks[2];
@@ -175,14 +175,14 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 	u64 bb, pawn_bb, opp_pawn_bb, atk_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
-		ev->p_atks_bb[c]      = 0ULL;
-		pawn_bb               = ev->pawn_bb[c];
-		opp_pawn_bb           = ev->pawn_bb[!c];
-		bb                    = pawn_bb;
+		ev->p_atks_bb[c] = 0ULL;
+		pawn_bb          = ev->pawn_bb[c];
+		opp_pawn_bb      = ev->pawn_bb[!c];
+		bb               = pawn_bb;
 		while (bb) {
 			sq     = bitscan(bb);
 			bb    &= bb - 1;
-			atk_bb = p_atks[c][sq];
+			atk_bb = p_atks_bb[c][sq];
 			ev->p_atks_bb[c] |= atk_bb;
 
 			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
@@ -192,7 +192,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 				eval[c] += doubled_pawns;
 			} else if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
-			} else if (    (opp_pawn_bb & (c == WHITE ? p_atks[c][sq + 8] | BB((sq + 8)) : p_atks[c][sq - 8] | BB((sq - 8))))
+			} else if (    (opp_pawn_bb & (c == WHITE ? p_atks_bb[c][sq + 8] | BB((sq + 8)) : p_atks_bb[c][sq - 8] | BB((sq - 8))))
 				   && !(pawn_bb & adjacent_files_mask[file_of(sq)] & passed_pawn_mask[!c][sq])) {
 				eval[c] += backward_pawn;
 			}
@@ -227,7 +227,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		ksq                  =   pos->king_sq[c];
 		mobility_mask        = ~(ev->blocked_pawns_bb[c] | BB(ksq) | ev->p_atks_bb[!c]);
 		xrayable_pieces_bb   =   c_bb ^ BB(ksq) ^ ev->blocked_pawns_bb[c];
-		ev->king_atks[!c]   +=   king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks[ksq] & ev->pawn_bb[c])];
+		ev->king_atks[!c]   +=   king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks_bb[ksq] & ev->pawn_bb[c])];
 
 		for (pt = KNIGHT; pt != KING; ++pt) {
 			curr_bb = bb[pt] & c_bb;
@@ -254,7 +254,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				    || pt == QUEEN)
 					atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 
-				king_atks_bb = atk_bb & ev->king_danger_zone[!c];
+				king_atks_bb = atk_bb & ev->king_danger_zone_bb[!c];
 				if (king_atks_bb) {
 					++king_atkrs[c];
 					ev->king_atks[c] += popcnt(king_atks_bb) * king_atk_wt[pt];
@@ -288,7 +288,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			curr_bb     &= curr_bb - 1;
 			pt           = piece_type(pos->board[sq]);
 			atk_bb       = get_atks(sq, pt, full_bb);
-			king_atks_bb = atk_bb & ev->king_danger_zone[!c];
+			king_atks_bb = atk_bb & ev->king_danger_zone_bb[!c];
 			if (king_atks_bb) {
 				++king_atkrs[c];
 				ev->king_atks[c] += popcnt(king_atks_bb) * king_atk_wt[pt];
@@ -309,7 +309,7 @@ int evaluate(Position* const pos)
 	for (c = WHITE; c <= BLACK; ++c) {
 		ksq                    = pos->king_sq[c];
 		ev.king_atks[c]        = 0;
-		ev.king_danger_zone[c] = k_atks[ksq] | BB(ksq);
+		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
 		ev.pawn_bb[c]          = pos->bb[PAWN] & pos->bb[c];
 	}
 
