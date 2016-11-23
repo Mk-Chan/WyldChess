@@ -192,8 +192,8 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 				eval[c] += doubled_pawns;
 			} else if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
-			} else if (    (opp_pawn_bb & (c == WHITE ? p_atks_bb[c][sq + 8] | BB((sq + 8)) : p_atks_bb[c][sq - 8] | BB((sq - 8))))
-				   && !(pawn_bb & adjacent_files_mask[file_of(sq)] & passed_pawn_mask[!c][sq])) {
+			} else if (   (opp_pawn_bb & (c == WHITE ? p_atks_bb[c][sq + 8] | BB((sq + 8)) : p_atks_bb[c][sq - 8] | BB((sq - 8))))
+				   && (pawn_bb & adjacent_files_mask[file_of(sq)] & passed_pawn_mask[c][sq])) {
 				eval[c] += backward_pawn;
 			}
 		}
