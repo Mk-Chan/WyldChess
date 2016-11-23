@@ -38,6 +38,10 @@ extern u64 file_forward_mask[2][64];
 extern u64 adjacent_files_mask[8];
 extern u64 adjacent_ranks_mask[8];
 extern u64 color_sq_mask[2];
+extern u64 adjacent_forward_mask[2][64];
+extern u64 backwards_pawn_restrictors_mask[2][64];
+extern u64 outpost_ranks_mask[2];
+
 extern u32 sq_color[64];
 
 extern void init_masks();

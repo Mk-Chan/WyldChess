@@ -58,6 +58,10 @@ u64 file_forward_mask[2][64];
 u64 adjacent_files_mask[8];
 u64 adjacent_ranks_mask[8];
 u64 color_sq_mask[2];
+u64 adjacent_forward_mask[2][64];
+u64 backwards_pawn_restrictors_mask[2][64];
+u64 outpost_ranks_mask[2];
+
 u32 sq_color[64];
 
 static inline int file_diff(int sq1, int sq2)
@@ -68,6 +72,10 @@ static inline int file_diff(int sq1, int sq2)
 void init_masks()
 {
 	int c, sq;
+
+	outpost_ranks_mask[WHITE] = rank_mask[RANK_4] | rank_mask[RANK_5] | rank_mask[RANK_6];
+	outpost_ranks_mask[BLACK] = rank_mask[RANK_3] | rank_mask[RANK_4] | rank_mask[RANK_5];
+
 	for (sq = 0; sq != 8; ++sq) {
 		adjacent_files_mask[sq] = 0ULL;
 		adjacent_ranks_mask[sq] = 0ULL;
@@ -80,6 +88,7 @@ void init_masks()
 			adjacent_ranks_mask[sq] |= rank_mask[sq - 1];
 		}
 	}
+
 	color_sq_mask[WHITE] = 0ULL;
 	color_sq_mask[BLACK] = 0ULL;
 	for (sq = 0; sq != 64; ++sq) {
@@ -92,6 +101,7 @@ void init_masks()
 			sq_color[sq] = WHITE;
 		}
 	}
+
 	int forward, i;
 	for (c = WHITE; c <= BLACK; ++c) {
 		forward = c == WHITE ? 1 : -1;
@@ -99,6 +109,12 @@ void init_masks()
 			file_forward_mask[c][sq] = 0ULL;
 			for (i = sq + (forward << 3); i >= 0 && i <= 63; i += forward << 3)
 				file_forward_mask[c][sq] |= BB(i);
+			backwards_pawn_restrictors_mask[c][sq] = 0ULL;
+			if ((c == WHITE ? sq < 56 : sq > 7))
+				backwards_pawn_restrictors_mask[c][sq] |=
+					(c == WHITE
+					 ? p_atks_bb[c][sq + 8] | BB((sq + 8))
+					 : p_atks_bb[c][sq - 8] | BB((sq - 8)));
 		}
 	}
 
@@ -109,6 +125,8 @@ void init_masks()
 				passed_pawn_mask[c][sq] |= file_forward_mask[c][sq - 1];
 			if (file_of(sq) != 7)
 				passed_pawn_mask[c][sq] |= file_forward_mask[c][sq + 1];
+
+			adjacent_forward_mask[c][sq] = passed_pawn_mask[c][sq] & adjacent_files_mask[file_of(sq)];
 		}
 	}
 }

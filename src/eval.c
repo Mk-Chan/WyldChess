@@ -192,8 +192,8 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 				eval[c] += doubled_pawns;
 			} else if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
-			} else if (   (opp_pawn_bb & (c == WHITE ? p_atks_bb[c][sq + 8] | BB((sq + 8)) : p_atks_bb[c][sq - 8] | BB((sq - 8))))
-				   && (pawn_bb & adjacent_files_mask[file_of(sq)] & passed_pawn_mask[c][sq])) {
+			} else if (   (opp_pawn_bb & backwards_pawn_restrictors_mask[c][sq])
+				   && (pawn_bb & adjacent_forward_mask[c][sq])) {
 				eval[c] += backward_pawn;
 			}
 		}
@@ -211,11 +211,6 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	int king_atkrs[2] = { 0, 0 };
 	u64* bb           = pos->bb;
 	u64  full_bb      = bb[FULL];
-
-	u64 outpost_ranks_mask[2] = {
-		rank_mask[RANK_4] | rank_mask[RANK_5] | rank_mask[RANK_6],
-		rank_mask[RANK_3] | rank_mask[RANK_4] | rank_mask[RANK_5]
-	};
 
 	eval[WHITE] += popcnt((bb[ROOK] & bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
 	eval[BLACK] += popcnt((bb[ROOK] & bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
