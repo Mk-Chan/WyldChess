@@ -192,8 +192,9 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 				eval[c] += doubled_pawns;
 			} else if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
 				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
-			} else if (   (opp_pawn_bb & backwards_pawn_restrictors_mask[c][sq])
-				   && (pawn_bb & adjacent_forward_mask[c][sq])) {
+			} else if (    (opp_pawn_bb & backwards_pawn_restrictors_mask[c][sq])
+				   &&  (pawn_bb & adjacent_forward_mask[c][sq])
+				   && !(pawn_bb & adjacent_sqs_mask[sq])) {
 				eval[c] += backward_pawn;
 			}
 		}
@@ -207,7 +208,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	u64  curr_bb, c_bb, atk_bb, c_piece_occupancy_bb, xrayable_pieces_bb,
 	     strong_color_bb, mobility_mask, non_pinned_bb, king_atks_bb, sq_bb;
 
-	int eval[2]  = { S(0, 0), S(0, 0) };
+	int eval[2]       = { S(0, 0), S(0, 0) };
 	int king_atkrs[2] = { 0, 0 };
 	u64* bb           = pos->bb;
 	u64  full_bb      = bb[FULL];
@@ -302,10 +303,10 @@ int evaluate(Position* const pos)
 	Eval ev;
 	int ksq, c;
 	for (c = WHITE; c <= BLACK; ++c) {
-		ksq                    = pos->king_sq[c];
-		ev.king_atks[c]        = 0;
+		ksq             = pos->king_sq[c];
+		ev.king_atks[c] = 0;
+		ev.pawn_bb[c]   = pos->bb[PAWN] & pos->bb[c];
 		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
-		ev.pawn_bb[c]          = pos->bb[PAWN] & pos->bb[c];
 	}
 
 	ev.blocked_pawns_bb[WHITE] = (pos->bb[FULL] >> 8) & ev.pawn_bb[WHITE];
@@ -315,6 +316,7 @@ int evaluate(Position* const pos)
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
 
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
+
 	eval += eval_pawns(pos, &ev);
 	eval += eval_pieces(pos, &ev);
 	eval  = phased_val(eval, pos->state->phase);
@@ -323,6 +325,7 @@ int evaluate(Position* const pos)
 		ev.king_atks[c] = min(max(ev.king_atks[c], 0), 99);
 
 	int king_atk_diff = king_atk_table[ev.king_atks[WHITE]] - king_atk_table[ev.king_atks[BLACK]];
+
 	eval += phased_val((S(king_atk_diff, 0)), pos->state->phase);
 
 	return pos->stm == WHITE ? eval : -eval;

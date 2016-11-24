@@ -57,6 +57,7 @@ u64 passed_pawn_mask[2][64];
 u64 file_forward_mask[2][64];
 u64 adjacent_files_mask[8];
 u64 adjacent_ranks_mask[8];
+u64 adjacent_sqs_mask[64];
 u64 color_sq_mask[2];
 u64 adjacent_forward_mask[2][64];
 u64 backwards_pawn_restrictors_mask[2][64];
@@ -100,6 +101,12 @@ void init_masks()
 			color_sq_mask[WHITE] |= BB(sq);
 			sq_color[sq] = WHITE;
 		}
+
+		adjacent_sqs_mask[sq] = 0ULL;
+		if (file_of(sq) != 0)
+			adjacent_sqs_mask[sq] |= BB((sq - 1));
+		if (file_of(sq) != 7)
+			adjacent_sqs_mask[sq] |= BB((sq + 1));
 	}
 
 	int forward, i;
