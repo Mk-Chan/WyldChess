@@ -152,7 +152,7 @@ static inline int min(int a, int b) { return a < b ? a : b; }
 #define order(m)     (((m) >> ORDER_SHIFT))
 
 #define popcnt(bb)  (__builtin_popcountll(bb))
-#define bitscan(bb) (__builtin_ffsll(bb) - 1)
+#define bitscan(bb) (__builtin_ctzll(bb))
 
 #define get_move(data)                     (((data) & 0x1fffff))
 #define move_normal(from, to)              (from | (to << 6) | NORMAL)

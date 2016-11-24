@@ -106,8 +106,7 @@ int mobility[][29] = {
 		S(-30, -30), S(-20, -20), S(-10, -10), S(0, 0), S(10, 10), S(20, 20), S(25, 25), S(30, 30),
 		S(35, 35), S(40, 40), S(40, 40), S(40, 40), S(40, 45), S(40, 45), S(40, 45), S(40, 45)
 	},
-	{
-		// Rook
+	{	// Rook
 		S(-30, -40), S(-30, -30), S(-20, -20), S(-10, -10), S(0, 0), S(5, 10), S(10, 15), S(15, 20),
 		S(20, 25), S(25, 30), S(30, 35), S(35, 40), S(40, 45), S(40, 50), S(40, 55), S(40, 60)
 	},
@@ -160,8 +159,8 @@ int weak_color_occupied  = S(5, 5);
 
 typedef struct Eval_s {
 
+	u64 piece_atks_bb[8];
 	u64 pawn_bb[2];
-	u64 p_atks_bb[2];
 	u64 king_danger_zone_bb[2];
 	u64 pinned_bb[2];
 	u64 blocked_pawns_bb[2];
@@ -175,15 +174,16 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 	u64 bb, pawn_bb, opp_pawn_bb, atk_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
-		ev->p_atks_bb[c] = 0ULL;
-		pawn_bb          = ev->pawn_bb[c];
-		opp_pawn_bb      = ev->pawn_bb[!c];
-		bb               = pawn_bb;
+		pawn_bb     = ev->pawn_bb[c];
+		opp_pawn_bb = ev->pawn_bb[!c];
+		bb          = pawn_bb;
 		while (bb) {
 			sq     = bitscan(bb);
 			bb    &= bb - 1;
 			atk_bb = p_atks_bb[c][sq];
-			ev->p_atks_bb[c] |= atk_bb;
+
+			ev->piece_atks_bb[c]    |= atk_bb;
+			ev->piece_atks_bb[PAWN] |= atk_bb;
 
 			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
@@ -208,10 +208,16 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	u64  curr_bb, c_bb, atk_bb, c_piece_occupancy_bb, xrayable_pieces_bb,
 	     strong_color_bb, mobility_mask, non_pinned_bb, king_atks_bb, sq_bb;
 
-	int eval[2]       = { S(0, 0), S(0, 0) };
-	int king_atkrs[2] = { 0, 0 };
-	u64* bb           = pos->bb;
-	u64  full_bb      = bb[FULL];
+	int  eval[2]       = { S(0, 0), S(0, 0) };
+	int  king_atkrs[2] = { 0, 0 };
+	u64* bb            = pos->bb;
+	u64  full_bb       = bb[FULL];
+	u64* piece_atks_bb = ev->piece_atks_bb;
+
+	u64 p_atks_bb[2] = {
+		piece_atks_bb[WHITE] & piece_atks_bb[PAWN],
+		piece_atks_bb[BLACK] & piece_atks_bb[PAWN]
+	};
 
 	eval[WHITE] += popcnt((bb[ROOK] & bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
 	eval[BLACK] += popcnt((bb[ROOK] & bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
@@ -221,7 +227,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		c_bb                 =   bb[c];
 		c_piece_occupancy_bb =  ~bb[PAWN] & c_bb;
 		ksq                  =   pos->king_sq[c];
-		mobility_mask        = ~(ev->blocked_pawns_bb[c] | BB(ksq) | ev->p_atks_bb[!c]);
+		mobility_mask        = ~(ev->blocked_pawns_bb[c] | BB(ksq) | (piece_atks_bb[!c] & piece_atks_bb[PAWN]));
 		xrayable_pieces_bb   =   c_bb ^ BB(ksq) ^ ev->blocked_pawns_bb[c];
 		ev->king_atks[!c]   +=   king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks_bb[ksq] & ev->pawn_bb[c])];
 
@@ -244,32 +250,30 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				sq_bb    = BB(sq);
 				curr_bb &= curr_bb - 1;
 				atk_bb   = get_atks(sq, pt, full_bb);
+				atk_bb  |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 
-				if (   pt == BISHOP
-				    || pt == ROOK
-				    || pt == QUEEN)
-					atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
+				piece_atks_bb[c]  |= atk_bb;
+				piece_atks_bb[pt] |= atk_bb;
 
 				king_atks_bb = atk_bb & ev->king_danger_zone_bb[!c];
+
+				atk_bb  &= mobility_mask;
+				eval[c] += mobility[pt][popcnt(atk_bb)];
+
 				if (king_atks_bb) {
 					++king_atkrs[c];
 					ev->king_atks[c] += popcnt(king_atks_bb) * king_atk_wt[pt];
 				}
 
-				atk_bb  &= mobility_mask;
-				eval[c] += mobility[pt][popcnt(atk_bb)];
-
 				if (   (pt == KNIGHT || pt == BISHOP)
-				    && (~ev->p_atks_bb[!c] & sq_bb)
+				    && (~p_atks_bb[!c] & sq_bb)
 				    && (sq_bb & outpost_ranks_mask[c])) {
 					eval[c] += outpost[pt & 1];
 
-					if (ev->p_atks_bb[c] & sq_bb)
+					if (p_atks_bb[c] & sq_bb)
 						eval[c] += protected_outpost[pt & 1];
-				}
-
-				if (     pt == ROOK
-				    && !(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
+				} else if (     pt == ROOK
+					   && !(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
 					eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
 						? rook_open_file
 						: rook_semi_open;
@@ -295,6 +299,21 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	return eval[WHITE] - eval[BLACK];
 }
 
+static int eval_king_atks(Position* const pos, Eval* const ev)
+{
+	int eval[2] = { 0, 0 };
+	int c, ksq;
+	u64 k_bb, king_danger_zone_bb;
+	for (c = WHITE; c <= BLACK; ++c) {
+		ksq  = pos->king_sq[c];
+		k_bb = BB(ksq);
+		king_danger_zone_bb = ev->king_danger_zone_bb[c];
+
+		// King eval here
+	}
+	return eval[WHITE] - eval[BLACK];
+}
+
 int evaluate(Position* const pos)
 {
 	if (   popcnt(pos->bb[FULL]) <= 4
@@ -308,6 +327,10 @@ int evaluate(Position* const pos)
 		ev.pawn_bb[c]   = pos->bb[PAWN] & pos->bb[c];
 		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
 	}
+
+	int i;
+	for (i = 0; i < 8; ++i)
+		ev.piece_atks_bb[i] = 0ULL;
 
 	ev.blocked_pawns_bb[WHITE] = (pos->bb[FULL] >> 8) & ev.pawn_bb[WHITE];
 	ev.blocked_pawns_bb[BLACK] = (pos->bb[FULL] << 8) & ev.pawn_bb[BLACK];
