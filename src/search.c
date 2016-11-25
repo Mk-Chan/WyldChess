@@ -71,7 +71,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	for (move = list->moves; move != list->end; ++move) {
 		if (  !checked
 		    && order(*move) < BAD_CAP)
-			continue;
+			break;
 
 		if (!legal_move(pos, *move))
 			continue;
@@ -197,7 +197,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    &&    node_type != PV_NODE
 	    &&    ss->early_prune
 	    &&   !checked
-	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL) {
+	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL
+	    &&    evaluate(pos) >= beta) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
@@ -232,7 +233,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		iid = 1;
 		++pos->stats.iid_tries;
 #endif
-		int reduction   = 2;
+		int reduction   = depth / 3;
 		int ep          = ss->early_prune;
 		int nt          = ss->node_type;
 		ss->early_prune = 0;

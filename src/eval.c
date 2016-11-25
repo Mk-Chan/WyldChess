@@ -70,7 +70,7 @@ int psq_val[8][64] = {
 		S(  0,   0), S(  0,   0), S(  5,   5), S( 5,  5), S( 5,  5), S(  5,   5), S(  0,   0), S(  0,   0),
 		S(  0,   0), S(  0,   0), S(  5,   5), S( 5,  5), S( 5,  5), S(  5,   5), S(  0,   0), S(  0,   0),
 		S(  0,   0), S(  0,   0), S(  5,   5), S( 5,  5), S( 5,  5), S(  5,   5), S(  0,   0), S(  0,   0),
-		S( 10,  10), S( 10,  10), S( 15,  15), S(15, 15), S(15, 15), S( 15,  15), S( 10,  10), S( 10,  10),
+		S( 50,  10), S( 50,  10), S( 55,  15), S(55, 15), S(55, 15), S( 55,  15), S( 50,  10), S( 50,  10),
 		S(-10, -10), S(-10, -10), S( -5,  -5), S( 5,  5), S( 5,  5), S( -5,  -5), S(-10, -10), S(-10, -10)
 	},
 	{
@@ -134,6 +134,8 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 // King terms
 int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
 int king_cover[4]  = { 6, 4, 2, 0 };
+int atked_undefended_sq      = 3;
+int safe_queen_contact_check = 6;
 
 // Pawn terms
 int passed_pawn[8] = { 0, S(5, 10), S(10, 20), S(20, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
@@ -148,7 +150,6 @@ int blocked_bishop = S(-5, -5);
 int dual_bishops   = S(30, 50);
 
 // Rook terms
-int rook_7th_rank  = S(40, 0);
 int rook_open_file = S(30, 0);
 int rook_semi_open = S(10, 0);
 
@@ -159,7 +160,7 @@ int weak_color_occupied  = S(5, 5);
 
 typedef struct Eval_s {
 
-	u64 piece_atks_bb[8];
+	u64 piece_atks_bb[7];
 	u64 pawn_bb[2];
 	u64 king_danger_zone_bb[2];
 	u64 pinned_bb[2];
@@ -218,9 +219,6 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		piece_atks_bb[WHITE] & piece_atks_bb[PAWN],
 		piece_atks_bb[BLACK] & piece_atks_bb[PAWN]
 	};
-
-	eval[WHITE] += popcnt((bb[ROOK] & bb[WHITE] & rank_mask[RANK_7])) * rook_7th_rank;
-	eval[BLACK] += popcnt((bb[ROOK] & bb[BLACK] & rank_mask[RANK_2])) * rook_7th_rank;
 
 	for (c = WHITE; c <= BLACK; ++c) {
 		non_pinned_bb        =  ~ev->pinned_bb[c];
@@ -299,19 +297,21 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	return eval[WHITE] - eval[BLACK];
 }
 
-static int eval_king_atks(Position* const pos, Eval* const ev)
+static void eval_king_atks(Position* const pos, Eval* const ev)
 {
-	int eval[2] = { 0, 0 };
 	int c, ksq;
-	u64 k_bb, king_danger_zone_bb;
+	u64 k_bb, king_danger_zone_bb, atked_undefended_bb;
+	u64* piece_atks_bb = ev->piece_atks_bb;
 	for (c = WHITE; c <= BLACK; ++c) {
-		ksq  = pos->king_sq[c];
+		ksq  = pos->king_sq[!c];
 		k_bb = BB(ksq);
-		king_danger_zone_bb = ev->king_danger_zone_bb[c];
+		king_danger_zone_bb = ev->king_danger_zone_bb[!c];
 
 		// King eval here
+		atked_undefended_bb = king_danger_zone_bb & ~piece_atks_bb[!c] & piece_atks_bb[c];
+		ev->king_atks[c]  += popcnt(atked_undefended_bb) * atked_undefended_sq
+		                   + popcnt(atked_undefended_bb & pos->bb[QUEEN] & pos->bb[c]) * safe_queen_contact_check;
 	}
-	return eval[WHITE] - eval[BLACK];
 }
 
 int evaluate(Position* const pos)
@@ -329,7 +329,7 @@ int evaluate(Position* const pos)
 	}
 
 	int i;
-	for (i = 0; i < 8; ++i)
+	for (i = 0; i < 7; ++i)
 		ev.piece_atks_bb[i] = 0ULL;
 
 	ev.blocked_pawns_bb[WHITE] = (pos->bb[FULL] >> 8) & ev.pawn_bb[WHITE];
@@ -344,8 +344,10 @@ int evaluate(Position* const pos)
 	eval += eval_pieces(pos, &ev);
 	eval  = phased_val(eval, pos->state->phase);
 
-	for (c = WHITE; c <= BLACK; ++c)
-		ev.king_atks[c] = min(max(ev.king_atks[c], 0), 99);
+	eval_king_atks(pos, &ev);
+
+	ev.king_atks[WHITE] = min(max(ev.king_atks[WHITE], 0), 99);
+	ev.king_atks[BLACK] = min(max(ev.king_atks[BLACK], 0), 99);
 
 	int king_atk_diff = king_atk_table[ev.king_atks[WHITE]] - king_atk_table[ev.king_atks[BLACK]];
 
