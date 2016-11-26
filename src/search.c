@@ -464,7 +464,7 @@ int begin_search(Engine* const engine)
 			break;
 
 		time = curr_time() - ctlr->search_start_time;
-		if (engine->protocol == CECP)
+		if (engine->protocol == XBOARD)
 			fprintf(stdout, "%3d %5d %5llu %llu", depth, val, time / 10, ctlr->nodes_searched);
 		else if (engine->protocol == UCI)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);

@@ -24,6 +24,11 @@
 #include "position.h"
 #include "timer.h"
 
+enum Protocols {
+	XBOARD,
+	UCI
+};
+
 enum State {
 	WAITING,
 	THINKING,
@@ -34,6 +39,7 @@ enum State {
 typedef struct Controller_s {
 
 	int is_stopped;
+	int time_dependent;
 	u32 depth;
 	u32 moves_left;
 	u32 moves_per_session;
@@ -85,11 +91,13 @@ static inline void transition(Engine* const engine, int target_state)
 static inline void start_thinking(Engine* const engine)
 {
 	Controller* const ctlr  = engine->ctlr;
-	ctlr->search_start_time = curr_time();
-	ctlr->search_end_time   =  ctlr->search_start_time
-				+ (ctlr->time_left / ctlr->moves_left);
-	fprintf(stdout, "time left = %llu, moves left = %u, time allotted = %llu\n",
-		ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
+	if (ctlr->time_dependent) {
+		ctlr->search_start_time = curr_time();
+		ctlr->search_end_time   =  ctlr->search_start_time
+					+ (ctlr->time_left / ctlr->moves_left);
+		fprintf(stdout, "time left = %llu, moves left = %u, time allotted = %llu\n",
+			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
+	}
 	transition(engine, THINKING);
 	if (ctlr->moves_per_session) {
 		--ctlr->moves_left;
@@ -99,7 +107,7 @@ static inline void start_thinking(Engine* const engine)
 }
 
 extern int begin_search(Engine* const engine);
-extern void cecp_loop();
+extern void xboard_loop();
 extern void uci_loop();
 
 #endif

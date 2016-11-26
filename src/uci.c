@@ -75,8 +75,9 @@ void uci_loop()
 	engine.protocol = UCI;
 	pthread_mutex_init(&engine.mutex, NULL);
 	pthread_cond_init(&engine.sleep_cv, NULL);
-	engine.pos   = &pos;
-	engine.ctlr  = &ctlr;
+	engine.pos  = &pos;
+	engine.ctlr = &ctlr;
+	engine.ctlr->time_dependent = 1;
 	engine.target_state = WAITING;
 	init_pos(&pos);
 	set_pos(&pos, INITIAL_POSITION);
@@ -112,7 +113,9 @@ void uci_loop()
 						char mstr[6];
 						move_str(move, mstr);
 						fprintf(stdout, "Illegal move: %s\n", mstr);
+						break;
 					}
+					do_move(&pos, move);
 				}
 			}
 
@@ -134,6 +137,7 @@ void uci_loop()
 
 			transition(&engine, WAITING);
 			engine.game_over       = 0;
+			ctlr.time_dependent    = 1;
 			ctlr.moves_per_session = 0;
 			ctlr.moves_left        = 40;
 			ctlr.depth             = MAX_PLY;
@@ -176,7 +180,8 @@ void uci_loop()
 
 				} else if (!strncmp(ptr, "infinite", 8)) {
 
-					// Create the ANALYZING state for this
+					// Implement ANALYZE mode
+					ctlr.time_dependent = 0;
 
 				}
 			}

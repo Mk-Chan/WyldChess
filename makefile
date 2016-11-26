@@ -1,6 +1,6 @@
 VERSION = 1.0
 
-CC_BASE  = clang
+CC_BASE  = gcc
 CC_PERFT  = gcc
 CFLAGS = -std=c11 -O3 -mpopcnt
 CFLAGS_PERFT = -std=c11 -O3 -mpopcnt
@@ -10,7 +10,7 @@ DEPS_PERFT = -pthread -fopenmp
 EXEC_BASE  = wyldchess
 
 CC_WIN64 = x86_64-w64-mingw32-gcc
-CC_LINUX = clang
+CC_LINUX = gcc
 CFLAGS_DIST = -static -std=c11 -O3
 CFLAGS_DIST_LINUX = -std=c11 -O3
 BIN_PATH = binaries/v$(VERSION)

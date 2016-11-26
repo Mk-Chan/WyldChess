@@ -84,7 +84,7 @@ static int check_result(Position* const pos)
 	return result;
 }
 
-static inline void print_options_cecp()
+static inline void print_options_xboard()
 {
 	fprintf(stdout, "feature done=0\n");
 	fprintf(stdout, "feature ping=1\n");
@@ -97,7 +97,7 @@ static inline void print_options_cecp()
 	fprintf(stdout, "feature done=1\n");
 }
 
-void* engine_loop_cecp(void* args)
+void* engine_loop_xboard(void* args)
 {
 	char mstr[6];
 	Move move;
@@ -137,7 +137,7 @@ void* engine_loop_cecp(void* args)
 	}
 }
 
-void cecp_loop()
+void xboard_loop()
 {
 	static int const max_len = 100;
 	char  input[max_len];
@@ -149,24 +149,25 @@ void cecp_loop()
 	Controller ctlr;
 	ctlr.depth = MAX_PLY;
 	Engine engine;
-	engine.protocol = CECP;
+	engine.protocol = XBOARD;
 	pthread_mutex_init(&engine.mutex, NULL);
 	pthread_cond_init(&engine.sleep_cv, NULL);
-	engine.pos   = &pos;
-	engine.ctlr  = &ctlr;
+	engine.pos  = &pos;
+	engine.ctlr = &ctlr;
+	engine.side = BLACK;
+	ctlr.time_dependent = 1;
 	engine.target_state = WAITING;
-	engine.side  = BLACK;
 	init_pos(&pos);
 	set_pos(&pos, INITIAL_POSITION);
 	pthread_t engine_thread;
-	pthread_create(&engine_thread, NULL, engine_loop_cecp, (void*) &engine);
+	pthread_create(&engine_thread, NULL, engine_loop_xboard, (void*) &engine);
 	pthread_detach(engine_thread);
 
 	while (1) {
 		fgets(input, max_len, stdin);
 		if (!strncmp(input, "protover 2", 10)) {
 
-			print_options_cecp();
+			print_options_xboard();
 
 		} else if (!strncmp(input, "print", 5)) {
 

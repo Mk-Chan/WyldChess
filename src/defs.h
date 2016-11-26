@@ -48,11 +48,6 @@ typedef unsigned int        u32;
 typedef unsigned long long  u64;
 typedef unsigned long long  HashKey;
 
-enum Protocols {
-	CECP,
-	UCI
-};
-
 enum Colors {
 	WHITE = 0,
 	BLACK

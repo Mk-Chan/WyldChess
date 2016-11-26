@@ -133,7 +133,8 @@ static int stopped(Engine* const engine)
 		engine->ctlr->is_stopped = 1;
 		return 1;
 	}
-	if (curr_time() >= engine->ctlr->search_end_time) {
+	if (   engine->ctlr->time_dependent
+	    && curr_time() >= engine->ctlr->search_end_time) {
 		engine->ctlr->is_stopped = 1;
 		return 1;
 	}

@@ -135,7 +135,7 @@ int main(int argc, char** argv)
 		} else if (!strncmp(input, "setpieceval", 11)) {
 			parse_piece_val_tuner_input(input + 12);
 		} else if (!strncmp(input, "xboard", 6)) {
-			cecp_loop();
+			xboard_loop();
 			break;
 		} else if (!strncmp(input, "uci", 3)) {
 			uci_loop();
