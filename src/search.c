@@ -38,18 +38,20 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	++engine->pos->stats.correct_nt_guess;
 #endif
 
-	int eval = evaluate(pos);
-	if (eval >= beta)
-		return eval;
-	if (eval > alpha)
-		alpha = eval;
+	set_checkers(pos);
+	int checked = pos->state->checkers_bb > 0ULL;
 
-	int val, checked;
+	if (!checked) {
+		int eval = evaluate(pos);
+		if (eval >= beta)
+			return eval;
+		if (eval > alpha)
+			alpha = eval;
+	}
+
 	Movelist* list = &ss->list;
 	list->end      = list->moves;
 	set_pinned(pos);
-	set_checkers(pos);
-	checked = pos->state->checkers_bb > 0ULL;
 	Move* move;
 	if (checked)
 		gen_check_evasions(pos, list);
@@ -67,6 +69,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	}
 	sort_moves(list->moves, list->end);
 
+	int val;
 	u32 legal_moves = 0;
 	for (move = list->moves; move != list->end; ++move) {
 		if (  !checked
