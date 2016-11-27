@@ -94,6 +94,7 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature sigterm=0\n");
 	fprintf(stdout, "feature setboard=1\n");
 	fprintf(stdout, "feature analyze=0\n");
+	fprintf(stdout, "feature usermove=1\n");
 	fprintf(stdout, "feature done=1\n");
 }
 
@@ -291,10 +292,19 @@ void xboard_loop()
 
 		} else {
 
-			move = parse_move(&pos, input);
+			if (!strncmp(input, "usermove", 8)) {
+				ptr = input + 9;
+			} else if (input[1] < '9' && input[1] > '0') {
+				ptr = input;
+			} else {
+				fprintf(stdout, "ERROR (Unsupported): %s\n", input);
+				continue;
+			}
+
+			move = parse_move(&pos, ptr);
 			if (  !move
 			   || !legal_move(&pos, move))
-				fprintf(stdout, "ERROR (Unsupported): %s\n", input);
+				fprintf(stdout, "Illegal move: %s\n", ptr);
 			else
 				do_move(&pos, move);
 
@@ -305,6 +315,7 @@ void xboard_loop()
 				engine.game_over = 1;
 			else if (engine.side == pos.stm)
 				start_thinking(&engine);
+
 		}
 	}
 cleanup_and_exit:

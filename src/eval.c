@@ -207,7 +207,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 static int eval_pieces(Position* const pos, Eval* const ev)
 {
 	int sq, c, pt, ksq;
-	u64  curr_bb, c_bb, atk_bb, c_piece_occupancy_bb, xrayable_pieces_bb,
+	u64  curr_bb, c_bb, atk_bb, xrayable_pieces_bb,
 	     strong_color_bb, mobility_mask, non_pinned_bb, king_atks_bb, sq_bb;
 
 	int  eval[2]       = { S(0, 0), S(0, 0) };
@@ -217,7 +217,6 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	for (c = WHITE; c <= BLACK; ++c) {
 		non_pinned_bb        =  ~ev->pinned_bb[c];
 		c_bb                 =   bb[c];
-		c_piece_occupancy_bb =  ~bb[PAWN] & c_bb;
 		ksq                  =   pos->king_sq[c];
 		mobility_mask        = ~(ev->blocked_pawns_bb[c] | BB(ksq) | ev->p_atks_bb[!c]);
 		xrayable_pieces_bb   =   c_bb ^ BB(ksq) ^ ev->blocked_pawns_bb[c];
