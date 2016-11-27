@@ -294,7 +294,7 @@ void xboard_loop()
 			move = parse_move(&pos, input);
 			if (  !move
 			   || !legal_move(&pos, move))
-				fprintf(stdout, "Illegal move: %s\n", input);
+				fprintf(stdout, "ERROR (Unsupported): %s\n", input);
 			else
 				do_move(&pos, move);
 

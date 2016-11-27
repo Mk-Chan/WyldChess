@@ -95,7 +95,7 @@ static inline void start_thinking(Engine* const engine)
 		ctlr->search_start_time = curr_time();
 		ctlr->search_end_time   =  ctlr->search_start_time
 					+ (ctlr->time_left / ctlr->moves_left);
-		fprintf(stdout, "time left = %llu, moves left = %u, time allotted = %llu\n",
+		fprintf(stdout, "time left = %llums, moves left = %u, time allotted = %llums\n",
 			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 	}
 	transition(engine, THINKING);
