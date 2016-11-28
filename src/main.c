@@ -108,24 +108,6 @@ int main(int argc, char** argv)
 	init_atks();
 	init_intervening_sqs();
 	init_masks();
-#ifdef PERFT
-	Position pos;
-	init_pos(&pos);
-	set_pos(&pos, INITIAL_POSITION);
-	int depth;
-	if (argc > 1) {
-		depth = atoi(argv[1]);
-	} else {
-		fprintf(stdout, "Usage: ./wyldchess <depth>\n");
-		return 1;
-	}
-#ifdef THREADS
-	performance_test_parallel(&pos, atoi(argv[1]));
-#else
-	performance_test(&pos, atoi(argv[1]));
-#endif
-	return 0;
-#endif
 	tt_init(&tt, 10000000);
 	char input[100];
 	while (1) {

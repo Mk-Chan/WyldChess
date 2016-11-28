@@ -180,7 +180,6 @@ void uci_loop()
 
 				} else if (!strncmp(ptr, "infinite", 8)) {
 
-					// Implement ANALYZE mode
 					ctlr.time_dependent = 0;
 
 				}

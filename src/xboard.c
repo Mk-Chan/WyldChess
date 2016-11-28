@@ -93,7 +93,7 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature sigint=0\n");
 	fprintf(stdout, "feature sigterm=0\n");
 	fprintf(stdout, "feature setboard=1\n");
-	fprintf(stdout, "feature analyze=0\n");
+	fprintf(stdout, "feature colors=0\n");
 	fprintf(stdout, "feature usermove=1\n");
 	fprintf(stdout, "feature done=1\n");
 }
@@ -131,6 +131,14 @@ void* engine_loop_xboard(void* args)
 			engine->target_state     = WAITING;
 			break;
 
+		case ANALYZING:
+			engine->curr_state = ANALYZING;
+			engine->ctlr->search_start_time = curr_time();
+			begin_search(engine);
+			fprintf(stdout, "done analysis\n");
+			engine->target_state = WAITING;
+			break;
+
 		case QUITTING:
 			engine->curr_state = QUITTING;
 			pthread_exit(0);
@@ -157,6 +165,7 @@ void xboard_loop()
 	engine.ctlr = &ctlr;
 	engine.side = BLACK;
 	ctlr.time_dependent = 1;
+	ctlr.analyzing = 0;
 	engine.target_state = WAITING;
 	init_pos(&pos);
 	set_pos(&pos, INITIAL_POSITION);
@@ -185,6 +194,7 @@ void xboard_loop()
 			init_pos(&pos);
 			set_pos(&pos, INITIAL_POSITION);
 			engine.side = BLACK;
+			ctlr.time_dependent = 1;
 			ctlr.depth  = MAX_PLY;
 			ctlr.moves_per_session = 40;
 			ctlr.moves_left = ctlr.moves_per_session;
@@ -195,6 +205,19 @@ void xboard_loop()
 
 			transition(&engine, QUITTING);
 			goto cleanup_and_exit;
+
+		} else if (!strncmp(input, "analyze", 7)) {
+
+			transition(&engine, WAITING);
+			ctlr.time_dependent = 0;
+			ctlr.analyzing      = 1;
+			engine.side         = -1;
+			transition(&engine, ANALYZING);
+
+		} else if (!strncmp(input, "exit", 4)) {
+
+			transition(&engine, WAITING);
+			ctlr.analyzing = 0;
 
 		} else if (!strncmp(input, "setboard", 8)) {
 
@@ -209,10 +232,12 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "time", 4)) {
 
+			ctlr.time_dependent = 1;
 			ctlr.time_left = 10 * atoi(input + 5);
 
 		} else if (!strncmp(input, "level", 5)) {
 
+			ctlr.time_dependent = 1;
 			ptr = input + 6;
 			ctlr.moves_per_session = strtol(ptr, &end, 10);
 			ctlr.moves_left = ctlr.moves_per_session;
@@ -236,6 +261,7 @@ void xboard_loop()
 		} else if (!strncmp(input, "st", 2)) {
 
 			// Seconds per move
+			ctlr.time_dependent    = 1;
 			ctlr.time_left         = 1000 * atoi(input + 3);
 			ctlr.moves_per_session = 0;
 			ctlr.moves_left        = 1;
@@ -252,9 +278,8 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "result", 6)) {
 
-			// Use result for learning later
-			engine.game_over = 1;
 			transition(&engine, WAITING);
+			engine.game_over = 1;
 
 		} else if (!strncmp(input, "?", 1)) {
 
@@ -262,12 +287,12 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "go", 2)) {
 
+			transition(&engine, WAITING);
 			engine.side = pos.stm;
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
-			transition(&engine, WAITING);
 
 			if (engine.game_over)
 				check_result(&pos);
@@ -284,11 +309,13 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "undo", 4)) {
 
-			// Does not recover time at the moment
+			// Does not recover time
 			transition(&engine, WAITING);
 			if (pos.state > pos.hist)
 				undo_move(&pos);
 			engine.side = -1;
+			if (ctlr.analyzing)
+				transition(&engine, ANALYZING);
 
 		} else {
 
@@ -301,6 +328,7 @@ void xboard_loop()
 				continue;
 			}
 
+			transition(&engine, WAITING);
 			move = parse_move(&pos, ptr);
 			if (  !move
 			   || !legal_move(&pos, move))
@@ -308,13 +336,14 @@ void xboard_loop()
 			else
 				do_move(&pos, move);
 
-			transition(&engine, WAITING);
 			if (engine.game_over)
 				check_result(&pos);
 			else if (check_result(&pos) != NO_RESULT)
 				engine.game_over = 1;
 			else if (engine.side == pos.stm)
 				start_thinking(&engine);
+			else if (ctlr.analyzing)
+				transition(&engine, ANALYZING);
 
 		}
 	}

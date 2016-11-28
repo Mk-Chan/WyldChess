@@ -129,7 +129,8 @@ static int stopped(Engine* const engine)
 {
 	if (engine->ctlr->is_stopped)
 		return 1;
-	if (engine->target_state != THINKING) {
+	if (   engine->target_state != THINKING
+	    && engine->target_state != ANALYZING) {
 		engine->ctlr->is_stopped = 1;
 		return 1;
 	}

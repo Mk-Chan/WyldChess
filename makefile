@@ -1,44 +1,66 @@
-VERSION = 1.0
+CC = gcc
+CFLAGS = -std=c11 -Wall -O3 -pthread -flto
+C_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c move.c mt19937-64.c perft.c position.c random.c search.c timer.c uci.c xboard.c
+SRC_PATH = src
+SRC = $(patsubst %,$(SRC_PATH)/%,$(C_FILES))
+DEPS = src/bitboard.h src/defs.h src/engine.h src/magicmoves.h src/position.h src/random.h src/search.h src/timer.h src/tt.h src/tune.h
+OBJ_PATH = objs
+_OBJS = $(C_FILES:.c=.o)
+OBJS = $(patsubst %,$(OBJ_PATH)/%,$(_OBJS))
+EXEC_PATH = .
+EXEC = wyldchess
 
-CC_BASE  = gcc
-CC_PERFT  = gcc
-CFLAGS = -std=c11 -O3 -mpopcnt
-CFLAGS_PERFT = -std=c11 -O3 -mpopcnt
-SRC = src/*.c
-DEPS = -pthread
-DEPS_PERFT = -pthread -fopenmp
-EXEC_BASE  = wyldchess
+ifeq ($(FAST), 1)
+	CFLAGS += -DTEST
+endif
 
-CC_WIN64 = x86_64-w64-mingw32-gcc
-CC_LINUX = gcc
-CFLAGS_DIST = -static -std=c11 -O3
-CFLAGS_DIST_LINUX = -std=c11 -O3
-BIN_PATH = binaries/v$(VERSION)
-EXEC_LINUX = $(BIN_PATH)/linux/$(EXEC_BASE)$(VERSION)
-EXEC_WIN64 = $(BIN_PATH)/win64/$(EXEC_BASE)$(VERSION)
-EXT_WIN64 = .exe
-EXT_LINUX =
-EXT_POPCNT = _popcnt
-FAST = _fast_tc
+ifeq ($(POPCNT), 1)
+	CFLAGS += -mpopcnt
+endif
 
-all:
-	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS)
-test:
-	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS) -DTEST
-stats:
-	$(CC_BASE) $(CFLAGS) $(SRC) -o $(EXEC_BASE) $(DEPS) -DSTATS
-perft:
-	$(CC_PERFT) $(CFLAGS_PERFT) $(SRC) -o $(EXEC_BASE) $(DEPS_PERFT) -DPERFT -DTHREADS=3
-targets:
-	$(shell mkdir -p binaries/v$(VERSION)/win64)
-	$(shell mkdir -p binaries/v$(VERSION)/linux)
+ifeq ($(STATS), 1)
+	CFLAGS += -DSTATS
+endif
 
-	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN64)$(EXT_WIN64) $(DEPS)
-	$(CC_WIN64) $(CFLAGS_DIST) $(SRC) -o $(EXEC_WIN64)$(FAST)$(EXT_WIN64) $(DEPS) -DTEST
-	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC_WIN64)$(EXT_POPCNT)$(EXT_WIN64) $(DEPS)
-	$(CC_WIN64) $(CFLAGS_DIST) -mpopcnt $(SRC) -o $(EXEC_WIN64)$(EXT_POPCNT)$(FAST)$(EXT_WIN64) $(DEPS) -DTEST
+ifdef RELEASE
 
-	$(CC_LINUX) $(CFLAGS_DIST_LINUX) $(SRC) -o $(EXEC_LINUX)$(EXT_LINUX) $(DEPS)
-	$(CC_LINUX) $(CFLAGS_DIST_LINUX) $(SRC) -o $(EXEC_LINUX)$(FAST)$(EXT_LINUX) $(DEPS) -DTEST
-	$(CC_LINUX) $(CFLAGS_DIST_LINUX) -mpopcnt $(SRC) -o $(EXEC_LINUX)$(EXT_POPCNT)$(EXT_LINUX) $(DEPS)
-	$(CC_LINUX) $(CFLAGS_DIST_LINUX) -mpopcnt $(SRC) -o $(EXEC_LINUX)$(EXT_POPCNT)$(FAST)$(EXT_LINUX) $(DEPS) -DTEST
+EXEC := $(EXEC)$(RELEASE)
+
+ifeq ($(FAST), 1)
+	EXEC := $(EXEC)_fast_tc
+endif
+
+ifeq ($(POPCNT), 1)
+	EXEC := $(EXEC)_popcnt
+endif
+
+ifeq ($(STATS), 1)
+	EXEC := $(EXEC)_stats
+endif
+
+ifeq ("$(TARGET)", "win64")
+	EXEC := $(EXEC).exe
+	CFLAGS += -static
+	EXEC_PATH = binaries/v$(RELEASE)/$(TARGET)
+else ifeq ("$(TARGET)", "linux")
+	EXEC_PATH = binaries/v$(RELEASE)/$(TARGET)
+else
+$(error TARGET not defined)
+endif
+
+endif
+
+BIN = $(EXEC_PATH)/$(EXEC)
+
+$(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(DEPS)
+	-mkdir -p $(OBJ_PATH)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BIN): $(OBJS)
+	-mkdir -p $(@D)
+	$(CC) $(CFLAGS) $^ -o $@
+
+all: $(BIN)
+
+clean:
+	-rm -f $(OBJS)

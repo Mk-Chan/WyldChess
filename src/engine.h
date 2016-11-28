@@ -32,13 +32,14 @@ enum Protocols {
 enum State {
 	WAITING,
 	THINKING,
-//	ANALYZING,
+	ANALYZING,
 	QUITTING
 };
 
 typedef struct Controller_s {
 
 	int is_stopped;
+	int analyzing;
 	int time_dependent;
 	u32 depth;
 	u32 moves_left;
@@ -91,8 +92,8 @@ static inline void transition(Engine* const engine, int target_state)
 static inline void start_thinking(Engine* const engine)
 {
 	Controller* const ctlr  = engine->ctlr;
+	ctlr->search_start_time = curr_time();
 	if (ctlr->time_dependent) {
-		ctlr->search_start_time = curr_time();
 		ctlr->search_end_time   =  ctlr->search_start_time
 					+ (ctlr->time_left / ctlr->moves_left);
 		fprintf(stdout, "time left = %llums, moves left = %u, time allotted = %llums\n",
