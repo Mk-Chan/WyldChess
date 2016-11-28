@@ -1,7 +1,7 @@
 #!/bin/bash
-if [ "$#" = "2" ]
+if [ $# -lt 1 ]
 then
-	echo "Usage: bash build.sh <release-number>"
+	echo "Usage: ./build.sh <release-number>"
 	exit
 fi
 TARGETS=( linux win64 )
@@ -23,3 +23,6 @@ do
 	make CC="$CC" RELEASE=$1 TARGET="$T" POPCNT=1 FAST=1
 done
 make clean
+cd binaries
+tar cvzf wyldchess$1.tar.gz v$1
+7z a wyldchess$1.zip v$1
