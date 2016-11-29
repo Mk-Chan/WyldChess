@@ -438,11 +438,6 @@ int begin_search(Engine* const engine)
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 
-	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
-	Move tt_move = get_move(entry.data);
-	if (!valid_move(pos, &tt_move))
-	    tt_clear(&tt);
-
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int asp_wins[] = { 10, 50, 200, INFINITY };
 	for (depth = 1; depth <= max_depth; ++depth) {

@@ -132,11 +132,8 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 };
 
 // King terms
-int king_atk_wt[7]           = { 0, 0, 0, 3, 3, 4, 5 };
-int king_cover[4]            = { 6, 4, 2, 0 };
-int opp_pawn_king_cover[4]   = { 3, 2, 1, 0 };
-int atked_undefended_sq      = 3;
-int safe_queen_contact_check = 6;
+int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
+int king_cover[4]  = { 6, 4, 2, 0 };
 
 // Pawn terms
 int passed_pawn[8] = { 0, S(5, 10), S(10, 20), S(20, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
@@ -161,7 +158,7 @@ int weak_color_occupied  = S(5, 5);
 
 typedef struct Eval_s {
 
-	u64 p_atks_bb[2];
+	u64 atks_bb[2][7];
 	u64 pawn_bb[2];
 	u64 king_danger_zone_bb[2];
 	u64 pinned_bb[2];
@@ -174,18 +171,19 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 {
 	int eval[2] = { S(0, 0), S(0, 0) };
 	u64 bb, pawn_bb, opp_pawn_bb, atk_bb;
+	u64* atks_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
-		ev->p_atks_bb[c] = 0ULL;
-		pawn_bb          = ev->pawn_bb[c];
-		opp_pawn_bb      = ev->pawn_bb[!c];
-		bb               = pawn_bb;
+		atks_bb     = ev->atks_bb[c];
+		pawn_bb     = ev->pawn_bb[c];
+		opp_pawn_bb = ev->pawn_bb[!c];
+		bb          = pawn_bb;
 		while (bb) {
 			sq     = bitscan(bb);
 			bb    &= bb - 1;
 			atk_bb = p_atks_bb[c][sq];
 
-			ev->p_atks_bb[c] |= atk_bb;
+			atks_bb[PAWN] |= atk_bb;
 
 			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
@@ -207,22 +205,27 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 static int eval_pieces(Position* const pos, Eval* const ev)
 {
 	int sq, c, pt, ksq;
-	u64  curr_bb, c_bb, atk_bb, xrayable_pieces_bb,
-	     strong_color_bb, mobility_mask, non_pinned_bb, king_atks_bb, sq_bb;
+	u64  curr_bb, c_bb, atk_bb, xrayable_pieces_bb, strong_color_bb,
+	     mobility_mask, non_pinned_bb, king_atks_bb, sq_bb;
+	u64* atks_bb;
 
-	int  eval[2]       = { S(0, 0), S(0, 0) };
-	u64* bb            = pos->bb;
-	u64  full_bb       = bb[FULL];
+	u64 const p_atks_bb[2] = {
+		ev->atks_bb[WHITE][PAWN],
+		ev->atks_bb[BLACK][PAWN]
+	};
+
+	int  eval[2] = { S(0, 0), S(0, 0) };
+	u64* bb      = pos->bb;
+	u64  full_bb = bb[FULL];
 
 	for (c = WHITE; c <= BLACK; ++c) {
-		non_pinned_bb        =  ~ev->pinned_bb[c];
-		c_bb                 =   bb[c];
-		ksq                  =   pos->king_sq[c];
-		mobility_mask        = ~(ev->blocked_pawns_bb[c] | BB(ksq) | ev->p_atks_bb[!c]);
-		xrayable_pieces_bb   =   c_bb ^ BB(ksq) ^ ev->blocked_pawns_bb[c];
-
-		ev->king_atks[!c]   += king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks_bb[ksq] & ev->pawn_bb[c])];
-		ev->king_atks[!c]   += opp_pawn_king_cover[max(3, popcnt(passed_pawn_mask[c][ksq] & ev->pawn_bb[!c]))];
+		atks_bb            =   ev->atks_bb[c];
+		non_pinned_bb      =  ~ev->pinned_bb[c];
+		c_bb               =   bb[c];
+		ksq                =   pos->king_sq[c];
+		mobility_mask      = ~(ev->blocked_pawns_bb[c] | BB(ksq) | p_atks_bb[!c]);
+		xrayable_pieces_bb =   c_bb ^ (BB(ksq) | ev->blocked_pawns_bb[c] | ev->pinned_bb[c]);
+		ev->king_atks[!c] +=   king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks_bb[ksq] & ev->pawn_bb[c])];
 
 		for (pt = KNIGHT; pt != KING; ++pt) {
 			curr_bb = bb[pt] & c_bb;
@@ -245,6 +248,8 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				atk_bb   = get_atks(sq, pt, full_bb);
 				atk_bb  |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 
+				atks_bb[pt] |= atk_bb;
+
 				king_atks_bb = atk_bb & ev->king_danger_zone_bb[!c];
 
 				atk_bb  &= mobility_mask;
@@ -253,12 +258,13 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				ev->king_atks[c] += popcnt(king_atks_bb) * king_atk_wt[pt];
 
 				if (   (pt == KNIGHT || pt == BISHOP)
-				    && (~ev->p_atks_bb[!c] & sq_bb)
+				    && (~p_atks_bb[!c] & sq_bb)
 				    && (sq_bb & outpost_ranks_mask[c])) {
-					eval[c] += outpost[pt & 1];
 
-					if (ev->p_atks_bb[c] & sq_bb)
+					eval[c] += outpost[pt & 1];
+					if (p_atks_bb[c] & sq_bb)
 						eval[c] += protected_outpost[pt & 1];
+
 				} else if (     pt == ROOK
 					   && !(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
 					eval[c] += !(file_forward_mask[c][sq] & ev->pawn_bb[!c])
@@ -271,12 +277,13 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		// Pinned
 		curr_bb = ~non_pinned_bb;
 		while (curr_bb) {
-			sq                 = bitscan(curr_bb);
-			curr_bb           &= curr_bb - 1;
-			pt                 = piece_type(pos->board[sq]);
-			atk_bb             = get_atks(sq, pt, full_bb);
-			atk_bb            |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
-			king_atks_bb       = atk_bb & ev->king_danger_zone_bb[!c];
+			sq                = bitscan(curr_bb);
+			curr_bb          &= curr_bb - 1;
+			pt                = piece_type(pos->board[sq]);
+			atk_bb            = get_atks(sq, pt, full_bb);
+			atk_bb           |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
+			atks_bb[pt]      |= atk_bb;
+			king_atks_bb      = atk_bb & ev->king_danger_zone_bb[!c];
 			ev->king_atks[c] += popcnt(king_atks_bb) * king_atk_wt[pt];
 		}
 	}
@@ -290,12 +297,14 @@ int evaluate(Position* const pos)
 	    && insufficient_material(pos))
 		return 0;
 	Eval ev;
-	int ksq, c;
+	int ksq, c, pt;
 	for (c = WHITE; c <= BLACK; ++c) {
 		ksq             = pos->king_sq[c];
 		ev.king_atks[c] = 0;
 		ev.pawn_bb[c]   = pos->bb[PAWN] & pos->bb[c];
 		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
+		for (pt = PAWN; pt != KING; ++pt)
+			ev.atks_bb[c][pt] = 0ULL;
 	}
 
 	ev.blocked_pawns_bb[WHITE] = (pos->bb[FULL] >> 8) & ev.pawn_bb[WHITE];
