@@ -10,9 +10,12 @@ but can be linked to one that supports either the UCI or the Xboard/Winboard pro
 * `src`: A subdirectory containing the source code of the program.
 * `LICENSE`: A file containing a copy of the GNU Public License.
 * `README.md`: The file you're currently reading.
-* `makefile`: The file outlining the automated build process.
+* `build.sh`: The file outlining the automated build process of the release.
+* `makefile`: The file outlining the automated compile process.
+* `notes`: Some notes.
 
 ### Binaries
+All binaries are x64 bit
 There are 4 types of binaries available for Windows and GNU/Linux each:
 * `fast_tc`: Appropriate for less than 1-minute long games(Busy waits the engine thread).
 * `popcnt`: Compiled with the -mpopcnt option.
