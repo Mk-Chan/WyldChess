@@ -166,4 +166,11 @@ static inline int min(int a, int b) { return a < b ? a : b; }
 
 #define phased_val(val, phase) ((((mg_val(val) * phase) + (eg_val(val) * (MAX_PHASE - phase))) / MAX_PHASE))
 
+#define set_tunable(param)                                                                         \
+	extern int param;                                                                          \
+	static inline void set_param_##param(int mg, int eg) { param = S(mg, eg); }
+#define set_tunable_arr(param, size)                                                               \
+	extern int param[size];                                                                    \
+	static inline void set_param_##param(int i, int mg, int eg) { param[i] = S(mg, eg); }
+
 #endif
