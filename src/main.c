@@ -23,79 +23,6 @@
 #include "tt.h"
 #include "engine.h"
 #include "timer.h"
-#include "tune.h"
-
-typedef void (*fxn_ptr)(int, int);
-
-void parse_tuner_input(char* ptr)
-{
-	static char* eval_terms[6] = {
-		"dp_mg",
-		"dp_eg",
-		"ip_mg",
-		"ip_eg",
-		"pb_mg",
-		"pb_eg",
-	};
-
-	static fxn_ptr fxns[3] = {
-		&set_param_doubled_pawns,
-		&set_param_isolated_pawn,
-		&set_param_blocked_bishop,
-	};
-
-	static int mg = -1,
-		   eg = -1;
-	char str[3];
-	str[2] = '\0';
-	int i;
-	for (i = 0; i != 6; ++i) {
-		if (!strncmp(ptr, eval_terms[i], 4)) {
-			if (i & 1) {
-				eg = atoi(ptr + 5);
-				(*fxns[i >> 1])(mg, eg);
-				str[0] = ptr[0];
-				str[1] = ptr[1];
-				fprintf(stdout, "set %s=%d,%d\n", str, mg, eg);
-			} else {
-				mg = atoi(ptr + 5);
-			}
-			break;
-		}
-	}
-}
-
-void parse_piece_val_tuner_input(char* ptr)
-{
-	static char* eval_terms[10] = {
-		"p_mg",
-		"p_eg",
-		"n_mg",
-		"n_eg",
-		"b_mg",
-		"b_eg",
-		"r_mg",
-		"r_eg",
-		"q_mg",
-		"q_eg"
-	};
-
-	static int mg    = -1,
-		   eg    = -1;
-	int i;
-	for (i = 0; i != 10; ++i) {
-		if (!strncmp(ptr, eval_terms[i], 4)) {
-			if (i & 1) {
-				eg = atoi(ptr + 5);
-				set_param_piece_val((i >> 1) + 2, mg, eg);
-				fprintf(stdout, "set %c=%d,%d\n", *ptr, mg_val(piece_val[(i >> 1) + 2]), eg_val(piece_val[(i >> 1) + 2]));
-			} else {
-				mg = atoi(ptr + 5);
-			}
-			break;
-		}
-	}
-}
 
 int main(int argc, char** argv)
 {
@@ -112,11 +39,7 @@ int main(int argc, char** argv)
 	char input[100];
 	while (1) {
 		fgets(input, 100, stdin);
-		if (!strncmp(input, "setvalue", 8)) {
-			parse_tuner_input(input + 9);
-		} else if (!strncmp(input, "setpieceval", 11)) {
-			parse_piece_val_tuner_input(input + 12);
-		} else if (!strncmp(input, "xboard", 6)) {
+		if (!strncmp(input, "xboard", 6)) {
 			xboard_loop();
 			break;
 		} else if (!strncmp(input, "uci", 3)) {
