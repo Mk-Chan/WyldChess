@@ -29,7 +29,7 @@ enum Protocols {
 	UCI
 };
 
-enum State {
+enum States {
 	WAITING,
 	THINKING,
 	ANALYZING,
