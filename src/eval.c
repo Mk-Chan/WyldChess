@@ -20,14 +20,15 @@
 #include "position.h"
 #include "bitboard.h"
 
-int piece_val[7] = {
+int piece_val[8] = {
 	0,
 	0,
 	S(90, 100),
 	S(400, 320),
 	S(400, 330),
 	S(600, 550),
-	S(1200, 1000)
+	S(1200, 1000),
+	S(0, 0)
 };
 
 int psq_val[8][64] = {

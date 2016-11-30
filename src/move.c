@@ -126,8 +126,8 @@ void do_move(Position* const pos, Move const m)
 		 7, 15, 15, 15, 3,  15, 15, 11
 	};
 
-	State*  const curr = pos->state;
-	State*  const next = ++pos->state;
+	State* const curr = pos->state;
+	State* const next = ++pos->state;
 
 	curr->move                  = m;
 	next->full_moves            = curr->full_moves + (pos->stm == BLACK);
@@ -137,10 +137,10 @@ void do_move(Position* const pos, Move const m)
 	next->ep_sq_bb              = 0ULL;
 	next->phase                 = curr->phase;
 
-	u32 const from    = from_sq(m),
-	          to      = to_sq(m),
-	          c       = pos->stm,
-	          mt      = move_type(m);
+	u32 const from = from_sq(m),
+	          to   = to_sq(m),
+	          c    = pos->stm,
+	          mt   = move_type(m);
 
 	if (curr->ep_sq_bb)
 		next->pos_key = curr->pos_key ^ psq_keys[0][0][bitscan(curr->ep_sq_bb)];

@@ -82,9 +82,9 @@ typedef struct Position_s {
 
 } Position;
 
-extern int piece_val[7];
+extern int piece_val[8];
 extern int psq_val[8][64];
-extern int phase[7];
+extern int phase[8];
 extern void print_board(Position* pos);
 
 extern void performance_test(Position* const pos, u32 max_depth);

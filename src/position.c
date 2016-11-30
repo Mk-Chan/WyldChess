@@ -20,7 +20,7 @@
 #include "position.h"
 #include "random.h"
 
-int phase[7] = { 0, 0, 1, 10, 10, 20, 40 };
+int phase[8] = { 0, 0, 1, 10, 10, 20, 40, 0 };
 
 static inline u32 get_piece_from_char(char c)
 {
@@ -80,24 +80,6 @@ void init_pos(Position* pos)
 	pos->state->full_moves            = 0;
 	pos->state->castling_rights       = 0;
 	pos->state->ep_sq_bb              = 0ULL;
-	pos->state->phase                 = 0;
-	pos->state->piece_psq_eval[WHITE] = 0;
-	pos->state->piece_psq_eval[BLACK] = 0;
-}
-
-void clear_pos(Position* pos)
-{
-	u32 i;
-	for (i = 0; i != 64; ++i)
-		pos->board[i] = 0;
-	for (i = 0; i != 9; ++i)
-		pos->bb[i] = 0ULL;
-	pos->state->pos_key               = 0ULL;
-	pos->state->pinned_bb             = 0ULL;
-	pos->state->fifty_moves           = 0;
-	pos->state->full_moves            = 0;
-	pos->state->castling_rights       = 0;
-	pos->state->ep_sq_bb              = 0ULL;
 	pos->state->checkers_bb           = 0ULL;
 	pos->state->phase                 = 0;
 	pos->state->piece_psq_eval[WHITE] = 0;
@@ -106,7 +88,7 @@ void clear_pos(Position* pos)
 
 int set_pos(Position* pos, char* fen)
 {
-	clear_pos(pos);
+	init_pos(pos);
 	u32 piece, pt, sq, pc,
 	    tsq   = 0,
 	    index = 0;
