@@ -268,7 +268,7 @@ static inline void set_checkers(Position* pos)
 static inline int insufficient_material(Position* const pos)
 {
 	u64 const * const bb = pos->bb;
-	if (bb[PAWN] || bb[QUEEN] || bb[ROOK])
+	if (bb[PAWN] | bb[QUEEN] | bb[ROOK])
 		return 0;
 	if (popcnt(bb[KNIGHT]) > 1)
 		return 0;
@@ -284,8 +284,9 @@ static inline int insufficient_material(Position* const pos)
 	if (   popcnt(bb[BISHOP] & bb[BLACK]) == 1
 	    && popcnt(bb[KNIGHT] & bb[WHITE]) == 1)
 		return 0;
-	if (   popcnt(bb[BISHOP]) > 1
-	    && sq_color[bitscan((bb[BISHOP] & bb[WHITE]))] != sq_color[bitscan((bb[BISHOP] & bb[BLACK]))])
+	if (   (bb[BISHOP] & bb[WHITE])
+	    && (bb[BISHOP] & bb[BLACK])
+	    &&  sq_color[bitscan((bb[BISHOP] & bb[WHITE]))] != sq_color[bitscan((bb[BISHOP] & bb[BLACK]))])
 		return 0;
 	return 1;
 }

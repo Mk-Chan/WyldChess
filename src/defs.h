@@ -49,6 +49,7 @@ typedef unsigned long long  u64;
 typedef unsigned long long  HashKey;
 
 enum Colors {
+	ALL = 0,
 	WHITE = 0,
 	BLACK
 };

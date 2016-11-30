@@ -249,7 +249,8 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				atk_bb   = get_atks(sq, pt, full_bb);
 				atk_bb  |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 
-				atks_bb[pt] |= atk_bb;
+				atks_bb[pt]  |= atk_bb;
+				atks_bb[ALL] |= atk_bb;
 
 				king_atks_bb = atk_bb & ev->king_danger_zone_bb[!c];
 
@@ -292,6 +293,23 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	return eval[WHITE] - eval[BLACK];
 }
 
+int eval_king_attacks(Position* const pos, Eval* const ev)
+{
+	int* king_atks = ev->king_atks;
+	u64 undefended_bb;
+	int c;
+	for (c = WHITE; c <= BLACK; ++c) {
+		undefended_bb = ev->king_danger_zone_bb[!c] & ~ev->atks_bb[!c][ALL];
+		king_atks[c] += popcnt(undefended_bb & pos->bb[QUEEN] & pos->bb[c] & ev->atks_bb[c][ALL]) * 6;
+	}
+
+	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);
+	king_atks[BLACK] = min(max(king_atks[BLACK], 0), 99);
+
+	int king_atk_diff = king_atk_table[king_atks[WHITE]] - king_atk_table[king_atks[BLACK]];
+	return S(king_atk_diff, 0);
+}
+
 int evaluate(Position* const pos)
 {
 	if (   popcnt(pos->bb[FULL]) <= 4
@@ -318,12 +336,7 @@ int evaluate(Position* const pos)
 
 	eval += eval_pawns(pos, &ev);
 	eval += eval_pieces(pos, &ev);
-
-	ev.king_atks[WHITE] = min(max(ev.king_atks[WHITE], 0), 99);
-	ev.king_atks[BLACK] = min(max(ev.king_atks[BLACK], 0), 99);
-
-	int king_atk_diff = king_atk_table[ev.king_atks[WHITE]] - king_atk_table[ev.king_atks[BLACK]];
-	eval += S(king_atk_diff, 0);
+	eval += eval_king_attacks(pos, &ev);
 
 	eval  = phased_val(eval, pos->state->phase);
 
