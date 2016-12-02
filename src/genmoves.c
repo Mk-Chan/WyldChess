@@ -20,6 +20,17 @@
 #include "position.h"
 #include "magicmoves.h"
 
+static int const is_prom_sq[64] = {
+	1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	1, 1, 1, 1, 1, 1, 1, 1
+};
+
 static inline void add_move(u32 m, Movelist* list)
 {
 	*list->end = m;
@@ -30,7 +41,7 @@ static void extract_moves(u32 from, u64 atks_bb, Movelist* list)
 {
 	u32 to;
 	while (atks_bb) {
-		to    = bitscan(atks_bb);
+		to       = bitscan(atks_bb);
 		atks_bb &= atks_bb - 1;
 		add_move(move_normal(from, to), list);
 	}
@@ -40,7 +51,7 @@ static void extract_caps(Position* const pos, u32 from, u64 atks_bb, Movelist* l
 {
 	u32 to;
 	while (atks_bb) {
-		to    = bitscan(atks_bb);
+		to       = bitscan(atks_bb);
 		atks_bb &= atks_bb - 1;
 		add_move(move_cap(from, to, piece_type(pos->board[to])), list);
 	}
@@ -61,7 +72,7 @@ static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list
 		pawn_block_poss_bb  = pawn_shift(BB(blocking_sq), !c);
 		if (pawn_block_poss_bb & pawns_bb) {
 			blocker = bitscan(pawn_block_poss_bb);
-			if (blocking_sq < 8 || blocking_sq > 55) {
+			if (is_prom_sq[blocking_sq]) {
 				add_move(move_prom(blocker, blocking_sq, TO_QUEEN), list);
 				add_move(move_prom(blocker, blocking_sq, TO_KNIGHT), list);
 				add_move(move_prom(blocker, blocking_sq, TO_ROOK), list);
@@ -110,8 +121,8 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 		while (atkers_bb) {
 			atker      = bitscan(atkers_bb);
 			atkers_bb &= atkers_bb - 1;
-			if (   (BB(atker) & pawns_bb)
-			    && (checker < 8 || checker > 55)) {
+			if (  (BB(atker) & pawns_bb)
+			    && is_prom_sq[checker]) {
 				add_move(move_prom_cap(atker, checker, TO_QUEEN, checker_pt), list);
 				add_move(move_prom_cap(atker, checker, TO_KNIGHT, checker_pt), list);
 				add_move(move_prom_cap(atker, checker, TO_ROOK, checker_pt), list);
@@ -178,7 +189,7 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 			to              = bitscan(cap_candidates);
 			cap_pt          = piece_type(pos->board[to]);
 			cap_candidates &= cap_candidates - 1;
-			if (to < 8 || to > 55) {
+			if (is_prom_sq[to]) {
 				add_move(move_prom_cap(from, to, TO_QUEEN, cap_pt), list);
 				add_move(move_prom_cap(from, to, TO_KNIGHT, cap_pt), list);
 				add_move(move_prom_cap(from, to, TO_ROOK, cap_pt), list);
