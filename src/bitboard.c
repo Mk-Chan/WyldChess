@@ -63,6 +63,7 @@ u64 adjacent_forward_mask[2][64];
 u64 backwards_pawn_restrictors_mask[2][64];
 u64 outpost_ranks_mask[2];
 
+u32 distance[64][64];
 u32 sq_color[64];
 
 static inline int file_diff(int sq1, int sq2)
@@ -187,6 +188,7 @@ void init_intervening_sqs()
 	int i, j, high, low;
 	for (i = 0; i < 64; i++) {
 		for (j = 0; j < 64; j++) {
+			distance[i][j] = max(abs(rank_of(i) - rank_of(j)), abs(file_of(i) - file_of(j)));
 			intervening_sqs_bb[i][j] = 0ULL;
 			if (i == j)
 				continue;
@@ -219,6 +221,13 @@ void init_intervening_sqs()
 			}
 		}
 	}
+}
+
+void init_lookups()
+{
+	init_atks();
+	init_intervening_sqs();
+	init_masks();
 }
 
 void print_bb(u64 bb)

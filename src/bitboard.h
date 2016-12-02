@@ -43,11 +43,10 @@ extern u64 adjacent_forward_mask[2][64];
 extern u64 backwards_pawn_restrictors_mask[2][64];
 extern u64 outpost_ranks_mask[2];
 
+extern u32 distance[64][64];
 extern u32 sq_color[64];
 
-extern void init_masks();
-extern void init_atks();
-extern void init_intervening_sqs();
+extern void init_lookups();
 extern void print_bb(u64 bb);
 
 #endif

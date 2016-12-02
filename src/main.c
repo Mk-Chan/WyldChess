@@ -32,9 +32,7 @@ int main(int argc, char** argv)
 	init_genrand64(time(0));
 	init_zobrist_keys();
 	initmagicmoves();
-	init_atks();
-	init_intervening_sqs();
-	init_masks();
+	init_lookups();
 	tt_init(&tt, 10000000);
 	char input[100];
 	while (1) {

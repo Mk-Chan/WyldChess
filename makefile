@@ -1,5 +1,5 @@
-CC = gcc
-CFLAGS = -std=c11 -Wall -O3 -pthread -flto
+CC = clang
+CFLAGS = -std=c11 -Wall -O3 -pthread -flto -pipe
 C_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c move.c mt19937-64.c perft.c position.c random.c search.c timer.c uci.c xboard.c
 SRC_PATH = src
 SRC = $(patsubst %,$(SRC_PATH)/%,$(C_FILES))

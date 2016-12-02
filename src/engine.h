@@ -41,6 +41,7 @@ typedef struct Controller_s {
 	int is_stopped;
 	int analyzing;
 	int time_dependent;
+	int tpm;
 	u32 depth;
 	u32 moves_left;
 	u32 moves_per_session;
@@ -94,8 +95,8 @@ static inline void start_thinking(Engine* const engine)
 	Controller* const ctlr  = engine->ctlr;
 	ctlr->search_start_time = curr_time();
 	if (ctlr->time_dependent) {
-		ctlr->search_end_time   =  ctlr->search_start_time
-					+ (ctlr->time_left / ctlr->moves_left);
+		ctlr->search_end_time = ctlr->search_start_time
+			             + (ctlr->time_left / ctlr->moves_left);
 		fprintf(stdout, "time left = %llums, moves left = %u, time allotted = %llums\n",
 			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 	}

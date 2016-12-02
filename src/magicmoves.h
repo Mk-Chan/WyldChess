@@ -84,7 +84,7 @@
 
 //the following works only for perfect magic hash or no defenitions above
 //it uses variable shift for each square
-//#define VARIABLE_SHIFT
+#define VARIABLE_SHIFT
 
 //#define USE_INLINING /*the MMINLINE keyword is assumed to be available*/
 
@@ -95,7 +95,7 @@ typedef unsigned long long U64; // Simply defining the U64
 #ifdef USE_INLINING
 	#ifdef _MSC_VER
 		#define MMINLINE __forceinline
-	#elif defined(__GNUC__)
+	elif defined(__GNUC__)
 		#define MMINLINE __inline__ __attribute__((always_inline))
 	#else
 		#define MMINLINE inline
