@@ -281,7 +281,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		while (curr_bb) {
 			sq                = bitscan(curr_bb);
 			curr_bb          &= curr_bb - 1;
-			pt                = piece_type(pos->board[sq]);
+			pt                = pos->board[sq];
 			atk_bb            = get_atks(sq, pt, full_bb);
 			atk_bb           |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 			atks_bb[pt]      |= atk_bb;

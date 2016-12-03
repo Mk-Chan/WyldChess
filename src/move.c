@@ -57,7 +57,7 @@ void undo_move(Position* const pos)
 	switch (mt) {
 	case NORMAL:
 		{
-			u32 const pt = piece_type(pos->board[to]);
+			u32 const pt = pos->board[to];
 			move_piece_no_key(pos, to, from, pt, c);
 			u32 const captured_pt = cap_type(m);
 			if(captured_pt)
@@ -150,14 +150,14 @@ void do_move(Position* const pos, Move const m)
 	switch (mt) {
 	case NORMAL:
 		{
-			u32 const pt     = piece_type(pos->board[from]);
+			u32 const pt     = pos->board[from];
 			u32 const cap_pt = cap_type(m);
 			if (!cap_pt) {
 				move_piece(pos, from, to, pt, c);
 				if (pt != PAWN)
 					next->fifty_moves = curr->fifty_moves + 1;
 			} else {
-				remove_piece(pos, to, piece_type(pos->board[to]), !c);
+				remove_piece(pos, to, pos->board[to], !c);
 				move_piece(pos, from, to, pt, c);
 			}
 			if (pt == KING)

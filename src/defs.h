@@ -77,7 +77,7 @@ enum Squares {
 	A5, B5, C5, D5, E5, F5, G5, H5,
 	A6, B6, C6, D6, E6, F6, G6, H6,
 	A7, B7, C7, D7, E7, F7, G7, H7,
-	A8, B8, C8, D8, E8, F8, G8, H8,
+	A8, B8, C8, D8, E8, F8, G8, H8
 };
 
 enum Files {
@@ -126,19 +126,8 @@ enum NodeTypes {
 static inline int max(int a, int b) { return a > b ? a : b; }
 static inline int min(int a, int b) { return a < b ? a : b; }
 
-#define make_piece(pt, c)  (pt | (c << 3))
-#define piece_type(piece)  (piece & 7)
-#define piece_color(piece) (piece >> 3)
-
 #define rank_of(sq) (sq >> 3)
 #define file_of(sq) (sq & 7)
-
-#define cancel_white_castle(cr) ((cr) & 0b1100)
-#define cancel_black_castle(cr) ((cr) & 0b0011)
-#define cancel_wkc(cr) ((cr) & 0b1110)
-#define cancel_wqc(cr) ((cr) & 0b1101)
-#define cancel_bkc(cr) ((cr) & 0b1011)
-#define cancel_bqc(cr) ((cr) & 0b0111)
 
 #define from_sq(m)   (m & 0x3f)
 #define to_sq(m)     ((m >> 6) & 0x3f)

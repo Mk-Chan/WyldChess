@@ -68,7 +68,7 @@ static int see(Position const * const pos, Move move)
 
 	int to = to_sq(move);
 	int swap_list[32];
-	swap_list[0] = mg_val(piece_val[piece_type(pos->board[to])]);
+	swap_list[0] = mg_val(piece_val[pos->board[to]]);
 	int c = pos->stm;
 	int from = from_sq(move);
 	u64 occupied_bb = pos->bb[FULL] ^ BB(from);
@@ -79,7 +79,7 @@ static int see(Position const * const pos, Move move)
 	u64 atkers_bb = all_atkers_to_sq(pos, to, occupied_bb) & occupied_bb;
 	c = !c;
 	u64 c_atkers_bb = atkers_bb & pos->bb[c];
-	int cap = piece_type(pos->board[from]);
+	int cap = pos->board[from];
 	int i;
 	for (i = 1; c_atkers_bb;) {
 		swap_list[i] = -swap_list[i - 1] + mg_val(piece_val[cap]);

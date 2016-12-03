@@ -46,7 +46,6 @@ static u64 perft(Position* const pos, Movelist* list, u32 depth)
 		}
 	}
 
-
 	return count;
 }
 

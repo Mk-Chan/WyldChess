@@ -53,7 +53,7 @@ static void extract_caps(Position* const pos, u32 from, u64 atks_bb, Movelist* l
 	while (atks_bb) {
 		to       = bitscan(atks_bb);
 		atks_bb &= atks_bb - 1;
-		add_move(move_cap(from, to, piece_type(pos->board[to])), list);
+		add_move(move_cap(from, to, pos->board[to]), list);
 	}
 }
 
@@ -115,7 +115,7 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 	}
 	while (checkers_bb) {
 		checker      = bitscan(checkers_bb);
-		checker_pt   = piece_type(pos->board[checker]);
+		checker_pt   = pos->board[checker];
 		checkers_bb &= checkers_bb - 1;
 		atkers_bb    = atkers_to_sq(pos, checker, c, full_bb) & non_king_mask;
 		while (atkers_bb) {
@@ -150,7 +150,7 @@ void gen_check_evasions(Position* pos, Movelist* list)
 		sq = bitscan(evasions_bb);
 		evasions_bb &= evasions_bb - 1;
 		if (!atkers_to_sq(pos, sq, !c, sans_king_bb))
-			add_move(move_cap(ksq, sq, piece_type(pos->board[sq])), list);
+			add_move(move_cap(ksq, sq, pos->board[sq]), list);
 	}
 
 	if (checkers_bb & (checkers_bb - 1))
@@ -187,7 +187,7 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 		cap_candidates = p_atks_bb[c][from] & pos->bb[!c];
 		while (cap_candidates) {
 			to              = bitscan(cap_candidates);
-			cap_pt          = piece_type(pos->board[to]);
+			cap_pt          = pos->board[to];
 			cap_candidates &= cap_candidates - 1;
 			if (is_prom_sq[to]) {
 				add_move(move_prom_cap(from, to, TO_QUEEN, cap_pt), list);

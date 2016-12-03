@@ -104,8 +104,8 @@ int set_pos(Position* pos, char* fen)
 			continue;
 		} else {
 			piece = get_piece_from_char(c);
-			pt = piece_type(piece);
-			pc = piece_color(piece);
+			pt = piece & 7;
+			pc = piece >> 3;
 			put_piece(pos, sq, pt, pc);
 			if(pt == KING)
 				pos->king_sq[pc] = sq;
@@ -146,10 +146,10 @@ int set_pos(Position* pos, char* fen)
 	return index;
 }
 
-static inline char get_char_from_piece(u32 piece)
+static inline char get_char_from_piece(u32 piece, int c)
 {
 	char x;
-	int pt = piece_type(piece);
+	int pt = piece & 7;
 	switch (pt) {
 	case PAWN:
 		x = 'P';
@@ -173,7 +173,7 @@ static inline char get_char_from_piece(u32 piece)
 		return -1;
 	}
 
-	if (piece_color(piece) == BLACK)
+	if (c == BLACK)
 		x += 32;
 	return x;
 }
@@ -189,7 +189,7 @@ void print_board(Position* pos)
 		if (!piece)
 			printf("- ");
 		else
-			printf("%c ", get_char_from_piece(piece));
+			printf("%c ", get_char_from_piece(piece, (BB((i ^ 56)) & pos->bb[WHITE] ? WHITE : BLACK)));
 	}
 	printf("\n");
 }

@@ -88,9 +88,6 @@ extern int phase[8];
 extern void print_board(Position* pos);
 
 extern void performance_test(Position* const pos, u32 max_depth);
-#ifdef THREADS
-extern void performance_test_parallel(Position* const pos, u32 max_depth);
-#endif
 
 extern void init_pos(Position* pos);
 extern int set_pos(Position* pos, char* fen);
@@ -124,7 +121,7 @@ static inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->bb[FULL]  |= set;
 	pos->bb[c]     |= set;
 	pos->bb[pt]    |= set;
-	pos->board[sq]  = make_piece(pt, c);
+	pos->board[sq]  = pt;
 }
 
 static inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
@@ -158,7 +155,7 @@ static inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->bb[FULL]       |= set;
 	pos->bb[c]          |= set;
 	pos->bb[pt]         |= set;
-	pos->board[sq]       = make_piece(pt, c);
+	pos->board[sq]       = pt;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
 	pos->state->phase   += phase[pt];
 	if (c == BLACK)
@@ -357,7 +354,7 @@ static inline int parse_move(Position* pos, char* str)
 	for(Move* move = list.moves; move != list.end; ++move) {
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {
-			if (    piece_type(pos->board[from]) == PAWN
+			if (    pos->board[from] == PAWN
 			    && (to > 56 || to < 8)) {
 				switch (prom_type(*move)) {
 				case QUEEN:
