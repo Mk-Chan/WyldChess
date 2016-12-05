@@ -97,6 +97,8 @@ static inline void start_thinking(Engine* const engine)
 	if (ctlr->time_dependent) {
 		ctlr->search_end_time = ctlr->search_start_time
 			             + (ctlr->time_left / ctlr->moves_left);
+		if (ctlr->moves_left == 1)
+			ctlr->search_end_time -= 5;
 		fprintf(stdout, "time left = %llums, moves left = %u, time allotted = %llums\n",
 			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 	}

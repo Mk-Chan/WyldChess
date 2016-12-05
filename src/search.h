@@ -29,16 +29,16 @@ typedef struct Search_Stack_s {
 
 } Search_Stack;
 
-u64 const HASH_MOVE   = 60000ULL;
-u64 const GOOD_CAP    = 50000ULL;
-u64 const KILLER_PLY  = 45000ULL;
-u64 const KILLER_OLD  = 40000ULL;
-u64 const QUEEN_PROM  = 30000ULL;
-u64 const EQUAL_CAP   = 20000ULL;
-u64 const BAD_CAP     = 10000ULL;
-u64 const PASSER_PUSH = 9000ULL;
-u64 const CASTLING    = 8000ULL;
-u64 const REST        = 5000ULL;
+static u64 const HASH_MOVE   = 60000ULL;
+static u64 const GOOD_CAP    = 50000ULL;
+static u64 const KILLER_PLY  = 45000ULL;
+static u64 const KILLER_OLD  = 40000ULL;
+static u64 const QUEEN_PROM  = 30000ULL;
+static u64 const EQUAL_CAP   = 20000ULL;
+static u64 const BAD_CAP     = 10000ULL;
+static u64 const PASSER_PUSH = 9000ULL;
+static u64 const CASTLING    = 8000ULL;
+static u64 const REST        = 5000ULL;
 
 static int equal_cap_bound = 50;
 

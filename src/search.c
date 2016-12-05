@@ -270,39 +270,47 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	 *  11. Rest
 	 */
 	Move* move;
+	u64 order;
 	for (move = list->moves; move != list->end; ++move) {
+		order = 0;
 		if (*move == tt_move) {
+			order = HASH_MOVE;
 			encode_order(*move, HASH_MOVE);
 		} else if (   cap_type(*move)
 			   || move_type(*move) == ENPASSANT) {
 			order_cap(pos, move);
 		} else {
 			if (*move == ss->killers[0])
-				encode_order(*move, KILLER_PLY + 1);
+				order = KILLER_PLY + 1;
 
 			else if (*move == ss->killers[1])
-				encode_order(*move, KILLER_PLY);
+				order = KILLER_PLY;
 
 			else if (*move == (ss - 2)->killers[0])
-				encode_order(*move, KILLER_OLD + 1);
+				order = KILLER_OLD + 1;
 
 			else if (*move == (ss - 2)->killers[1])
-				encode_order(*move, KILLER_OLD);
+				order = KILLER_OLD;
 
 			else if (   move_type(*move) == PROMOTION
 				 && prom_type(*move) == QUEEN)
-				encode_order(*move, QUEEN_PROM);
+				order = QUEEN_PROM;
 
 			else if (move_type(*move) == CASTLE)
-				encode_order(*move, CASTLING);
+				order = CASTLE;
 
 			else if (     pos->board[from_sq(*move)] == PAWN
 				 && !(file_forward_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[pos->stm])
 				 && !(passed_pawn_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[!pos->stm]))
-				encode_order(*move, PASSER_PUSH);
+				order = PASSER_PUSH;
 
 			else
-				encode_order(*move, REST);
+				order = REST;
+
+			if (order) {
+				//order += mg_val((psq_val[pos->board[from_sq(*move)]][to_sq(*move)] - psq_val[pos->board[from_sq(*move)]][from_sq(*move)]));
+				encode_order(*move, order);
+			}
 		}
 	}
 
@@ -330,8 +338,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			   &&  order(*move) <= PASSER_PUSH
 			   && !checking_move
 			   && !checked) {
-			depth_left  = depth - 2 - (legal_moves / 10);
-			depth_left += (node_type == PV_NODE);
+			depth_left = depth - 2 - (legal_moves / 10) + (node_type == PV_NODE);
 		} else {
 			depth_left = depth - 1;
 		}
@@ -378,6 +385,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			pos->stats.iid_cutoffs += iid;
 #endif
 			if (  !cap_type(*move)
+			    && ss->killers[0] != *move
+			    && move_type(*move) != ENPASSANT
 			    && move_type(*move) != PROMOTION) {
 				ss->killers[1] = ss->killers[0];
 				ss->killers[0] = *move;
