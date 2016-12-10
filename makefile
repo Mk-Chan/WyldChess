@@ -41,9 +41,9 @@ endif
 ifeq ("$(TARGET)", "win64")
 	EXEC := $(EXEC).exe
 	CFLAGS += -static
-	EXEC_PATH = binaries/v$(RELEASE)/$(TARGET)
+	EXEC_PATH = binaries/WyldChess_v$(RELEASE)/$(TARGET)
 else ifeq ("$(TARGET)", "linux")
-	EXEC_PATH = binaries/v$(RELEASE)/$(TARGET)
+	EXEC_PATH = binaries/WyldChess_v$(RELEASE)/$(TARGET)
 else
 $(error TARGET not defined)
 endif

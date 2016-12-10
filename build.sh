@@ -24,5 +24,5 @@ do
 done
 make clean
 cd binaries
-tar cvzf wyldchess$1.tar.gz v$1
-7z a wyldchess$1.zip v$1
+tar cvzf WyldChess_v$1.tar.gz WyldChess_v$1
+7z a WyldChess_v$1.zip WyldChess_v$1
