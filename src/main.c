@@ -29,11 +29,11 @@ int main(int argc, char** argv)
 	setbuf(stdout, NULL);
 	setbuf(stdin, NULL);
 	init_timer();
-	init_genrand64(time(0));
+	init_genrand64(234702970592742ULL);
 	init_zobrist_keys();
 	initmagicmoves();
 	init_lookups();
-	tt_init(&tt, 10000000);
+	tt_init(&tt, 0x800000);
 	char input[100];
 	while (1) {
 		fgets(input, 100, stdin);

@@ -154,17 +154,15 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		    &&  DEPTH(entry.data) >= depth) {
 			int val  = SCORE(entry.data);
 			u64 flag = FLAG(entry.data);
-			int a    = alpha,
-			    b    = beta;
 
 			if (flag == FLAG_EXACT)
 				return val;
-			else if (flag == FLAG_LOWER)
-				a = max(alpha, val);
-			else if (flag == FLAG_UPPER)
-				b = min(beta, val);
+			else if (flag == FLAG_LOWER && val > alpha)
+				alpha = val;
+			else if (flag == FLAG_UPPER && val < beta)
+				beta = val;
 
-			if (a >= b)
+			if (alpha >= beta)
 				return val;
 		}
 	}
@@ -177,7 +175,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	int val;
 
 	// Futility pruning
-	if (    depth <= 2
+	if (    depth <= 5
 	    &&  node_type != PV_NODE
 	    && !checked
 	    &&  ss->early_prune) {
@@ -299,9 +297,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			else if (move_type(*move) == CASTLE)
 				order = CASTLE;
 
-			else if (     pos->board[from_sq(*move)] == PAWN
-				 && !(file_forward_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[pos->stm])
-				 && !(passed_pawn_mask[pos->stm][from_sq(*move)] & pos->bb[PAWN] & pos->bb[!pos->stm]))
+			else if (   pos->board[from_sq(*move)] == PAWN
+				 && is_passed_pawn(pos, from_sq(*move), pos->stm))
 				order = PASSER_PUSH;
 
 			else
@@ -416,13 +413,10 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			return 0;
 	}
 
-
 	if (old_alpha == alpha) {
 #ifdef STATS
 		pos->stats.correct_nt_guess += (node_type == ALL_NODE);
 #endif
-		if (node_type == CUT_NODE)
-			return alpha;
 		tt_store(&tt, best_val, FLAG_UPPER, depth, best_move, pos->state->pos_key);
 	} else {
 #ifdef STATS

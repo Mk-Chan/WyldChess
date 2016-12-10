@@ -191,7 +191,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 
 			if (file_forward_mask[c][sq] & pawn_bb) {
 				eval[c] += doubled_pawns;
-			} else if (!(opp_pawn_bb & passed_pawn_mask[c][sq])) {
+			} else if (is_passed_pawn(pos, sq, c)) {
 				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
 			} else if (    (opp_pawn_bb & backwards_pawn_restrictors_mask[c][sq])
 				   &&  (pawn_bb & adjacent_forward_mask[c][sq])
@@ -296,11 +296,14 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 int eval_king_attacks(Position* const pos, Eval* const ev)
 {
 	int* king_atks = ev->king_atks;
-	u64 undefended_bb;
+	u64 undefended_atkd_bb;
 	int c;
 	for (c = WHITE; c <= BLACK; ++c) {
-		undefended_bb = ev->king_danger_zone_bb[!c] & ~ev->atks_bb[!c][ALL];
-		king_atks[c] += popcnt(undefended_bb & pos->bb[QUEEN] & pos->bb[c] & ev->atks_bb[c][ALL]) * 6;
+		undefended_atkd_bb = ev->king_danger_zone_bb[!c]
+			     & ~ev->atks_bb[!c][ALL]
+			     & (ev->atks_bb[c][ALL] | k_atks_bb[pos->king_sq[c]]);
+		king_atks[c] += popcnt(undefended_atkd_bb) * 2
+			      + popcnt(undefended_atkd_bb & pos->bb[QUEEN] & pos->bb[c]) * 6;
 	}
 
 	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);
