@@ -325,7 +325,7 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 void gen_legal_moves(Position* pos, Movelist* list)
 {
 	gen_pseudo_legal_moves(pos, list);
-	int ksq       = pos->king_sq[pos->stm];
+	u32 ksq       = pos->king_sq[pos->stm];
 	u64 pinned_bb = pos->state->pinned_bb;
 	Move* move;
 	for (move = list->moves; move < list->end;) {
