@@ -229,5 +229,6 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 		curr->killers[1]  = 0;
 		curr->list.end    = ss->list.moves;
 	}
+	(ss - 1)->killers[0] = (ss - 1)->killers[1] = 0;
 	(ss - 2)->killers[0] = (ss - 2)->killers[1] = 0;
 }

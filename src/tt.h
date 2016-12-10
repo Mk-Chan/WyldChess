@@ -46,10 +46,16 @@ typedef struct TT_s {
 
 TT tt;
 
+static inline void tt_clear(TT* tt)
+{
+	memset(tt->table, 0, sizeof(TT_Entry) * tt->size);
+}
+
 static inline void tt_init(TT* tt, u32 size)
 {
 	tt->table = malloc(sizeof(TT_Entry) * size);
 	tt->size  = size;
+	tt_clear(tt);
 }
 
 static inline void tt_destroy(TT* tt)
@@ -69,11 +75,6 @@ static inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u6
 static inline TT_Entry tt_probe(TT* tt, u64 key)
 {
 	return tt->table[(key < tt->size ? key : key % tt->size)];
-}
-
-static inline void tt_clear(TT* tt)
-{
-	memset(tt->table, 0, sizeof(TT_Entry) * tt->size);
 }
 
 #endif
