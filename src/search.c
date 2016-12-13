@@ -317,6 +317,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
+
 	int checking_move, depth_left;
 	for (move = list->moves; move != list->end; ++move) {
 		if (!legal_move(pos, *move))
@@ -335,7 +336,10 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			   &&  order(*move) <= PASSER_PUSH
 			   && !checking_move
 			   && !checked) {
-			depth_left = depth - 2 - (legal_moves / 10) + (node_type == PV_NODE);
+			int reduction = 2;
+			if (node_type != PV_NODE)
+				reduction += (legal_moves / 10);
+			depth_left = depth - reduction;
 		} else {
 			depth_left = depth - 1;
 		}
