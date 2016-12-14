@@ -153,8 +153,8 @@ int rook_open_file = S(30, 0);
 int rook_semi_open = S(10, 0);
 
 // Miscellaneous terms
-int outpost[2]           = { S(15, 0), S(15, 10) }; // Bishop, Knight
-int protected_outpost[2] = { S(10, 5), S(15, 10) }; // Bishop, Knight
+int outpost[2]           = { S(15, 0), S(15, 5) }; // Bishop, Knight
+int protected_outpost[2] = { S(10, 5), S(15, 5) }; // Bishop, Knight
 int weak_color_occupied  = S(5, 5);
 
 typedef struct Eval_s {

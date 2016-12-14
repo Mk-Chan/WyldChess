@@ -38,7 +38,7 @@ static u64 const EQUAL_CAP   = 20000ULL;
 static u64 const BAD_CAP     = 10000ULL;
 static u64 const PASSER_PUSH = 9000ULL;
 static u64 const CASTLING    = 8000ULL;
-static u64 const REST        = 5000ULL;
+static u64 const REST        = 1000ULL;
 
 static int equal_cap_bound = 50;
 

@@ -301,13 +301,17 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 				 && is_passed_pawn(pos, from_sq(*move), pos->stm))
 				order = PASSER_PUSH;
 
-			else
-				order = REST;
-
-			if (order) {
-				//order += mg_val((psq_val[pos->board[from_sq(*move)]][to_sq(*move)] - psq_val[pos->board[from_sq(*move)]][from_sq(*move)]));
-				encode_order(*move, order);
-			}
+			/*else {
+				int from = from_sq(*move),
+				    to   = to_sq(*move),
+				    pt   = pos->board[from];
+				if (pos->stm == BLACK) {
+					from ^= 56;
+					to   ^= 56;
+				}
+				order = REST + mg_val((psq_val[pt][to] - psq_val[pt][from]));
+			}*/
+			encode_order(*move, order);
 		}
 	}
 
