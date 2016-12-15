@@ -137,7 +137,7 @@ int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
 int king_cover[4]  = { 6, 4, 2, 0 };
 
 // Pawn terms
-int passed_pawn[8] = { 0, S(5, 10), S(10, 20), S(20, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
+int passed_pawn[8] = { 0, S(80, 150), S(50, 90), S(40, 70), S(40, 70), S(50, 90), S(80, 150), 0 };
 int doubled_pawns  = S(-20, -30);
 int isolated_pawn  = S(-10, -20);
 int backward_pawn  = S(-10, -20);
@@ -164,6 +164,7 @@ typedef struct Eval_s {
 	u64 king_danger_zone_bb[2];
 	u64 pinned_bb[2];
 	u64 blocked_pawns_bb[2];
+	u64 passed_pawn_bb[2];
 	int king_atks[2];
 
 } Eval;
@@ -192,7 +193,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 			if (file_forward_mask[c][sq] & pawn_bb) {
 				eval[c] += doubled_pawns;
 			} else if (is_passed_pawn(pos, sq, c)) {
-				eval[c] += passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
+				ev->passed_pawn_bb[c] |= BB(sq);
 			} else if (    (opp_pawn_bb & backwards_pawn_restrictors_mask[c][sq])
 				   &&  (pawn_bb & adjacent_forward_mask[c][sq])
 				   && !(pawn_bb & adjacent_sqs_mask[sq])) {
@@ -312,6 +313,36 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 	return S(king_atk_diff, 0);
 }
 
+int eval_passed_pawns(Position* const pos, Eval* const ev)
+{
+	int eval[2][2] = { { 0, 0 }, { 0,  0 } };
+	u64 passed_pawn_bb;
+	u64 vacancy_mask = ~pos->bb[FULL];
+	int c, sq, val;
+	for (c = WHITE; c <= BLACK; ++c) {
+		passed_pawn_bb = ev->passed_pawn_bb[c];
+		while (passed_pawn_bb) {
+			sq = bitscan(passed_pawn_bb);
+			passed_pawn_bb &= passed_pawn_bb - 1;
+
+			val = passed_pawn[rank_of(sq)];
+			if (pawn_shift(BB(sq), c) & vacancy_mask) {
+				if (file_forward_mask[c][sq] & ev->atks_bb[!c][ALL]) {
+					eval[c][0] += mg_val(val) / 3;
+					eval[c][1] += eg_val(val) / 2;
+				} else {
+					eval[c][0] += mg_val(val);
+					eval[c][1] += eg_val(val);
+				}
+			} else {
+				eval[c][0] += mg_val(val) / 4;
+				eval[c][1] += eg_val(val) / 3;
+			}
+		}
+	}
+	return S(eval[WHITE][0], eval[WHITE][1]) - S(eval[BLACK][0], eval[BLACK][1]);
+}
+
 int evaluate(Position* const pos)
 {
 	if (   popcnt(pos->bb[FULL]) <= 4
@@ -323,6 +354,7 @@ int evaluate(Position* const pos)
 		ksq             = pos->king_sq[c];
 		ev.king_atks[c] = 0;
 		ev.pawn_bb[c]   = pos->bb[PAWN] & pos->bb[c];
+		ev.passed_pawn_bb[c] = 0ULL;
 		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
 		for (pt = PAWN; pt != KING; ++pt)
 			ev.atks_bb[c][pt] = 0ULL;
@@ -339,6 +371,7 @@ int evaluate(Position* const pos)
 	eval += eval_pawns(pos, &ev);
 	eval += eval_pieces(pos, &ev);
 	eval += eval_king_attacks(pos, &ev);
+	eval += eval_passed_pawns(pos, &ev);
 
 	eval  = phased_val(eval, pos->state->phase);
 
