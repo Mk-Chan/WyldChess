@@ -157,12 +157,9 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 			if (flag == FLAG_EXACT)
 				return val;
-			else if (flag == FLAG_LOWER && val > alpha)
-				alpha = val;
-			else if (flag == FLAG_UPPER && val < beta)
-				beta = val;
-
-			if (alpha >= beta)
+			else if (flag == FLAG_LOWER && val >= beta)
+				return val;
+			else if (flag == FLAG_UPPER && val <= alpha)
 				return val;
 		}
 	}
@@ -301,7 +298,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 				 && is_passed_pawn(pos, from_sq(*move), pos->stm))
 				order = PASSER_PUSH;
 
-			/*else {
+			else {
 				int from = from_sq(*move),
 				    to   = to_sq(*move),
 				    pt   = pos->board[from];
@@ -310,7 +307,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 					to   ^= 56;
 				}
 				order = REST + mg_val((psq_val[pt][to] - psq_val[pt][from]));
-			}*/
+			}
 			encode_order(*move, order);
 		}
 	}

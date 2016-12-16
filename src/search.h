@@ -74,7 +74,7 @@ static int see(Position const * const pos, Move move)
 	u64 occupied_bb = pos->bb[FULL] ^ BB(from);
 	if (move_type(move) == ENPASSANT) {
 		occupied_bb ^= BB((to - (c == WHITE ? 8 : -8)));
-		swap_list[0] = mg_val(piece_val[PAWN]);
+		swap_list[0] = mg_val(piece_val[PAWN]) + 1;
 	}
 	u64 atkers_bb = all_atkers_to_sq(pos, to, occupied_bb) & occupied_bb;
 	c = !c;
@@ -103,6 +103,13 @@ static int see(Position const * const pos, Move move)
 
 static inline void order_cap(Position const * const pos, Move* const m)
 {
+	if (cap_type(*m)) {
+		int mvv_lva = mg_val(pos->board[to_sq(*m)]) - pos->board[from_sq(*m)];
+		if (mvv_lva > equal_cap_bound) {
+			encode_order(*m, mvv_lva);
+			return;
+		}
+	}
 	int see_val = see(pos, *m);
 	if (see_val > equal_cap_bound)
 		encode_order(*m, (GOOD_CAP + see_val));
