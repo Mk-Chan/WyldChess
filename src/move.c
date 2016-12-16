@@ -211,8 +211,6 @@ void do_move(Position* const pos, Move const m)
 			u32 captured_pt = cap_type(m);
 			if (captured_pt)
 				remove_piece(pos, to, captured_pt, !c);
-			else
-				next->fifty_moves = curr->fifty_moves + 1;
 			remove_piece(pos, from, PAWN, c);
 			put_piece(pos, to, prom_type(m), c);
 		}

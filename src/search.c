@@ -478,6 +478,8 @@ int begin_search(Engine* const engine)
 		fprintf(stdout, "\n");
 	}
 #ifdef STATS
+	fprintf(stdout, "nps:                      %lf\n",
+		time ? ((double)ctlr->nodes_searched * 1000 / time) : 0);
 	fprintf(stdout, "iid cutoff rate:          %lf\n",
 		((double)pos->stats.iid_cutoffs) / pos->stats.iid_tries);
 	fprintf(stdout, "futility cutoff rate:     %lf\n",
