@@ -137,7 +137,7 @@ int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
 int king_cover[4]  = { 6, 4, 2, 0 };
 
 // Pawn terms
-int passed_pawn[8] = { 0, S(80, 150), S(50, 90), S(40, 70), S(40, 70), S(50, 90), S(80, 150), 0 };
+int passed_pawn[8] = { 0, S(80, 200), S(50, 120), S(30, 70), S(30, 70), S(50, 120), S(80, 200), 0 };
 int doubled_pawns  = S(-20, -30);
 int isolated_pawn  = S(-10, -20);
 int backward_pawn  = S(-10, -20);

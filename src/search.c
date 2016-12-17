@@ -157,10 +157,13 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 			if (flag == FLAG_EXACT)
 				return val;
-			else if (flag == FLAG_LOWER && val >= beta)
-				return val;
-			else if (flag == FLAG_UPPER && val <= alpha)
-				return val;
+			else if (flag == FLAG_LOWER)
+				alpha = max(alpha, val);
+			else if (flag == FLAG_UPPER)
+				beta = min(beta, val);
+
+			if (alpha >= beta)
+				return alpha;
 		}
 	}
 
