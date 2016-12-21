@@ -4,7 +4,9 @@ then
 	echo "Usage: ./build.sh <release-number>"
 	exit
 fi
+
 TARGETS=( linux win64 )
+
 for T in "${TARGETS[@]}"
 do
 	if [ "$T" = "win64" ]
@@ -22,10 +24,19 @@ do
 	make clean
 	make CC="$CC" RELEASE=$1 TARGET="$T" POPCNT=1 FAST=1
 done
+
 make clean
 cd binaries/WyldChess_v$1
+
+BASE=wyldchess
+
 for T in "${TARGETS[@]}"
 do
-	tar cvzf WyldChess_v$1_$T.tar.gz $T
-	7z a WyldChess_v$1_$T.zip $T
+	mv $T "$BASE"_$T
+done
+
+for T in "${TARGETS[@]}"
+do
+	tar cvzf WyldChess_v$1_$T.tar.gz "$BASE"_$T
+	7z a WyldChess_v$1_$T.zip "$BASE"_$T
 done
