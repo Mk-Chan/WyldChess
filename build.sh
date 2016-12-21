@@ -23,6 +23,9 @@ do
 	make CC="$CC" RELEASE=$1 TARGET="$T" POPCNT=1 FAST=1
 done
 make clean
-cd binaries
-tar cvzf WyldChess_v$1.tar.gz WyldChess_v$1
-7z a WyldChess_v$1.zip WyldChess_v$1
+cd binaries/WyldChess_v$1
+for T in "${TARGETS[@]}"
+do
+	tar cvzf WyldChess_v$1_$T.tar.gz $T
+	7z a WyldChess_v$1_$T.zip $T
+done
