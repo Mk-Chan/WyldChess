@@ -1,6 +1,6 @@
 # WyldChess
 ## Latest Release
-Get the latest release here: https://github.com/Mk-Chan/WyldChess/releases/latest
+Get the latest release here: [Latest Release](https://github.com/Mk-Chan/WyldChess/releases/latest)
 
 ### Overview
 A free chess engine in C. It does not provide a GUI (Graphical User Interface)
