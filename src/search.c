@@ -247,7 +247,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	 *   8. Bad captures
 	 *   9. Passed pawn push
 	 *  10. Castling
-	 *  11. Rest
+	 *  11. Rest by piece square table (to - from value difference)
 	 */
 	Move* move;
 	u64 order;
