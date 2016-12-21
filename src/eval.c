@@ -329,7 +329,8 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 		undefended_atkd_bb = ev->king_danger_zone_bb[!c]
 			          & ~ev->atks_bb[!c][ALL]
 			          & (ev->atks_bb[c][ALL] | k_atks_bb[pos->king_sq[c]]);
-		king_atks[c] += ev->king_atkr_count[c] * ev->king_atk_wt[c];
+		king_atks[c] += ev->king_atkr_count[c] * ev->king_atk_wt[c]
+			      + popcnt(undefended_atkd_bb & pos->bb[QUEEN] & pos->bb[c]) * 6;
 	}
 
 	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);

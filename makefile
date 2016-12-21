@@ -58,7 +58,7 @@ $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(DEPS)
 
 all: $(OBJS)
 	@-mkdir -p $(@D)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $(BIN)
 
 clean:
 	-rm -f $(OBJS)
