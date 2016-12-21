@@ -196,13 +196,12 @@ void init_eval_terms()
 static int eval_pawns(Position* const pos, Eval* const ev)
 {
 	int eval[2] = { S(0, 0), S(0, 0) };
-	u64 bb, pawn_bb, opp_pawn_bb, atk_bb;
+	u64 bb, pawn_bb, atk_bb;
 	u64* atks_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
 		atks_bb     = ev->atks_bb[c];
 		pawn_bb     = ev->pawn_bb[c];
-		opp_pawn_bb = ev->pawn_bb[!c];
 		bb          = pawn_bb;
 		while (bb) {
 			sq     = bitscan(bb);
