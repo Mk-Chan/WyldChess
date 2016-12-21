@@ -160,22 +160,6 @@ void init_eval_terms()
 {
 	int c, pt, i, j, k, sq1, sq2;
 	for (c = WHITE; c <= BLACK; ++c) {
-		for (pt = PAWN; pt <= KING; ++pt) {
-			k = 0;
-			for (i = 0; i < 8; ++i) {
-				for (j = 0;  j < 4; ++j) {
-					sq1 = get_sq(i, j);
-					sq2 = get_sq(i, (7 - j));
-					if (c == BLACK) {
-						sq1 ^= 56;
-						sq2 ^= 56;
-					}
-					psqt[c][pt][sq1]
-						= psqt[c][pt][sq2]
-						= psq_tmp[pt][k++];
-				}
-			}
-		}
 		k = 0;
 		for (i = 0; i < 8; ++i) {
 			for (j = 0;  j < 4; ++j) {
@@ -187,7 +171,13 @@ void init_eval_terms()
 				}
 				connected_pawns[c][sq1]
 					= connected_pawns[c][sq2]
-					= connected_pawns_tmp[k++];
+					= connected_pawns_tmp[k];
+				for (pt = PAWN; pt <= KING; ++pt) {
+					psqt[c][pt][sq1]
+						= psqt[c][pt][sq2]
+						= psq_tmp[pt][k];
+				}
+				++k;
 			}
 		}
 	}
@@ -200,9 +190,9 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 	u64* atks_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
-		atks_bb     = ev->atks_bb[c];
-		pawn_bb     = ev->pawn_bb[c];
-		bb          = pawn_bb;
+		atks_bb = ev->atks_bb[c];
+		pawn_bb = ev->pawn_bb[c];
+		bb      = pawn_bb;
 		while (bb) {
 			sq     = bitscan(bb);
 			bb    &= bb - 1;
@@ -212,8 +202,8 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 
 			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
-			else if ((p_atks_bb[!c][sq] | p_atks_bb[c][sq] | adjacent_sqs_mask[sq]) & ev->pawn_bb[c])
-					eval[c] += connected_pawns[c][sq];
+			else if ((p_atks_bb[!c][sq] | p_atks_bb[c][sq] | adjacent_sqs_mask[sq]) & pawn_bb)
+				eval[c] += connected_pawns[c][sq];
 
 			if (file_forward_mask[c][sq] & pawn_bb)
 				eval[c] += doubled_pawns;
@@ -226,7 +216,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 
 static int eval_pieces(Position* const pos, Eval* const ev)
 {
-	int sq, c, pt, ksq;
+	int sq, c, pt, ksq, mobility_val;
 	u64  curr_bb, c_bb, atk_bb, xrayable_pieces_bb,
 	     mobility_mask, non_pinned_bb, sq_bb;
 	u64* atks_bb;
@@ -269,7 +259,8 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				atks_bb[pt]  |= atk_bb;
 				atks_bb[ALL] |= atk_bb;
 
-				eval[c] += mobility[pt] * (popcnt(atk_bb & mobility_mask) - min_mob_count[pt]);
+				mobility_val = mobility[pt] * (popcnt(atk_bb & mobility_mask) - min_mob_count[pt]);
+				eval[c]     += S(mobility_val, mobility_val);
 
 				if (atk_bb & ev->king_danger_zone_bb[!c]) {
 					++ev->king_atkr_count[c];
@@ -376,7 +367,7 @@ int evaluate(Position* const pos)
 		ev.king_atkr_count[c] = 0;
 		ev.passed_pawn_bb[c] = 0ULL;
 		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
-		for (pt = PAWN; pt != KING; ++pt)
+		for (pt = 0; pt != KING; ++pt)
 			ev.atks_bb[c][pt] = 0ULL;
 	}
 

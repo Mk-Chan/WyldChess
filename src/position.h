@@ -377,12 +377,7 @@ static inline int parse_move(Position* pos, char* str)
 
 static inline int is_passed_pawn(Position* const pos, int sq, int c)
 {
-	static int passed_pawn_rank[2][8] = {
-		{ 0, 0, 0, 0, 1, 1, 1, 0 },
-		{ 0, 1, 1, 1, 0, 0, 0, 0 }
-	};
-	return (    (passed_pawn_rank[c][rank_of(sq)])
-		&& !(passed_pawn_mask[c][sq] & pos->bb[PAWN] & pos->bb[!c])
+	return (   !(passed_pawn_mask[c][sq] & pos->bb[PAWN] & pos->bb[!c])
 		&& !(file_forward_mask[c][sq] & pos->bb[PAWN] & pos->bb[c]));
 }
 
