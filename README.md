@@ -12,7 +12,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 #### Evaluation
 * Phased/Tapered evaluation
 * Piece values
-* Piece square tables(custom)
+* Piece square tables (custom)
 * King attack:
 	* Glaurung 1.2 attack table
 	* Pawn cover
