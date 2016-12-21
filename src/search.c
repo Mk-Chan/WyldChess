@@ -103,15 +103,8 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, int depth)
 {
-	int check_at_leaf = 0;
 	if (depth <= 0) {
-		set_checkers(engine->pos);
-		if (engine->pos->state->checkers_bb) {
-			check_at_leaf = 1;
-			depth         = 1;
-		} else {
-			return qsearch(engine, ss, alpha, beta);
-		}
+		return qsearch(engine, ss, alpha, beta);
 	}
 
 	Position* const pos    = engine->pos;
@@ -161,8 +154,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	++ctlr->nodes_searched;
 
-	if (!check_at_leaf)
-		set_checkers(pos);
+	set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
 	int val;
 
@@ -318,7 +310,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		// Check extension and LMR
 		checking_move = (checkers(pos, !pos->stm) > 0ULL);
 		if (    checking_move
-		    && (cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound)) {
+		    && (depth == 1 || (cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound))) {
 			depth_left = depth;
 		} else if (    ss->ply
 			   &&  depth > 2

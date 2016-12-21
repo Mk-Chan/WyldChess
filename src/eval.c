@@ -20,6 +20,19 @@
 #include "position.h"
 #include "bitboard.h"
 
+typedef struct Eval_s {
+
+	u64 atks_bb[2][7];
+	u64 pawn_bb[2];
+	u64 king_danger_zone_bb[2];
+	u64 pinned_bb[2];
+	u64 blocked_pawns_bb[2];
+	u64 passed_pawn_bb[2];
+	int king_atk_wt[2];
+	int king_atkr_count[2];
+
+} Eval;
+
 int piece_val[8] = {
 	0,
 	0,
@@ -31,6 +44,7 @@ int piece_val[8] = {
 	S(0, 0)
 };
 
+int psqt[2][8][64];
 static int psq_tmp[8][32] = {
 	{ 0 },
 	{ 0 },
@@ -98,21 +112,9 @@ static int psq_tmp[8][32] = {
 	}
 };
 
-int psqt[2][8][64];
-
-int connected_pawns_tmp[32] = {
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0)
-};
-
-int connected_pawns[2][64];
-
+// King terms
+int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
+int king_cover[4]  = { 3, 2, 1, 0 };
 int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
 	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
@@ -126,28 +128,31 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
 
-// King terms
-int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
-int king_cover[4]  = { 3, 2, 1, 0 };
-
-// Pawn terms
+// Pawn structure
 int passed_pawn[8] = { 0, S(5, 5), S(20, 20), S(30, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
 int doubled_pawns  = S(-20, -30);
 int isolated_pawn  = S(-10, -20);
-
-// Bishop terms
-int blocked_bishop = S(-5, -5);
-int dual_bishops   = S(30, 50);
-
-// Rook terms
-int rook_open_file = S(30, 0);
-int rook_semi_open = S(10, 0);
+int connected_pawns[2][64];
+int connected_pawns_tmp[32] = {
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0)
+};
 
 // Mobility terms
 int mobility[7]      = { 0, 0, 0, 4, 5, 5, 2 };
 int min_mob_count[7] = { 0, 0, 0, 3, 3, 5, 7 };
 
 // Miscellaneous terms
+int blocked_bishop       = S(-5, -5);
+int dual_bishops         = S(30, 50);
+int rook_open_file       = S(30, 0);
+int rook_semi_open       = S(10, 0);
 int outpost[2]           = { S(15, 0), S(15, 5) }; // Bishop, Knight
 int protected_outpost[2] = { S(10, 5), S(15, 5) }; // Bishop, Knight
 
@@ -186,19 +191,6 @@ void init_eval_terms()
 		}
 	}
 }
-
-typedef struct Eval_s {
-
-	u64 atks_bb[2][7];
-	u64 pawn_bb[2];
-	u64 king_danger_zone_bb[2];
-	u64 pinned_bb[2];
-	u64 blocked_pawns_bb[2];
-	u64 passed_pawn_bb[2];
-	int king_atk_wt[2];
-	int king_atkr_count[2];
-
-} Eval;
 
 static int eval_pawns(Position* const pos, Eval* const ev)
 {
@@ -304,12 +296,12 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		// Pinned
 		curr_bb = ~non_pinned_bb;
 		while (curr_bb) {
-			sq                = bitscan(curr_bb);
-			curr_bb          &= curr_bb - 1;
-			pt                = pos->board[sq];
-			atk_bb            = get_atks(sq, pt, full_bb);
-			atk_bb           |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
-			atks_bb[pt]      |= atk_bb;
+			sq           = bitscan(curr_bb);
+			curr_bb     &= curr_bb - 1;
+			pt           = pos->board[sq];
+			atk_bb       = get_atks(sq, pt, full_bb);
+			atk_bb      |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
+			atks_bb[pt] |= atk_bb;
 			if (atk_bb & ev->king_danger_zone_bb[!c]) {
 				++ev->king_atkr_count[c];
 				ev->king_atk_wt[c] += king_atk_wt[pt];
@@ -401,7 +393,7 @@ int evaluate(Position* const pos)
 	eval += eval_king_attacks(pos, &ev);
 	eval += eval_passed_pawns(pos, &ev);
 
-	eval  = phased_val(eval, pos->state->phase);
+	eval = phased_val(eval, pos->state->phase);
 
 	return pos->stm == WHITE ? eval : -eval;
 }
