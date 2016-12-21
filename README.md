@@ -52,7 +52,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
     * Castling
     * Rest by piece square table (to - from value difference)
 * Check extension at frontier nodes and positive SEE moves
-* Late move reduction:
+* Late move reduction
 * Principal variation search
 
 ### Files
