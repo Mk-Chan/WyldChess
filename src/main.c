@@ -33,6 +33,7 @@ int main()
 	init_zobrist_keys();
 	initmagicmoves();
 	init_lookups();
+	init_eval_terms();
 	tt_init(&tt, 0x800000);
 	char input[100];
 	while (1) {

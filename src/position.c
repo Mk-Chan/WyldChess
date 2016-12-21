@@ -134,7 +134,7 @@ int set_pos(Position* pos, char* fen)
 
 	++index;
 	u32 x = 0;
-	while ((c = fen[index++]) != ' ')
+	while ((c = fen[index++]) != '\0' && c != ' ')
 		x = x * 10 + (c - '0');
 	pos->state->fifty_moves = x;
 

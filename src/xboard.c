@@ -170,6 +170,7 @@ void xboard_loop()
 	engine.target_state = WAITING;
 	init_pos(&pos);
 	set_pos(&pos, INITIAL_POSITION);
+
 	pthread_t engine_thread;
 	pthread_create(&engine_thread, NULL, engine_loop_xboard, (void*) &engine);
 	pthread_detach(engine_thread);

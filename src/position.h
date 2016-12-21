@@ -27,7 +27,6 @@
 #ifdef STATS
 typedef struct Stats_s {
 
-	u64 correct_nt_guess;
 	u64 iid_cutoffs;
 	u64 iid_tries;
 	u64 futility_cutoffs;
@@ -83,8 +82,10 @@ typedef struct Position_s {
 } Position;
 
 extern int piece_val[8];
-extern int psq_val[8][64];
+extern int psqt[2][8][64];
 extern int phase[8];
+
+extern void init_eval_terms();
 extern void print_board(Position* pos);
 
 extern void performance_test(Position* const pos, u32 max_depth);
@@ -142,11 +143,7 @@ static inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 	pos->board[to]       = pos->board[from];
 	pos->board[from]     = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][from] ^ psq_keys[c][pt][to];
-	if (c == BLACK) {
-		from ^= 56;
-		to   ^= 56;
-	}
-	pos->state->piece_psq_eval[c] += psq_val[pt][to] - psq_val[pt][from];
+	pos->state->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
 }
 
 static inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
@@ -158,9 +155,7 @@ static inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->board[sq]       = pt;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
 	pos->state->phase   += phase[pt];
-	if (c == BLACK)
-		sq ^= 56;
-	pos->state->piece_psq_eval[c] += piece_val[pt] + psq_val[pt][sq];
+	pos->state->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
 }
 
 static inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
@@ -172,9 +167,7 @@ static inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->board[sq]       = 0;
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
 	pos->state->phase   -= phase[pt];
-	if (c == BLACK)
-		sq ^= 56;
-	pos->state->piece_psq_eval[c] -= piece_val[pt] + psq_val[pt][sq];
+	pos->state->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
 }
 
 static inline u64 pawn_shift(u64 bb, u32 c)
@@ -388,7 +381,7 @@ static inline int is_passed_pawn(Position* const pos, int sq, int c)
 		{ 0, 0, 0, 0, 1, 1, 1, 0 },
 		{ 0, 1, 1, 1, 0, 0, 0, 0 }
 	};
-	return (     passed_pawn_rank[c][sq]
+	return (    (passed_pawn_rank[c][rank_of(sq)])
 		&& !(passed_pawn_mask[c][sq] & pos->bb[PAWN] & pos->bb[!c])
 		&& !(file_forward_mask[c][sq] & pos->bb[PAWN] & pos->bb[c]));
 }

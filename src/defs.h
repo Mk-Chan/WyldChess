@@ -34,6 +34,7 @@
 #define MAX_MATE_VAL (INFINITY - MAX_PLY)
 #define S(mg, eg)    (((mg) + (((unsigned int)eg) << 16)))
 #define MAX_PHASE    (256)
+#define INVALID      (-INFINITY - 1)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
@@ -126,8 +127,9 @@ enum NodeTypes {
 static inline int max(int a, int b) { return a > b ? a : b; }
 static inline int min(int a, int b) { return a < b ? a : b; }
 
-#define rank_of(sq) (sq >> 3)
-#define file_of(sq) (sq & 7)
+#define get_sq(r, f) (((r << 3) | f))
+#define rank_of(sq)  (sq >> 3)
+#define file_of(sq)  (sq & 7)
 
 #define from_sq(m)   (m & 0x3f)
 #define to_sq(m)     ((m >> 6) & 0x3f)

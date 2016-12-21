@@ -53,14 +53,12 @@ endif
 BIN = $(EXEC_PATH)/$(EXEC)
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(DEPS)
-	-mkdir -p $(OBJ_PATH)
+	@-mkdir -p $(OBJ_PATH)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BIN): $(OBJS)
-	-mkdir -p $(@D)
+all: $(OBJS)
+	@-mkdir -p $(@D)
 	$(CC) $(CFLAGS) $^ -o $@
-
-all: $(BIN)
 
 clean:
 	-rm -f $(OBJS)
