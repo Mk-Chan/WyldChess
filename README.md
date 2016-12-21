@@ -5,7 +5,7 @@ Get the latest release here: [Latest Release](https://github.com/Mk-Chan/WyldChe
 
 ### Overview
 A free chess engine in C. It does not provide a GUI (Graphical User Interface)
-but can be linked to one that supports either the UCI or the Xboard/Winboard protocol.
+but can be linked to one that supports either the UCI protocol or CECP (the Xboard/Winboard protocol)
 
 ### Features
 
