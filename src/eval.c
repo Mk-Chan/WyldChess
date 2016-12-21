@@ -176,6 +176,7 @@ void init_eval_terms()
 				}
 			}
 		}
+		k = 0;
 		for (i = 0; i < 8; ++i) {
 			for (j = 0;  j < 4; ++j) {
 				sq1 = get_sq(i, j);
@@ -186,7 +187,7 @@ void init_eval_terms()
 				}
 				connected_pawns[c][sq1]
 					= connected_pawns[c][sq2]
-					= connected_pawns_tmp[get_sq(i, j)];
+					= connected_pawns_tmp[k++];
 			}
 		}
 	}
