@@ -47,7 +47,7 @@ but can be linked to one that supports either the UCI or the Xboard/Winboard pro
     * Killer move from current ply
     * Killer moves from 2 plies ago
     * Minor promotions
-    * Bad captures
+    * Bad captures (negative SEE)
     * Passed pawn push
     * Castling
     * Rest by piece square table (to - from value difference)
