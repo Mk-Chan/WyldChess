@@ -30,6 +30,7 @@ typedef struct Eval_s {
 	u64 passed_pawn_bb[2];
 	int king_atk_wt[2];
 	int king_atkr_count[2];
+	int king_atk_pressure[2];
 
 } Eval;
 
@@ -265,6 +266,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				if (atk_bb & ev->king_danger_zone_bb[!c]) {
 					++ev->king_atkr_count[c];
 					ev->king_atk_wt[c] += king_atk_wt[pt];
+					ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
 				}
 
 				if (   (pt == KNIGHT || pt == BISHOP)
@@ -293,9 +295,11 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			atk_bb       = get_atks(sq, pt, full_bb);
 			atk_bb      |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 			atks_bb[pt] |= atk_bb;
+
 			if (atk_bb & ev->king_danger_zone_bb[!c]) {
 				++ev->king_atkr_count[c];
 				ev->king_atk_wt[c] += king_atk_wt[pt];
+				ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
 			}
 		}
 	}
@@ -313,6 +317,7 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 			          & ~ev->atks_bb[!c][ALL]
 			          & (ev->atks_bb[c][ALL] | k_atks_bb[pos->king_sq[c]]);
 		king_atks[c] += ev->king_atkr_count[c] * ev->king_atk_wt[c]
+			      //+ ev->king_atk_pressure[c]
 			      + popcnt(undefended_atkd_bb & pos->bb[QUEEN] & pos->bb[c]) * 6;
 	}
 
@@ -364,8 +369,9 @@ int evaluate(Position* const pos)
 		ksq = pos->king_sq[c];
 		ev.pawn_bb[c] = pos->bb[PAWN] & pos->bb[c];
 		ev.king_atk_wt[c] = 0;
-		ev.king_atkr_count[c] = 0;
 		ev.passed_pawn_bb[c] = 0ULL;
+		ev.king_atkr_count[c] = 0;
+		ev.king_atk_pressure[c] = 0;
 		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
 		for (pt = 0; pt != KING; ++pt)
 			ev.atks_bb[c][pt] = 0ULL;

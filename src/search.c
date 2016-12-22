@@ -200,6 +200,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #ifdef STATS
 			++pos->stats.null_cutoffs;
 #endif
+			tt_store(&tt, val, FLAG_LOWER, depth, 0, pos->state->pos_key);
 			return val;
 		}
 	}
@@ -315,7 +316,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		} else if (    ss->ply
 			   &&  depth > 2
 			   &&  legal_moves > (ss->pv_node ? 3 : 1)
-			   &&  order(*move) <= PASSER_PUSH
+			   &&  order(*move) < CASTLING
 			   &&  move_type(*move) != PROMOTION
 			   && !checking_move
 			   && !checked) {
@@ -434,7 +435,7 @@ int begin_search(Engine* const engine)
 
 		time = curr_time() - ctlr->search_start_time;
 		if (engine->protocol == XBOARD)
-			fprintf(stdout, "%3d %5d %5llu %llu", depth, val, time / 10, ctlr->nodes_searched);
+			fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, ctlr->nodes_searched);
 		else if (engine->protocol == UCI)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
