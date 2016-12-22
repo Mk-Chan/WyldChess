@@ -114,7 +114,7 @@ static int psq_tmp[8][32] = {
 
 // King terms
 int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
-int king_cover[4]  = { 3, 2, 1, 0 };
+int king_cover[4]  = { 9, 5, 2, 0 };
 int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
 	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
@@ -135,12 +135,12 @@ int isolated_pawn  = S(-10, -20);
 int connected_pawns[2][64];
 int connected_pawns_tmp[32] = {
 	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+	S(  1,   1), S(  1,   1), S(  1,   1), S(  2,   2),
+	S(  2,   2), S(  3,   3), S(  4,   4), S(  5,   5),
+	S(  3,   3), S(  5,   5), S( 10,  10), S( 15,  15),
+	S( 10,  10), S( 15,  15), S( 20,  20), S( 25,  25),
+	S( 15,  15), S( 20,  20), S( 25,  25), S( 30,  30),
+	S( 40,  40), S( 45,  45), S( 50,  50), S( 55,  55),
 	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0)
 };
 
@@ -202,7 +202,7 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 
 			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
-			else if ((p_atks_bb[!c][sq] | p_atks_bb[c][sq] | adjacent_sqs_mask[sq]) & pawn_bb)
+			else if ((p_atks_bb[!c][sq] | adjacent_sqs_mask[sq]) & pawn_bb)
 				eval[c] += connected_pawns[c][sq];
 
 			if (file_forward_mask[c][sq] & pawn_bb)

@@ -21,6 +21,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 	* Passed pawns
 	* Doubled pawns
 	* Isolated pawns
+	* Connected pawns
 
 * Piece mobility
 * Miscellaneous terms:
