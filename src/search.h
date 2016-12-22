@@ -104,10 +104,11 @@ static int see(Position const * const pos, Move move)
 static inline void order_cap(Position const * const pos, Move* const m)
 {
 	if (cap_type(*m)) {
-		int piece_val_diff = mg_val(piece_val[pos->board[to_sq(*m)]])
-			           - mg_val(piece_val[pos->board[from_sq(*m)]]);
+		int cap_val        = mg_val(piece_val[pos->board[to_sq(*m)]]);
+		int capper_pt      = pos->board[from_sq(*m)];
+		int piece_val_diff = cap_val - mg_val(piece_val[capper_pt]);
 		if (piece_val_diff > equal_cap_bound) {
-			encode_order(*m, GOOD_CAP + piece_val_diff);
+			encode_order(*m, GOOD_CAP + cap_val - capper_pt);
 			return;
 		}
 	}
