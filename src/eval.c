@@ -114,7 +114,7 @@ static int psq_tmp[8][32] = {
 
 // King terms
 int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
-int king_cover[4]  = { 9, 5, 2, 0 };
+int king_cover[4]  = { 3, 2, 1, 0 };
 int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
 	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,

@@ -99,8 +99,6 @@ static inline void start_thinking(Engine* const engine)
 			             + (ctlr->time_left / ctlr->moves_left);
 		if (ctlr->moves_left == 1)
 			ctlr->search_end_time -= 5;
-		fprintf(stdout, "time left = %llums, moves left = %u, time allotted = %llums\n",
-			ctlr->time_left, ctlr->moves_left, ctlr->search_end_time - ctlr->search_start_time);
 	}
 	transition(engine, THINKING);
 	if (ctlr->moves_per_session) {
