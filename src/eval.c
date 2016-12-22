@@ -145,7 +145,7 @@ int connected_pawns_tmp[32] = {
 };
 
 // Mobility terms
-int mobility[7]      = { 0, 0, 0, 4, 5, 5, 2 };
+int mobility[7]      = { 0, 0, 0, 4, 4, 4, 2 };
 int min_mob_count[7] = { 0, 0, 0, 3, 3, 5, 7 };
 
 // Miscellaneous terms
