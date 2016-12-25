@@ -25,12 +25,10 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 
 * Piece mobility
 * Miscellaneous terms:
-	* Blocked bishop
 	* Dual bishops
 	* Rook on open file
 	* Rook on semi-open file
 	* Knight and bishop outposts
-	* Protected outpost
 
 #### Search
 * Aspiration window search
