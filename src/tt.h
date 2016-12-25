@@ -51,6 +51,18 @@ static inline void tt_clear(TT* tt)
 	memset(tt->table, 0, sizeof(TT_Entry) * tt->size);
 }
 
+static inline void tt_age(TT* tt, int plies)
+{
+	TT_Entry* curr;
+	TT_Entry* end = tt->table + tt->size;
+	int depth;
+	for (curr = tt->table; curr != end; ++curr) {
+		depth       = DEPTH(curr->data);
+		curr->data &= ~(0x7f << DEPTH_SHIFT);
+		curr->data ^= max(depth - plies, 0) << DEPTH_SHIFT;
+	}
+}
+
 static inline void tt_init(TT* tt, u32 size)
 {
 	tt->table = malloc(sizeof(TT_Entry) * size);

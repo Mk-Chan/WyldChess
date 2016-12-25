@@ -426,7 +426,7 @@ int begin_search(Engine* const engine)
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
 	Search_Stack ss[MAX_PLY + 2];
 	clear_search(engine, ss + 2);
-	tt_clear(&tt);
+	tt_age(&tt, INFINITY);
 	ss[2].pv_node = 1;
 
 	Position* const pos    = engine->pos;
