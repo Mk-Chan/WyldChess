@@ -27,6 +27,7 @@
 #ifdef STATS
 typedef struct Stats_s {
 
+	u64 correct_nt_guess;
 	u64 iid_cutoffs;
 	u64 iid_tries;
 	u64 futility_cutoffs;
@@ -260,14 +261,9 @@ static inline int insufficient_material(Position* const pos)
 	u64 const * const bb = pos->bb;
 	if (bb[PAWN] | bb[QUEEN] | bb[ROOK])
 		return 0;
-	if (popcnt(bb[KNIGHT]) > 1)
-		return 0;
-	if (   popcnt(bb[BISHOP] & bb[WHITE]) == 1
-	    && popcnt(bb[KNIGHT] & bb[WHITE]) == 1)
-		return 0;
-	if (   popcnt(bb[BISHOP] & bb[BLACK]) == 1
-	    && popcnt(bb[KNIGHT] & bb[BLACK]) == 1)
-		return 0;
+	if (   popcnt((bb[BISHOP] | bb[KNIGHT]) & bb[WHITE]) > 1
+	    || popcnt((bb[BISHOP] | bb[KNIGHT]) & bb[BLACK]) > 1)
+	       return 0;
 	if (   popcnt(bb[BISHOP] & bb[WHITE]) == 1
 	    && popcnt(bb[KNIGHT] & bb[BLACK]) == 1)
 		return 0;
@@ -377,7 +373,8 @@ static inline int parse_move(Position* pos, char* str)
 
 static inline int is_passed_pawn(Position* const pos, int sq, int c)
 {
-	return (   !(passed_pawn_mask[c][sq] & pos->bb[PAWN] & pos->bb[!c])
+	return (    (pos->board[sq] == PAWN)
+		&& !(passed_pawn_mask[c][sq] & pos->bb[PAWN] & pos->bb[!c])
 		&& !(file_forward_mask[c][sq] & pos->bb[PAWN] & pos->bb[c]));
 }
 

@@ -25,10 +25,10 @@ void do_null_move(Position* const pos)
 	State*  const next = ++pos->state;
 
 	curr->move                  = 0;
-	next->full_moves            = curr->full_moves;
+	next->full_moves            = curr->full_moves + 1;
 	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
 	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
-	next->fifty_moves           = curr->fifty_moves;
+	next->fifty_moves           = curr->fifty_moves + 1;
 	next->ep_sq_bb              = 0;
 	next->castling_rights       = curr->castling_rights;
 	pos->stm                   ^= 1;

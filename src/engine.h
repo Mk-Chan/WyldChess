@@ -99,6 +99,8 @@ static inline void start_thinking(Engine* const engine)
 			             + (ctlr->time_left / ctlr->moves_left);
 		if (ctlr->moves_left == 1)
 			ctlr->search_end_time -= 5;
+		else
+			ctlr->search_end_time += ctlr->increment;
 	}
 	transition(engine, THINKING);
 	if (ctlr->moves_per_session) {

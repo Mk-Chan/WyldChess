@@ -21,7 +21,7 @@
 
 typedef struct Search_Stack_s {
 
-	u32      pv_node;
+	u32      node_type;
 	u32      early_prune;
 	u32      ply;
 	Move     killers[2];
@@ -215,6 +215,7 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
+	pos->stats.correct_nt_guess   = 0;
 	pos->stats.iid_cutoffs        = 0;
 	pos->stats.iid_tries          = 0;
 	pos->stats.futility_cutoffs   = 0;
@@ -230,7 +231,7 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	Search_Stack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
 		curr              = ss + i;
-		curr->pv_node     = ALL_NODE;
+		curr->node_type   = ALL_NODE;
 		curr->early_prune = 1;
 		curr->ply         = i;
 		curr->killers[0]  = 0;
