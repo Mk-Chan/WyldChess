@@ -20,17 +20,6 @@
 #include "position.h"
 #include "magicmoves.h"
 
-static int const is_prom_sq[64] = {
-	1, 1, 1, 1, 1, 1, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 1, 1, 1, 1, 1, 1
-};
-
 static inline void add_move(u32 m, Movelist* list)
 {
 	*list->end = m;

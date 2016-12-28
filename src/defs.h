@@ -127,6 +127,17 @@ enum NodeTypes {
 static inline int max(int a, int b) { return a > b ? a : b; }
 static inline int min(int a, int b) { return a < b ? a : b; }
 
+static int const is_prom_sq[64] = {
+	1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	1, 1, 1, 1, 1, 1, 1, 1
+};
+
 #define get_sq(r, f) (((r << 3) | f))
 #define rank_of(sq)  (sq >> 3)
 #define file_of(sq)  (sq & 7)

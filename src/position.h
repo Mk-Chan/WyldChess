@@ -335,6 +335,7 @@ static inline int parse_move(Position* pos, char* str)
 	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
 	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
 	char prom = str[4];
+	int pr_t;
 	Movelist list;
 	list.end = list.moves;
 	set_pinned(pos);
@@ -343,26 +344,17 @@ static inline int parse_move(Position* pos, char* str)
 	for(Move* move = list.moves; move != list.end; ++move) {
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {
-			if (    pos->board[from] == PAWN
-			    && (to > 56 || to < 8)) {
-				switch (prom_type(*move)) {
-				case QUEEN:
-					if (prom == 'q')
-						return *move;
-					break;
-				case KNIGHT:
-					if (prom == 'n')
-						return *move;
-					break;
-				case BISHOP:
-					if (prom == 'b')
-						return *move;
-					break;
-				case ROOK:
-					if (prom == 'r')
-						return *move;
-					break;
-				}
+			if (   pos->board[from] == PAWN
+			    && is_prom_sq[to]) {
+				pr_t = prom_type(*move);
+				if (prom == 'q' && pr_t == QUEEN)
+					return *move;
+				if (prom == 'n' && pr_t == KNIGHT)
+					return *move;
+				if (prom == 'b' && pr_t == BISHOP)
+					return *move;
+				if (prom == 'r' && pr_t == ROOK)
+					return *move;
 			} else {
 				return *move;
 			}
