@@ -186,7 +186,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			++pos->stats.futility_cutoffs;
 			++pos->stats.correct_nt_guess;
 #endif
-			return beta;
+			tt_store(&tt, val, FLAG_LOWER, depth, 0, pos->state->pos_key);
+			return val;
 		}
 	}
 #endif
@@ -217,6 +218,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			++pos->stats.null_cutoffs;
 			++pos->stats.correct_nt_guess;
 #endif
+			tt_store(&tt, val, FLAG_LOWER, depth, 0, pos->state->pos_key);
 			return val;
 		}
 	}
