@@ -35,13 +35,17 @@
 #define SCORE(data) ((data) >> SCORE_SHIFT)
 
 typedef struct TT_Entry_s {
+
 	u64 data;
 	u64 key;
+
 } TT_Entry;
 
 typedef struct TT_s {
+
 	TT_Entry* table;
 	u32 size;
+
 } TT;
 
 TT tt;

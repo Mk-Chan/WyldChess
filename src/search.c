@@ -335,8 +335,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			   && !checking_move
 			   && !checked) {
 #ifndef NO_LMR
-			depth_left  = depth - 2 - (legal_moves / 10);
-			depth_left += (node_type == PV_NODE);
+			depth_left  = depth - 2 - (legal_moves > 10) + (node_type == PV_NODE);
 #else
 			depth_left = depth - 1;
 #endif
