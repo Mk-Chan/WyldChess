@@ -218,16 +218,24 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 			if (is_passed_pawn(pos, sq, c))
 				ev->passed_pawn_bb[c] |= BB(sq);
 		}
+#ifdef STATS
+		es.pt_score[c][PAWN] = phased_val(eval[c], pos->state->phase);
+#endif
 	}
+
+
 	return eval[WHITE] - eval[BLACK];
 }
 
 static int eval_pieces(Position* const pos, Eval* const ev)
 {
 	int sq, c, pt, ksq, mobility_val;
-	u64  curr_bb, c_bb, atk_bb, xrayable_pieces_bb,
+	u64  curr_bb, c_bb, atk_bb, xrayable_bb,
 	     mobility_mask, non_pinned_bb, sq_bb;
 	u64* atks_bb;
+#ifdef STATS
+	int accumulated = 0;
+#endif
 
 	u64 const p_atks_bb[2] = {
 		ev->atks_bb[WHITE][PAWN],
@@ -239,12 +247,12 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 	u64  full_bb = bb[FULL];
 
 	for (c = WHITE; c <= BLACK; ++c) {
-		atks_bb            =   ev->atks_bb[c];
-		non_pinned_bb      =  ~ev->pinned_bb[c];
-		c_bb               =   bb[c];
-		ksq                =   pos->king_sq[c];
-		mobility_mask      = ~(ev->blocked_pawns_bb[c] | BB(ksq) | p_atks_bb[!c]);
-		xrayable_pieces_bb =   c_bb ^ (BB(ksq) | ev->blocked_pawns_bb[c] | ev->pinned_bb[c]);
+		atks_bb       =   ev->atks_bb[c];
+		non_pinned_bb =  ~ev->pinned_bb[c];
+		c_bb          =   bb[c];
+		ksq           =   pos->king_sq[c];
+		mobility_mask = ~(ev->blocked_pawns_bb[c] | BB(ksq) | p_atks_bb[!c]);
+		xrayable_bb   =   c_bb ^ (BB(ksq) | ev->blocked_pawns_bb[c] | ev->pinned_bb[c]);
 
 		// TODO: Needs improvement
 		// Increment king attacker count based on number of passed pawns immediately in front of king
@@ -263,11 +271,12 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				sq_bb    = BB(sq);
 				curr_bb &= curr_bb - 1;
 
-				// Get attacks for piece
-				atk_bb = get_atks(sq, pt, full_bb);
-
-				// Get X-ray attacks through pieces that are not the king, blocked pawns or pinned
-				atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
+				// Get attacks for piece xrays for bishop and rook
+				atk_bb = pt == BISHOP
+						? Bmagic(sq, full_bb ^ xrayable_bb)
+						: pt == ROOK
+							? Rmagic(sq, full_bb ^ xrayable_bb)
+							: get_atks(sq, pt, full_bb);
 
 				// Store the attacks
 				atks_bb[pt]  |= atk_bb;
@@ -298,6 +307,10 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 					eval[c] += (file_forward_mask[c][sq] & ev->pawn_bb[!c])
 						? rook_semi_open
 						: rook_open_file;
+#ifdef STATS
+				es.pt_score[pt][c] = phased_val((eval[c] - accumulated), pos->state->phase);
+				accumulated       += eval[c];
+#endif
 			}
 		}
 
@@ -308,16 +321,22 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			curr_bb &= curr_bb - 1;
 			pt       = pos->board[sq];
 
-			// Get attacks for pinned piece
-			atk_bb  = get_atks(sq, pt, full_bb);
-			// Get X-ray attacks through pieces that are not the king, blocked pawns or pinned
-			atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
+			// Get attacks for piece xrays for bishop and rook
+			atk_bb = pt == BISHOP
+					? Bmagic(sq, full_bb ^ xrayable_bb)
+					: pt == ROOK
+						? Rmagic(sq, full_bb ^ xrayable_bb)
+						: get_atks(sq, pt, full_bb);
 
 			// Update king attack statistics
 			if (atk_bb & ev->king_danger_zone_bb[!c]) {
 				++ev->king_atkr_count[c];
 				ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
 			}
+#ifdef STATS
+			es.pt_score[pt][c] = phased_val((eval[c] - accumulated), pos->state->phase);
+			accumulated       += eval[c];
+#endif
 		}
 	}
 
@@ -348,6 +367,10 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 	// Bring the counters within limits of the lookup table
 	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);
 	king_atks[BLACK] = min(max(king_atks[BLACK], 0), 99);
+#ifdef STATS
+		es.king_atks[WHITE] += phased_val(king_atk_table[king_atks[WHITE]], pos->state->phase);
+		es.king_atks[BLACK] += phased_val(king_atk_table[king_atks[BLACK]], pos->state->phase);
+#endif
 
 	// Lookup the counter values
 	int king_atk_diff = king_atk_table[king_atks[WHITE]] - king_atk_table[king_atks[BLACK]];
@@ -392,11 +415,27 @@ int eval_passed_pawns(Position* const pos, Eval* const ev)
 			}
 		}
 	}
+
+#ifdef STATS
+	es.passed_pawn[WHITE] += phased_val(S(eval[WHITE][0], eval[WHITE][1]), pos->state->phase);
+	es.passed_pawn[BLACK] += phased_val(S(eval[BLACK][0], eval[BLACK][1]), pos->state->phase);
+#endif
+
 	return S(eval[WHITE][0], eval[WHITE][1]) - S(eval[BLACK][0], eval[BLACK][1]);
 }
 
 int evaluate(Position* const pos)
 {
+
+#ifdef STATS
+	for (int c = WHITE; c <= BLACK; ++c) {
+		es.passed_pawn[c]    = 0;
+		es.king_atks[c]      = 0;
+		for (int pt = PAWN; pt != KING; ++pt)
+			es.pt_score[c][pt] = 0;
+	}
+#endif
+
 	if (   popcnt(pos->bb[FULL]) <= 4
 	    && insufficient_material(pos))
 		return 0;
@@ -420,6 +459,10 @@ int evaluate(Position* const pos)
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
 
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
+#ifdef STATS
+	es.piece_psq_eval[WHITE] = phased_val(pos->state->piece_psq_eval[WHITE], pos->state->phase);
+	es.piece_psq_eval[BLACK] = phased_val(pos->state->piece_psq_eval[BLACK], pos->state->phase);
+#endif
 
 #ifndef NO_EVAL_PAWNS
 	eval += eval_pawns(pos, &ev);

@@ -41,6 +41,18 @@ typedef struct Stats_s {
 	u64 total_nodes;
 
 } Stats;
+
+typedef struct Eval_Stats_s {
+
+	int piece_psq_eval[2];
+	int pt_score[2][7];
+	int passed_pawn[2];
+	int king_atks[2];
+
+} Eval_Stats;
+
+Eval_Stats es;
+
 #endif
 
 typedef u64 Move;
