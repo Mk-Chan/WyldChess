@@ -201,7 +201,6 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 
 			// Store the attacks
 			atks_bb[PAWN] |= atk_bb;
-			atks_bb[ALL]  |= atk_bb;
 
 			// Pawn of the same color in front of this pawn => Doubled pawn
 			if (file_forward_mask[c][sq] & pawn_bb)
@@ -244,7 +243,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		non_pinned_bb      =  ~ev->pinned_bb[c];
 		c_bb               =   bb[c];
 		ksq                =   pos->king_sq[c];
-		mobility_mask      = ~(BB(ksq) | p_atks_bb[!c]);
+		mobility_mask      = ~(ev->blocked_pawns_bb[c] | BB(ksq) | p_atks_bb[!c]);
 		xrayable_pieces_bb =   c_bb ^ (BB(ksq) | ev->blocked_pawns_bb[c] | ev->pinned_bb[c]);
 
 		// TODO: Needs improvement
@@ -313,10 +312,6 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 			atk_bb  = get_atks(sq, pt, full_bb);
 			// Get X-ray attacks through pieces that are not the king, blocked pawns or pinned
 			atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
-
-			// Store attacks for the piece
-			atks_bb[pt]  |= atk_bb;
-			atks_bb[ALL] |= atk_bb;
 
 			// Update king attack statistics
 			if (atk_bb & ev->king_danger_zone_bb[!c]) {
