@@ -129,7 +129,7 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 };
 
 // Pawn structure
-int passed_pawn[8]    = { 0, S(5, 5), S(20, 20), S(30, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
+int passed_pawn[8]    = { 0, S(5, 5), S(20, 20), S(30, 40), S(40, 70), S(50, 120), S(60, 200), 0 };
 int doubled_pawns     = S(-10, -20);
 int isolated_pawn     = S(-10, -10);
 int connected_pawns[2][64];
@@ -308,8 +308,8 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 						? rook_semi_open
 						: rook_open_file;
 #ifdef STATS
-				es.pt_score[pt][c] = phased_val((eval[c] - accumulated), pos->state->phase);
-				accumulated       += eval[c];
+				es.pt_score[c][pt] = phased_val((eval[c] - accumulated), pos->state->phase);
+				accumulated        = eval[c];
 #endif
 			}
 		}
@@ -452,8 +452,8 @@ int evaluate(Position* const pos)
 			ev.atks_bb[c][pt] = 0ULL;
 	}
 
-	ev.blocked_pawns_bb[WHITE] = (ev.pawn_bb[BLACK] >> 8) & ev.pawn_bb[WHITE];
-	ev.blocked_pawns_bb[BLACK] = (ev.pawn_bb[WHITE] << 8) & ev.pawn_bb[BLACK];
+	ev.blocked_pawns_bb[WHITE] = (pos->bb[FULL] >> 8) & ev.pawn_bb[WHITE];
+	ev.blocked_pawns_bb[BLACK] = (pos->bb[FULL] << 8) & ev.pawn_bb[BLACK];
 
 	ev.pinned_bb[WHITE] = get_pinned(pos, WHITE);
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);

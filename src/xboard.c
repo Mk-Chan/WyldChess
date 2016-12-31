@@ -324,17 +324,17 @@ void xboard_loop()
 			fprintf(stdout, "\n");
 			for (pt = PAWN; pt != KING; ++pt) {
 				for (c = WHITE; c <= BLACK; ++c)
-					fprintf(stdout, "%7s: %4d                  ", pt_str[pt], es.pt_score[c][pt]);
+					fprintf(stdout, "%7s: %5d                 ", pt_str[pt], es.pt_score[c][pt]);
 				fprintf(stdout, "\n");
 			}
 			for (c = WHITE; c <= BLACK; ++c)
-				fprintf(stdout, "PASSERS: %4d                  ", es.passed_pawn[c]);
+				fprintf(stdout, "PASSERS: %5d                 ", es.passed_pawn[c]);
 			fprintf(stdout, "\n");
 			for (c = WHITE; c <= BLACK; ++c)
-				fprintf(stdout, " K_ATKS: %4d                  ", es.king_atks[c]);
+				fprintf(stdout, " K_ATKS: %5d                 ", es.king_atks[c]);
 			fprintf(stdout, "\n");
 			for (c = WHITE; c <= BLACK; ++c)
-				fprintf(stdout, "  P_PSQ: %4d                  ", es.piece_psq_eval[c]);
+				fprintf(stdout, "  P_PSQ: %5d                 ", es.piece_psq_eval[c]);
 			fprintf(stdout, "\n");
 #endif
 
