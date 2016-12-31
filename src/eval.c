@@ -131,8 +131,7 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 // Pawn structure
 int passed_pawn[8]    = { 0, S(5, 5), S(20, 20), S(30, 40), S(30, 70), S(50, 120), S(80, 200), 0 };
 int doubled_pawns     = S(-10, -20);
-int isolani_semi_open = S(-10, -15);
-int isolani_closed    = S(-10, -10);
+int isolated_pawn     = S(-10, -10);
 int connected_pawns[2][64];
 int connected_pawns_tmp[32] = {
 	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
@@ -157,6 +156,7 @@ int outpost[2]     = { S(10, 5), S(20, 10) }; // Bishop, Knight
 
 void init_eval_terms()
 {
+	// Initialize the connected_pawns and psqt arrays
 	int c, pt, i, j, k, sq1, sq2;
 	for (c = WHITE; c <= BLACK; ++c) {
 		k = 0;
@@ -195,20 +195,27 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 		while (bb) {
 			sq     = bitscan(bb);
 			bb    &= bb - 1;
+
+			// Get the attacks
 			atk_bb = p_atks_bb[c][sq];
 
+			// Store the attacks
 			atks_bb[PAWN] |= atk_bb;
+			atks_bb[ALL]  |= atk_bb;
 
-			if (file_forward_mask[c][sq] & pawn_bb) {
+			// Pawn of the same color in front of this pawn => Doubled pawn
+			if (file_forward_mask[c][sq] & pawn_bb)
 				eval[c] += doubled_pawns;
-			} else if (!(adjacent_files_mask[file_of(sq)] & pawn_bb)) {
-				if (file_forward_mask[c][sq] & ev->pawn_bb[!c])
-					eval[c] += isolani_closed;
-				else
-					eval[c] += isolani_semi_open;
-			}
+
+			// No pawn of same color in adjacent files and not doubled => Isolated pawn
+			else if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
+				eval[c] += isolated_pawn;
+
+			// Pawn defended by or next to another pawn of same color => Connected pawn
 			if ((p_atks_bb[!c][sq] | adjacent_sqs_mask[sq]) & pawn_bb)
 				eval[c] += connected_pawns[c][sq];
+
+			// Store passed pawn position for later
 			if (is_passed_pawn(pos, sq, c))
 				ev->passed_pawn_bb[c] |= BB(sq);
 		}
@@ -237,12 +244,17 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		non_pinned_bb      =  ~ev->pinned_bb[c];
 		c_bb               =   bb[c];
 		ksq                =   pos->king_sq[c];
-		mobility_mask      = ~(ev->blocked_pawns_bb[c] | BB(ksq) | p_atks_bb[!c]);
+		mobility_mask      = ~(BB(ksq) | p_atks_bb[!c]);
 		xrayable_pieces_bb =   c_bb ^ (BB(ksq) | ev->blocked_pawns_bb[c] | ev->pinned_bb[c]);
+
+		// TODO: Needs improvement
+		// Increment king attacker count based on number of passed pawns immediately in front of king
 		ev->king_atkr_count[!c] += king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks_bb[ksq] & ev->pawn_bb[c])];
 
 		for (pt = KNIGHT; pt != KING; ++pt) {
 			curr_bb = bb[pt] & c_bb;
+
+			// If there are 2 bishops of the same color => Dual bishops
 			if (pt == BISHOP && popcnt(curr_bb) >= 2)
 				eval[c] += dual_bishops;
 
@@ -251,45 +263,62 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 				sq       = bitscan(curr_bb);
 				sq_bb    = BB(sq);
 				curr_bb &= curr_bb - 1;
-				atk_bb   = get_atks(sq, pt, full_bb);
-				atk_bb  |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
 
+				// Get attacks for piece
+				atk_bb = get_atks(sq, pt, full_bb);
+
+				// Get X-ray attacks through pieces that are not the king, blocked pawns or pinned
+				atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
+
+				// Store the attacks
 				atks_bb[pt]  |= atk_bb;
 				atks_bb[ALL] |= atk_bb;
 
+				// Calculate mobility count by counting attacked squares which are not attacked by
+				// an enemy pawn and does not have our king on it
 				mobility_val = mobility[pt] * (popcnt(atk_bb & mobility_mask) - min_mob_count[pt]);
 				eval[c]     += S(mobility_val, mobility_val);
 
+				// Update king attack statistics
 				if (atk_bb & ev->king_danger_zone_bb[!c]) {
 					++ev->king_atkr_count[c];
 					ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
 				}
 
+				// Knight or bishop on relative 4th, 5th or 6th rank and not attacked by an enemy pawn
 				if (   (pt == KNIGHT || pt == BISHOP)
 				    && (~p_atks_bb[!c] & sq_bb)
-				    && (sq_bb & outpost_ranks_mask[c])) {
-
+				    && (sq_bb & outpost_ranks_mask[c]))
 					eval[c] += outpost[pt & 1];
 
-				} else if (     pt == ROOK
-					   && !(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
+				// No same colored pawn in front of the rook
+				else if (     pt == ROOK
+					   && !(file_forward_mask[c][sq] & ev->pawn_bb[c]))
+					// Opposite colored pawn in front of the rook => Rook on semi-open file
+					// Otherwise => Rook on open file
 					eval[c] += (file_forward_mask[c][sq] & ev->pawn_bb[!c])
 						? rook_semi_open
 						: rook_open_file;
-				}
 			}
 		}
 
 		// Pinned
 		curr_bb = ~non_pinned_bb;
 		while (curr_bb) {
-			sq           = bitscan(curr_bb);
-			curr_bb     &= curr_bb - 1;
-			pt           = pos->board[sq];
-			atk_bb       = get_atks(sq, pt, full_bb);
-			atk_bb      |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
-			atks_bb[pt] |= atk_bb;
+			sq       = bitscan(curr_bb);
+			curr_bb &= curr_bb - 1;
+			pt       = pos->board[sq];
 
+			// Get attacks for pinned piece
+			atk_bb  = get_atks(sq, pt, full_bb);
+			// Get X-ray attacks through pieces that are not the king, blocked pawns or pinned
+			atk_bb |= get_atks(sq, pt, full_bb ^ (atk_bb & xrayable_pieces_bb));
+
+			// Store attacks for the piece
+			atks_bb[pt]  |= atk_bb;
+			atks_bb[ALL] |= atk_bb;
+
+			// Update king attack statistics
 			if (atk_bb & ev->king_danger_zone_bb[!c]) {
 				++ev->king_atkr_count[c];
 				ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
@@ -306,18 +335,28 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 	u64 undefended_atkd_bb;
 	int c;
 	for (c = WHITE; c <= BLACK; ++c) {
+		// Find squares around the enemy king, not defended and attacked by our pieces
 		undefended_atkd_bb = ev->king_danger_zone_bb[!c]
 				  & ~ev->atks_bb[!c][ALL]
 				  & (ev->atks_bb[c][ALL] | k_atks_bb[pos->king_sq[c]]);
+
+		/* King attack factors:
+		 *   1. Sum of squares attacked by each piece * their respective weights(pressure)
+		 *   2. Number of pieces attacking
+		 *   3. Queen check right next to king
+		 */
 		king_atks[c] += ev->king_atk_pressure[c]
 			      + ev->king_atkr_count[c]
 			      + popcnt(undefended_atkd_bb & pos->bb[QUEEN] & pos->bb[c]) * 6;
 	}
 
+	// Bring the counters within limits of the lookup table
 	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);
 	king_atks[BLACK] = min(max(king_atks[BLACK], 0), 99);
 
+	// Lookup the counter values
 	int king_atk_diff = king_atk_table[king_atks[WHITE]] - king_atk_table[king_atks[BLACK]];
+
 	return S(king_atk_diff, (king_atk_diff / 2));
 }
 
@@ -334,15 +373,25 @@ int eval_passed_pawns(Position* const pos, Eval* const ev)
 			passed_pawn_bb &= passed_pawn_bb - 1;
 
 			val = passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
+
+			// Square immediately ahead of the passed pawn is vacant
 			if (pawn_shift(BB(sq), c) & vacancy_mask) {
+				// TODO: Improve this
+				// A square ahead of the passed pawn is attacked by the opponent
 				if (file_forward_mask[c][sq] & ev->atks_bb[!c][ALL]) {
 					eval[c][0] += mg_val(val) / 3;
 					eval[c][1] += eg_val(val) / 2;
-				} else {
+				}
+
+				// No square ahead of the passed pawn is attacked
+				else {
 					eval[c][0] += mg_val(val);
 					eval[c][1] += eg_val(val);
 				}
-			} else {
+			}
+
+			// Square immediately in front of passed pawn is not vacant
+			else {
 				eval[c][0] += mg_val(val) / 4;
 				eval[c][1] += eg_val(val) / 3;
 			}
