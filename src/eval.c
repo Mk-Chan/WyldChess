@@ -129,9 +129,9 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 };
 
 // Pawn structure
-int passed_pawn[8]    = { 0, S(5, 5), S(20, 20), S(30, 40), S(40, 70), S(50, 120), S(60, 200), 0 };
-int doubled_pawns     = S(-10, -20);
-int isolated_pawn     = S(-10, -10);
+int passed_pawn[8] = { 0, S(5, 5), S(20, 20), S(30, 40), S(40, 70), S(50, 120), S(60, 200), 0 };
+int doubled_pawns  = S(-10, -20);
+int isolated_pawn  = S(-10, -10);
 int connected_pawns[2][64];
 int connected_pawns_tmp[32] = {
 	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
@@ -149,7 +149,7 @@ int mobility[7]      = { 0, 0, 0, 4, 4, 4, 4 };
 int min_mob_count[7] = { 0, 0, 0, 3, 4, 4, 7 };
 
 // Miscellaneous terms
-int dual_bishops   = S(40, 80);
+int dual_bishops   = S(20, 80);
 int rook_open_file = S(20, 20);
 int rook_semi_open = S(5, 5);
 int outpost[2]     = { S(10, 5), S(20, 10) }; // Bishop, Knight
@@ -367,9 +367,10 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 	// Bring the counters within limits of the lookup table
 	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);
 	king_atks[BLACK] = min(max(king_atks[BLACK], 0), 99);
+
 #ifdef STATS
-		es.king_atks[WHITE] += phased_val(king_atk_table[king_atks[WHITE]], pos->state->phase);
-		es.king_atks[BLACK] += phased_val(king_atk_table[king_atks[BLACK]], pos->state->phase);
+	es.king_atks[WHITE] += phased_val(king_atk_table[king_atks[WHITE]], pos->state->phase);
+	es.king_atks[BLACK] += phased_val(king_atk_table[king_atks[BLACK]], pos->state->phase);
 #endif
 
 	// Lookup the counter values
@@ -459,6 +460,7 @@ int evaluate(Position* const pos)
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
 
 	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
+
 #ifdef STATS
 	es.piece_psq_eval[WHITE] = phased_val(pos->state->piece_psq_eval[WHITE], pos->state->phase);
 	es.piece_psq_eval[BLACK] = phased_val(pos->state->piece_psq_eval[BLACK], pos->state->phase);
