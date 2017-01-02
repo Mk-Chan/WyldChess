@@ -33,6 +33,12 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	if (ss->ply >= MAX_PLY)
 		return evaluate(pos);
 
+	// Mate distance pruning
+	alpha = max((-MAX_MATE_VAL + ss->ply), alpha);
+	beta  = min((MAX_MATE_VAL - ss->ply), beta);
+	if (alpha >= beta)
+		return alpha;
+
 	++engine->ctlr->nodes_searched;
 #ifdef STATS
 	++engine->pos->stats.correct_nt_guess;
@@ -53,10 +59,14 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	list->end      = list->moves;
 	set_pinned(pos);
 	Move* move;
-	if (checked)
+	if (checked) {
 		gen_check_evasions(pos, list);
-	else
+		if (list->end == list->moves)
+			return -INFINITY + ss->ply;
+
+	} else {
 		gen_captures(pos, list);
+	}
 
 	for (move = list->moves; move < list->end; ++move) {
 		if (   cap_type(*move)
@@ -70,7 +80,9 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	sort_moves(list->moves, list->end);
 
 	int val;
+#ifdef STATS
 	u32 legal_moves = 0;
+#endif
 	for (move = list->moves; move != list->end; ++move) {
 		if (  !checked
 		    && order(*move) < BAD_CAP)
@@ -78,7 +90,9 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 		if (!legal_move(pos, *move))
 			continue;
+#ifdef STATS
 		++legal_moves;
+#endif
 
 		do_move(pos, *move);
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
@@ -97,18 +111,13 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 			alpha = val;
 	}
 
-	if (    checked
-	    && !legal_moves)
-		return -INFINITY + ss->ply;
-
 	return alpha;
 }
 
 static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, int depth)
 {
-	if (depth <= 0) {
+	if (depth <= 0)
 		return qsearch(engine, ss, alpha, beta);
-	}
 
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
@@ -237,7 +246,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		iid = 1;
 		++pos->stats.iid_tries;
 #endif
-		int reduction   = depth / 3;
+		int reduction   = depth / 2;
 		int ep          = ss->early_prune;
 		int nt          = ss->node_type;
 		ss->early_prune = 0;
