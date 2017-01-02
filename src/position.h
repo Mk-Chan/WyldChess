@@ -273,6 +273,8 @@ static inline int insufficient_material(Position* const pos)
 	u64 const * const bb = pos->bb;
 	if (bb[PAWN] | bb[QUEEN] | bb[ROOK])
 		return 0;
+	if (popcnt(bb[KNIGHT]) > 1)
+		return 0;
 	if (   popcnt((bb[BISHOP] | bb[KNIGHT]) & bb[WHITE]) > 1
 	    || popcnt((bb[BISHOP] | bb[KNIGHT]) & bb[BLACK]) > 1)
 	       return 0;

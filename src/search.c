@@ -246,7 +246,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		iid = 1;
 		++pos->stats.iid_tries;
 #endif
-		int reduction   = depth / 2;
+		int reduction   = 2;
 		int ep          = ss->early_prune;
 		int nt          = ss->node_type;
 		ss->early_prune = 0;
