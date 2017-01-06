@@ -85,7 +85,7 @@ static int psq_tmp[8][32] = {
 		S( -5,   0), S(  0,   0), S(  2,   0), S(  5,   0),
 		S( -5,   0), S(  0,   0), S(  2,   0), S(  5,   0),
 		S( -5,   0), S(  0,   0), S(  2,   0), S(  5,   0),
-		S( 50,  10), S( 50,  10), S( 55,  15), S( 55,  15),
+		S( -5,   0), S(  0,   0), S(  2,   0), S(  5,   0),
 		S( -5,  -5), S(  0,  -3), S(  2,  -1), S(  5,   0)
 	},
 	{
@@ -150,6 +150,7 @@ int min_mob_count[7] = { 0, 0, 0, 3, 4, 4, 7 };
 
 // Miscellaneous terms
 int dual_bishops   = S(20, 80);
+int rook_on_7th    = S(40, 20);
 int rook_open_file = S(20, 20);
 int rook_semi_open = S(5, 5);
 int outpost[2]     = { S(10, 5), S(20, 10) }; // Bishop, Knight
@@ -301,12 +302,18 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 
 				// No same colored pawn in front of the rook
 				else if (     pt == ROOK
-					   && !(file_forward_mask[c][sq] & ev->pawn_bb[c]))
+					 && !(file_forward_mask[c][sq] & ev->pawn_bb[c])) {
 					// Opposite colored pawn in front of the rook => Rook on semi-open file
 					// Otherwise => Rook on open file
 					eval[c] += (file_forward_mask[c][sq] & ev->pawn_bb[!c])
 						? rook_semi_open
 						: rook_open_file;
+
+					// If rook on relative 7th rank and king on relative 8th rank, bonus
+					if (   rank_of(sq) == rank_lookup[c][RANK_7]
+					    && rank_of(pos->king_sq[!c]) == rank_lookup[c][RANK_8])
+						eval[c] += rook_on_7th;
+				}
 #ifdef STATS
 				es.pt_score[c][pt] = phased_val((eval[c] - accumulated), pos->state->phase);
 				accumulated        = eval[c];
@@ -453,8 +460,8 @@ int evaluate(Position* const pos)
 			ev.atks_bb[c][pt] = 0ULL;
 	}
 
-	ev.blocked_pawns_bb[WHITE] = (pos->bb[FULL] >> 8) & ev.pawn_bb[WHITE];
-	ev.blocked_pawns_bb[BLACK] = (pos->bb[FULL] << 8) & ev.pawn_bb[BLACK];
+	ev.blocked_pawns_bb[WHITE] = ((pos->bb[FULL] >> 8)  | rank_mask[RANK_2] | rank_mask[RANK_3]) & ev.pawn_bb[WHITE];
+	ev.blocked_pawns_bb[BLACK] = ((pos->bb[FULL] << 8)  | rank_mask[RANK_7] | rank_mask[RANK_6]) & ev.pawn_bb[BLACK];
 
 	ev.pinned_bb[WHITE] = get_pinned(pos, WHITE);
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
