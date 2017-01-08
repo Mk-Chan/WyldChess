@@ -26,7 +26,6 @@ typedef struct Eval_s {
 	u64 pawn_bb[2];
 	u64 king_danger_zone_bb[2];
 	u64 pinned_bb[2];
-	u64 blocked_pawns_bb[2];
 	u64 passed_pawn_bb[2];
 	int king_atkr_count[2];
 	int king_atk_pressure[2];
@@ -252,7 +251,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		non_pinned_bb =  ~ev->pinned_bb[c];
 		c_bb          =   bb[c];
 		ksq           =   pos->king_sq[c];
-		mobility_mask = ~(ev->blocked_pawns_bb[c] | BB(ksq) | p_atks_bb[!c]);
+		mobility_mask = ~(ev->pawn_bb[c] | BB(ksq) | p_atks_bb[!c]);
 		xrayable_bb   =   c_bb ^ (BB(ksq) | ev->pawn_bb[c] | ev->pinned_bb[c]);
 
 		// TODO: Needs improvement
@@ -460,9 +459,6 @@ int evaluate(Position* const pos)
 		for (pt = 0; pt != KING; ++pt)
 			ev.atks_bb[c][pt] = 0ULL;
 	}
-
-	ev.blocked_pawns_bb[WHITE] = ((pos->bb[FULL] >> 8)  | rank_mask[RANK_2] | rank_mask[RANK_3]) & ev.pawn_bb[WHITE];
-	ev.blocked_pawns_bb[BLACK] = ((pos->bb[FULL] << 8)  | rank_mask[RANK_7] | rank_mask[RANK_6]) & ev.pawn_bb[BLACK];
 
 	ev.pinned_bb[WHITE] = get_pinned(pos, WHITE);
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
