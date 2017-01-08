@@ -253,7 +253,7 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		c_bb          =   bb[c];
 		ksq           =   pos->king_sq[c];
 		mobility_mask = ~(ev->blocked_pawns_bb[c] | BB(ksq) | p_atks_bb[!c]);
-		xrayable_bb   =   c_bb ^ (BB(ksq) | ev->blocked_pawns_bb[c] | ev->pinned_bb[c]);
+		xrayable_bb   =   c_bb ^ (BB(ksq) | ev->pawn_bb[c] | ev->pinned_bb[c]);
 
 		// TODO: Needs improvement
 		// Increment king attacker count based on number of passed pawns immediately in front of king
@@ -367,7 +367,6 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 		 *   3. Queen check right next to king
 		 */
 		king_atks[c] += ev->king_atk_pressure[c]
-			      + ev->king_atkr_count[c]
 			      + popcnt(undefended_atkd_bb & pos->bb[QUEEN] & pos->bb[c]) * 6;
 	}
 
@@ -375,14 +374,16 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);
 	king_atks[BLACK] = min(max(king_atks[BLACK], 0), 99);
 
+	// Lookup counter values
+	king_atks[WHITE] = king_atk_table[king_atks[WHITE]];
+	king_atks[BLACK] = king_atk_table[king_atks[BLACK]];
+
 #ifdef STATS
-	es.king_atks[WHITE] += phased_val(king_atk_table[king_atks[WHITE]], pos->state->phase);
-	es.king_atks[BLACK] += phased_val(king_atk_table[king_atks[BLACK]], pos->state->phase);
+	es.king_atks[WHITE] += phased_val(king_atks[WHITE], pos->state->phase);
+	es.king_atks[BLACK] += phased_val(king_atks[BLACK], pos->state->phase);
 #endif
 
-	// Lookup the counter values
-	int king_atk_diff = king_atk_table[king_atks[WHITE]] - king_atk_table[king_atks[BLACK]];
-
+	int king_atk_diff = king_atks[WHITE] - king_atks[BLACK];
 	return S(king_atk_diff, (king_atk_diff / 2));
 }
 
@@ -455,7 +456,7 @@ int evaluate(Position* const pos)
 		ev.passed_pawn_bb[c] = 0ULL;
 		ev.king_atkr_count[c] = 0;
 		ev.king_atk_pressure[c] = 0;
-		ev.king_danger_zone_bb[c] = k_atks_bb[ksq] | BB(ksq);
+		ev.king_danger_zone_bb[c] = (k_atks_bb[ksq] | pawn_shift(k_atks_bb[ksq], c) | BB(ksq));
 		for (pt = 0; pt != KING; ++pt)
 			ev.atks_bb[c][pt] = 0ULL;
 	}
