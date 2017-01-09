@@ -131,17 +131,6 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 int passed_pawn[8] = { 0, S(5, 5), S(20, 20), S(30, 40), S(40, 70), S(50, 120), S(60, 200), 0 };
 int doubled_pawns  = S(-10, -20);
 int isolated_pawn  = S(-10, -10);
-int connected_pawns[2][64];
-int connected_pawns_tmp[32] = {
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-	S(  1,   0), S(  1,   0), S(  1,   0), S(  2,   0),
-	S(  2,   0), S(  3,   0), S(  4,   0), S(  5,   0),
-	S(  3,   0), S(  5,   0), S(  7,   0), S( 10,   0),
-	S(  7,   5), S( 10,   5), S( 15,   5), S( 20,   5),
-	S( 15,  10), S( 20,  10), S( 25,  10), S( 30,  10),
-	S( 30,  20), S( 35,  20), S( 40,  20), S( 45,  20),
-	S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0)
-};
 
 // Mobility terms
 int mobility[7]      = { 0, 0, 0, 4, 4, 4, 4 };
@@ -156,7 +145,7 @@ int outpost[2]     = { S(10, 5), S(20, 10) }; // Bishop, Knight
 
 void init_eval_terms()
 {
-	// Initialize the connected_pawns and psqt arrays
+	// Initialize the psqts
 	int c, pt, i, j, k, sq1, sq2;
 	for (c = WHITE; c <= BLACK; ++c) {
 		k = 0;
@@ -168,9 +157,6 @@ void init_eval_terms()
 					sq1 ^= 56;
 					sq2 ^= 56;
 				}
-				connected_pawns[c][sq1]
-					= connected_pawns[c][sq2]
-					= connected_pawns_tmp[k];
 				for (pt = PAWN; pt <= KING; ++pt) {
 					psqt[c][pt][sq1]
 						= psqt[c][pt][sq2]
@@ -209,10 +195,6 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 			// No pawn of same color in adjacent files and not doubled => Isolated pawn
 			else if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
-
-			// Pawn defended by or next to another pawn of same color => Connected pawn
-			if ((p_atks_bb[!c][sq] | adjacent_sqs_mask[sq]) & pawn_bb)
-				eval[c] += connected_pawns[c][sq];
 
 			// Store passed pawn position for later
 			if (is_passed_pawn(pos, sq, c))
