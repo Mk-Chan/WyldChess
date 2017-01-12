@@ -215,6 +215,8 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
+	pos->stats.avg_lmr_depth      = 0;
+	pos->stats.reductions         = 0;
 	pos->stats.correct_nt_guess   = 0;
 	pos->stats.iid_cutoffs        = 0;
 	pos->stats.iid_tries          = 0;

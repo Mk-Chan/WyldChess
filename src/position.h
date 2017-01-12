@@ -27,6 +27,8 @@
 #ifdef STATS
 typedef struct Stats_s {
 
+	u64 avg_lmr_depth;
+	u64 reductions;
 	u64 correct_nt_guess;
 	u64 iid_cutoffs;
 	u64 iid_tries;

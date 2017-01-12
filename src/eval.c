@@ -133,8 +133,8 @@ int doubled_pawns  = S(-10, -20);
 int isolated_pawn  = S(-10, -10);
 
 // Mobility terms
-int mobility[7]      = { 0, 0, 0, 4, 4, 4, 4 };
-int min_mob_count[7] = { 0, 0, 0, 3, 4, 4, 7 };
+int mobility[7]      = { 0, 0, 0, 8, 5, 5, 4 };
+int min_mob_count[7] = { 0, 0, 0, 4, 4, 4, 7 };
 
 // Miscellaneous terms
 int dual_bishops   = S(20, 80);

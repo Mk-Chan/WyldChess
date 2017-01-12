@@ -22,6 +22,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
+#undef INFINITY
 
 #define ENGINE_NAME (("WyldChess"))
 #define AUTHOR_NAME (("Manik Charan"))

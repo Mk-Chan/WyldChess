@@ -344,7 +344,13 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			   && !checking_move
 			   && !checked) {
 #ifndef NO_LMR
-			depth_left  = depth - 2 - (legal_moves > 10) + (node_type == PV_NODE);
+			int reduction = 1 + round(log(legal_moves) * log(depth) / 2)
+				     - (node_type == PV_NODE);
+#ifdef STATS
+			pos->stats.avg_lmr_depth += reduction;
+			++pos->stats.reductions;
+#endif
+			depth_left = max(1, depth - reduction);
 #else
 			depth_left = depth - 1;
 #endif
@@ -467,7 +473,7 @@ int begin_search(Engine* const engine)
 		tt_clear(&tt);
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
-	static int asp_wins[] = { 10, 50, 200, INFINITY };
+	static int asp_wins[] = { 10, 25, 50, 100, 200, INFINITY };
 	for (depth = 1; depth <= max_depth; ++depth) {
 		if (depth < 5) {
 			ss[2].node_type = PV_NODE;
@@ -479,6 +485,7 @@ int begin_search(Engine* const engine)
 				alpha = val - asp_wins[asp_win_tries];
 				beta  = val + asp_wins[asp_win_tries];
 				val   = search(engine, ss + 2, alpha, beta, depth);
+
 				if (val > alpha && val < beta)
 					break;
 				++asp_win_tries;
@@ -496,6 +503,12 @@ int begin_search(Engine* const engine)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
 		fprintf(stdout, "\n");
+#ifdef STATS
+		fprintf(stdout, "avg reduction:            %lf\n",
+			((double) pos->stats.avg_lmr_depth / pos->stats.reductions));
+		pos->stats.avg_lmr_depth = 0;
+		pos->stats.reductions = 0;
+#endif
 	}
 #ifdef STATS
 	fprintf(stdout, "nps:                      %lf\n",
