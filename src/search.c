@@ -328,35 +328,32 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		++legal_moves;
 		do_move(pos, *move);
 
-		// Check extension and LMR
+		depth_left = depth - 1;
+
 		checking_move = (checkers(pos, !pos->stm) > 0ULL);
-		if (    checking_move
-		    && (depth == 1 || (cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound))) {
 #ifndef NO_CE
-			depth_left = depth;
-#else
-			depth_left = depth - 1;
+		// Check extension
+		if (    checking_move
+		    && (depth == 1 || (cap_type(*move) ? order(*move) > BAD_CAP : see(pos, *move) >= -equal_cap_bound)))
+			++depth_left;
 #endif
-		} else if (    ss->ply
-			   &&  depth > 2
-			   &&  legal_moves > (node_type == PV_NODE ? 3 : 1)
-			   &&  order(*move) <= PASSER_PUSH
-			   && !checking_move
-			   && !checked) {
+
 #ifndef NO_LMR
-			int reduction = 1 + round(log(legal_moves) * log(depth) / 2)
+		// Late move reduction
+		if (    ss->ply
+		    &&  depth > 2
+		    &&  legal_moves > (node_type == PV_NODE ? 3 : 1)
+		    &&  order(*move) <= PASSER_PUSH
+		    && !checked) {
+			int reduction = round(log(legal_moves) * log(depth) / 2)
 				     - (node_type == PV_NODE);
 #ifdef STATS
 			pos->stats.avg_lmr_depth += reduction;
 			++pos->stats.reductions;
 #endif
-			depth_left = max(1, depth - reduction);
-#else
-			depth_left = depth - 1;
-#endif
-		} else {
-			depth_left = depth - 1;
+			depth_left = max(1, depth_left - reduction);
 		}
+#endif
 
 		*move = get_move(*move);
 
