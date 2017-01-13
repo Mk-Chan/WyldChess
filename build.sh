@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ $# -lt 1 ]
 then
-	echo "Usage: ./build.sh <release-number>"
+	echo "Usage: ./build.sh <release-number> [-j<cores>]"
 	exit
 fi
 
@@ -16,13 +16,9 @@ do
 		CC=gcc
 	fi
 	make clean
-	make CC="$CC" RELEASE=$1 TARGET="$T"
+	make CC="$CC" RELEASE=$1 TARGET="$T" $2
 	make clean
-	make CC="$CC" RELEASE=$1 TARGET="$T" POPCNT=1
-	make clean
-	make CC="$CC" RELEASE=$1 TARGET="$T" FAST=1
-	make clean
-	make CC="$CC" RELEASE=$1 TARGET="$T" POPCNT=1 FAST=1
+	make CC="$CC" RELEASE=$1 TARGET="$T" POPCNT=1 $2
 done
 
 make clean
@@ -35,8 +31,5 @@ do
 	mv $T "$BASE"_$T
 done
 
-for T in "${TARGETS[@]}"
-do
-	tar cvzf WyldChess_v$1_$T.tar.gz "$BASE"_$T
-	7z a WyldChess_v$1_$T.zip "$BASE"_$T
-done
+tar cvzf WyldChess_v$1_linux.tar.gz "$BASE"_linux
+7z a WyldChess_v$1_win64.zip "$BASE"_win64

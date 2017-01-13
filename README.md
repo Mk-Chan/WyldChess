@@ -21,18 +21,21 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 	* Passed pawns
 	* Doubled pawns
 	* Isolated pawns
-	* Connected pawns
 
 * Piece mobility
 * Miscellaneous terms:
 	* Dual bishops
 	* Rook on open file
 	* Rook on semi-open file
+	* Rook on relative 7th rank
 	* Knight and bishop outposts
+
+* Basic endgame knowledge
+    * "Can win?" scenarios(incomplete)
 
 #### Search
 * Aspiration window search
-* Pruning losing captures (negative SEE) in quiescence search
+* Pruning losing captures (negative SEE) in quiescence search if not in check
 * Mate distance pruning
 * Transposition table
 * Futility pruning
@@ -50,7 +53,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
     * Passed pawn push
     * Castling
     * Rest by piece square table (to - from value difference)
-* Check extension at frontier nodes and positive SEE moves
+* Check extension at frontier nodes and SEE >= 0 moves
 * Late move reduction
 * Principal variation search
 
@@ -63,7 +66,16 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 * `notes`    : Some notes.
 
 ### Binaries
-All binaries are x64 bit
+All binaries are 64-bit
+
+#### WyldChess 1.3 and beyond
+
+There are 2 types of binaries available for Windows and GNU/Linux each:
+
+* `popcnt`        : Compiled with the -mpopcnt option.
+* `no extension`  : Basic compile.
+
+#### WyldChess 1.2 and before
 
 There are 4 types of binaries available for Windows and GNU/Linux each:
 

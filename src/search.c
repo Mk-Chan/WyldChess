@@ -204,7 +204,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 #ifndef NO_NMP
 	// Null move pruning
 	if (      depth >= 4
-	    &&    node_type != PV_NODE
+	    &&    node_type == CUT_NODE
 	    &&    ss->early_prune
 	    &&   !checked
 	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL
@@ -424,6 +424,13 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 			node_type = ALL_NODE;
 	}
 
+#ifdef STATS
+	if (old_alpha == alpha)
+		pos->stats.correct_nt_guess += (node_type == ALL_NODE);
+	else
+		pos->stats.correct_nt_guess += (node_type == PV_NODE);
+#endif
+
 	if (  !ss->ply
 	    && legal_moves == 1)
 		ctlr->is_stopped = 1;
@@ -436,17 +443,10 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	}
 
 
-	if (old_alpha == alpha) {
-#ifdef STATS
-		pos->stats.correct_nt_guess += (node_type == ALL_NODE);
-#endif
+	if (old_alpha == alpha)
 		tt_store(&tt, best_val, FLAG_UPPER, depth, best_move, pos->state->pos_key);
-	} else {
-#ifdef STATS
-		pos->stats.correct_nt_guess += (node_type == PV_NODE);
-#endif
+	else
 		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
-	}
 
 	return alpha;
 }
@@ -463,11 +463,6 @@ int begin_search(Engine* const engine)
 
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
-
-	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
-	Move tt_move   = get_move(entry.data);
-	if (!valid_move(pos, &tt_move))
-		tt_clear(&tt);
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int asp_wins[] = { 10, 25, 50, 100, 200, INFINITY };

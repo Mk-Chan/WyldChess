@@ -37,34 +37,14 @@ extern u64 adjacent_ranks_mask[8];
 extern u64 adjacent_sqs_mask[64];
 extern u64 color_sq_mask[2];
 extern u64 adjacent_forward_mask[2][64];
-extern u64 backwards_pawn_restrictors_mask[2][64];
 extern u64 outpost_ranks_mask[2];
 
 extern u32 distance[64][64];
 extern u32 sq_color[64];
 extern u32 rank_lookup[2][8];
 
-static u64 rank_mask[8] = {
-	0xffULL,
-	0xffULL << 8,
-	0xffULL << 16,
-	0xffULL << 24,
-	0xffULL << 32,
-	0xffULL << 40,
-	0xffULL << 48,
-	0xffULL << 56
-};
-
-static u64 file_mask[8] = {
-	0x0101010101010101ULL,
-	0x0202020202020202ULL,
-	0x0404040404040404ULL,
-	0x0808080808080808ULL,
-	0x1010101010101010ULL,
-	0x2020202020202020ULL,
-	0x4040404040404040ULL,
-	0x8080808080808080ULL
-};
+extern u64 rank_mask[8];
+extern u64 file_mask[8];
 
 extern void init_lookups();
 extern void print_bb(u64 bb);

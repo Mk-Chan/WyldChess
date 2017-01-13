@@ -29,6 +29,7 @@ typedef struct Eval_s {
 	u64 passed_pawn_bb[2];
 	int king_atkr_count[2];
 	int king_atk_pressure[2];
+	int eval[2];
 
 } Eval;
 
@@ -168,7 +169,7 @@ void init_eval_terms()
 	}
 }
 
-static int eval_pawns(Position* const pos, Eval* const ev)
+static void eval_pawns(Position* const pos, Eval* const ev)
 {
 	int eval[2] = { S(0, 0), S(0, 0) };
 	u64 bb, pawn_bb, atk_bb;
@@ -179,8 +180,8 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 		pawn_bb = ev->pawn_bb[c];
 		bb      = pawn_bb;
 		while (bb) {
-			sq     = bitscan(bb);
-			bb    &= bb - 1;
+			sq  = bitscan(bb);
+			bb &= bb - 1;
 
 			// Get the attacks
 			atk_bb = p_atks_bb[c][sq];
@@ -205,11 +206,11 @@ static int eval_pawns(Position* const pos, Eval* const ev)
 #endif
 	}
 
-
-	return eval[WHITE] - eval[BLACK];
+	ev->eval[WHITE] += eval[WHITE];
+	ev->eval[BLACK] += eval[BLACK];
 }
 
-static int eval_pieces(Position* const pos, Eval* const ev)
+static void eval_pieces(Position* const pos, Eval* const ev)
 {
 	int sq, c, pt, ksq, mobility_val;
 	u64  curr_bb, c_bb, atk_bb, xrayable_bb,
@@ -328,10 +329,11 @@ static int eval_pieces(Position* const pos, Eval* const ev)
 		}
 	}
 
-	return eval[WHITE] - eval[BLACK];
+	ev->eval[WHITE] += eval[WHITE];
+	ev->eval[BLACK] += eval[BLACK];
 }
 
-int eval_king_attacks(Position* const pos, Eval* const ev)
+static void eval_king_attacks(Position* const pos, Eval* const ev)
 {
 	int king_atks[2] = { 0, 0 };
 	u64 undefended_atkd_bb;
@@ -348,6 +350,7 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 		 *   3. Queen check right next to king
 		 */
 		king_atks[c] += ev->king_atk_pressure[c]
+			      //+ ev->king_atkr_count[c]
 			      + popcnt(undefended_atkd_bb & pos->bb[QUEEN] & pos->bb[c]) * 6;
 	}
 
@@ -364,11 +367,11 @@ int eval_king_attacks(Position* const pos, Eval* const ev)
 	es.king_atks[BLACK] += phased_val(king_atks[BLACK], pos->state->phase);
 #endif
 
-	int king_atk_diff = king_atks[WHITE] - king_atks[BLACK];
-	return S(king_atk_diff, (king_atk_diff / 2));
+	ev->eval[WHITE] += S(king_atks[WHITE], (king_atks[WHITE]/2));
+	ev->eval[BLACK] += S(king_atks[BLACK], (king_atks[BLACK]/2));
 }
 
-int eval_passed_pawns(Position* const pos, Eval* const ev)
+static void eval_passed_pawns(Position* const pos, Eval* const ev)
 {
 	int eval[2][2] = { { 0, 0 }, { 0, 0 } };
 	u64 passed_pawn_bb;
@@ -411,7 +414,15 @@ int eval_passed_pawns(Position* const pos, Eval* const ev)
 	es.passed_pawn[BLACK] += phased_val(S(eval[BLACK][0], eval[BLACK][1]), pos->state->phase);
 #endif
 
-	return S(eval[WHITE][0], eval[WHITE][1]) - S(eval[BLACK][0], eval[BLACK][1]);
+	ev->eval[WHITE] += S(eval[WHITE][0], eval[WHITE][1]);
+	ev->eval[BLACK] += S(eval[BLACK][0], eval[BLACK][1]);
+}
+
+int can_win(u64 const * const bb, int c)
+{
+	return (   ((bb[PAWN] | bb[QUEEN] | bb[ROOK]) & bb[c])
+		||   popcnt(bb[BISHOP] & bb[c]) > 1)
+		|| ((bb[BISHOP] & bb[c]) && (bb[KNIGHT] & bb[c]));
 }
 
 int evaluate(Position* const pos)
@@ -419,8 +430,8 @@ int evaluate(Position* const pos)
 
 #ifdef STATS
 	for (int c = WHITE; c <= BLACK; ++c) {
-		es.passed_pawn[c]    = 0;
-		es.king_atks[c]      = 0;
+		es.passed_pawn[c] = 0;
+		es.king_atks[c]   = 0;
 		for (int pt = PAWN; pt != KING; ++pt)
 			es.pt_score[c][pt] = 0;
 	}
@@ -445,7 +456,8 @@ int evaluate(Position* const pos)
 	ev.pinned_bb[WHITE] = get_pinned(pos, WHITE);
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
 
-	int eval = pos->state->piece_psq_eval[WHITE] - pos->state->piece_psq_eval[BLACK];
+	ev.eval[WHITE] = pos->state->piece_psq_eval[WHITE];
+	ev.eval[BLACK] = pos->state->piece_psq_eval[BLACK];
 
 #ifdef STATS
 	es.piece_psq_eval[WHITE] = phased_val(pos->state->piece_psq_eval[WHITE], pos->state->phase);
@@ -453,19 +465,26 @@ int evaluate(Position* const pos)
 #endif
 
 #ifndef NO_EVAL_PAWNS
-	eval += eval_pawns(pos, &ev);
+	eval_pawns(pos, &ev);
 #endif
 #ifndef NO_EVAL_PIECES
-	eval += eval_pieces(pos, &ev);
+	eval_pieces(pos, &ev);
 #endif
 #ifndef NO_EVAL_KING_ATTACKS
-	eval += eval_king_attacks(pos, &ev);
+	eval_king_attacks(pos, &ev);
 #endif
 #ifndef NO_EVAL_PASSED_PAWNS
-	eval += eval_passed_pawns(pos, &ev);
+	eval_passed_pawns(pos, &ev);
 #endif
 
-	eval = phased_val(eval, pos->state->phase);
+	int eval = phased_val((ev.eval[WHITE] - ev.eval[BLACK]), pos->state->phase);
+	if (    popcnt(pos->bb[WHITE]) <= 3
+	    && !can_win(pos->bb, WHITE))
+		eval = min(eval, 0);
+
+	if (    popcnt(pos->bb[BLACK]) <= 3
+	    && !can_win(pos->bb, BLACK))
+		eval = max(eval, 0);
 
 	return pos->stm == WHITE ? eval : -eval;
 }
