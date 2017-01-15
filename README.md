@@ -67,6 +67,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 
 ### Binaries
 All binaries are 64-bit
+MacOS release is provided by Michael B
 
 #### WyldChess 1.3 and beyond
 
