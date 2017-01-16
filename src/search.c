@@ -443,7 +443,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		tt_store(&tt, best_val, FLAG_UPPER, depth, best_move, pos->state->pos_key);
 	else {
 		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
-		pvt_store(&pvt, get_move(best_move), pos->state->pos_key);
+		pvt_store(&pvt, get_move(best_move), pos->state->pos_key, depth);
 	}
 
 	return alpha;

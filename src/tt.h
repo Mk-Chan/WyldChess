@@ -36,7 +36,7 @@
 
 typedef struct PV_Entry_s {
 
-	u32 move;
+	u64 move;
 	u64 key;
 
 } PV_Entry;
@@ -126,11 +126,14 @@ static inline void pvt_destroy(PVT* pvt)
 	free(pvt->table);
 }
 
-static inline void pvt_store(PVT* pvt, u32 move, u64 key)
+static inline void pvt_store(PVT* pvt, u64 move, u64 key, u64 depth)
 {
 	u32 index       = key < pvt->size ? key : key % pvt->size;
 	PV_Entry* entry = pvt->table + index;
-	entry->move     = move;
+	u32 entry_depth = entry->move >> 32;
+	if (entry_depth > depth)
+		return;
+	entry->move     = move | (depth << 32);
 	entry->key      = key;
 }
 
