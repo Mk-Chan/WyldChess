@@ -27,8 +27,6 @@
 #ifdef STATS
 typedef struct Stats_s {
 
-	u64 avg_lmr_depth;
-	u64 reductions;
 	u64 correct_nt_guess;
 	u64 iid_cutoffs;
 	u64 iid_tries;
@@ -57,8 +55,6 @@ Eval_Stats es;
 
 #endif
 
-typedef u64 Move;
-
 typedef struct Movelist_s {
 
 	Move  moves[218];
@@ -68,16 +64,16 @@ typedef struct Movelist_s {
 
 typedef struct State_s {
 
-	Move    move;
-	u64     pinned_bb;
-	u64     checkers_bb;
-	u64     ep_sq_bb;
-	HashKey pos_key;
-	u32     castling_rights;
-	u32     fifty_moves;
-	u32     full_moves;
-	int     phase;
-	int     piece_psq_eval[2];
+	Move move;
+	u64  pinned_bb;
+	u64  checkers_bb;
+	u64  ep_sq_bb;
+	u64  pos_key;
+	u32  castling_rights;
+	u32  fifty_moves;
+	u32  full_moves;
+	int  phase;
+	int  piece_psq_eval[2];
 
 } State;
 

@@ -191,9 +191,9 @@ static int get_stored_moves(Position* const pos, int depth)
 	static char mstr[6];
 	if (!depth)
 		return 0;
-	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
-	if ((entry.key ^ entry.data) == pos->state->pos_key) {
-		Move move = get_move(entry.data);
+	PV_Entry entry = pvt_probe(&pvt, pos->state->pos_key);
+	if (entry.key == pos->state->pos_key) {
+		Move move = get_move(entry.move);
 		if (  !valid_move(pos, &move)
 		   || !legal_move(pos, move))
 			return 0;
@@ -215,8 +215,6 @@ static void clear_search(Engine* const engine, Search_Stack* const ss)
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
 	Position* const pos           = engine->pos;
-	pos->stats.avg_lmr_depth      = 0;
-	pos->stats.reductions         = 0;
 	pos->stats.correct_nt_guess   = 0;
 	pos->stats.iid_cutoffs        = 0;
 	pos->stats.iid_tries          = 0;

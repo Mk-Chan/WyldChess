@@ -48,9 +48,9 @@
 #define PROM_TYPE_MASK (7 << PROM_TYPE_SHIFT)
 #define CAP_TYPE_MASK  (7 << CAP_TYPE_SHIFT)
 
-typedef unsigned int        u32;
-typedef unsigned long long  u64;
-typedef unsigned long long  HashKey;
+typedef unsigned int       u32;
+typedef unsigned long long u64;
+typedef unsigned long long Move;
 
 enum Colors {
 	ALL = 0,

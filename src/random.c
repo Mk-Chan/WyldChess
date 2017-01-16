@@ -18,9 +18,9 @@
 
 #include "random.h"
 
-HashKey psq_keys[2][8][64];
-HashKey castle_keys[16];
-HashKey stm_key;
+u64 psq_keys[2][8][64];
+u64 castle_keys[16];
+u64 stm_key;
 
 void init_zobrist_keys()
 {

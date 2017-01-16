@@ -347,10 +347,6 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		    && !checked) {
 			int reduction = round(log(legal_moves) * log(depth) / 2)
 				     - (node_type == PV_NODE);
-#ifdef STATS
-			pos->stats.avg_lmr_depth += reduction;
-			++pos->stats.reductions;
-#endif
 			depth_left = max(1, depth_left - reduction);
 		}
 #endif
@@ -445,8 +441,10 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 
 	if (old_alpha == alpha)
 		tt_store(&tt, best_val, FLAG_UPPER, depth, best_move, pos->state->pos_key);
-	else
+	else {
 		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
+		pvt_store(&pvt, get_move(best_move), pos->state->pos_key);
+	}
 
 	return alpha;
 }
@@ -460,6 +458,7 @@ int begin_search(Engine* const engine)
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
 	Search_Stack ss[MAX_PLY + 2];
 	clear_search(engine, ss + 2);
+	pvt_clear(&pvt);
 
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
@@ -495,12 +494,6 @@ int begin_search(Engine* const engine)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
 		fprintf(stdout, "\n");
-#ifdef STATS
-		fprintf(stdout, "avg reduction:            %lf\n",
-			((double) pos->stats.avg_lmr_depth / pos->stats.reductions));
-		pos->stats.avg_lmr_depth = 0;
-		pos->stats.reductions = 0;
-#endif
 	}
 #ifdef STATS
 	fprintf(stdout, "nps:                      %lf\n",

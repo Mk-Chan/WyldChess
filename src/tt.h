@@ -34,6 +34,22 @@
 #define DEPTH(data) (((data) >> DEPTH_SHIFT) & 0x7f)
 #define SCORE(data) ((data) >> SCORE_SHIFT)
 
+typedef struct PV_Entry_s {
+
+	u32 move;
+	u64 key;
+
+} PV_Entry;
+
+typedef struct PV_Table_s {
+
+	PV_Entry* table;
+	u32 size;
+
+} PVT;
+
+PVT pvt;
+
 typedef struct TT_Entry_s {
 
 	u64 data;
@@ -91,6 +107,36 @@ static inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u6
 static inline TT_Entry tt_probe(TT* tt, u64 key)
 {
 	return tt->table[(key < tt->size ? key : key % tt->size)];
+}
+
+static inline void pvt_clear(PVT* pvt)
+{
+	memset(pvt->table, 0, sizeof(PV_Entry) * pvt->size);
+}
+
+static inline void pvt_init(PVT* pvt, u32 size)
+{
+	pvt->table = malloc(sizeof(PV_Entry) * size);
+	pvt->size  = size;
+	pvt_clear(pvt);
+}
+
+static inline void pvt_destroy(PVT* pvt)
+{
+	free(pvt->table);
+}
+
+static inline void pvt_store(PVT* pvt, u32 move, u64 key)
+{
+	u32 index       = key < pvt->size ? key : key % pvt->size;
+	PV_Entry* entry = pvt->table + index;
+	entry->move     = move;
+	entry->key      = key;
+}
+
+static inline PV_Entry pvt_probe(PVT* pvt, u64 key)
+{
+	return pvt->table[(key < pvt->size ? key : key % pvt->size)];
 }
 
 #endif

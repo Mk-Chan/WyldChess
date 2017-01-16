@@ -323,7 +323,7 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 				ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
 			}
 #ifdef STATS
-			es.pt_score[pt][c] = phased_val((eval[c] - accumulated), pos->state->phase);
+			es.pt_score[c][pt] = phased_val((eval[c] - accumulated), pos->state->phase);
 			accumulated       += eval[c];
 #endif
 		}

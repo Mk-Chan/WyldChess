@@ -35,6 +35,7 @@ int main()
 	init_lookups();
 	init_eval_terms();
 	tt_init(&tt, 0x800000);
+	pvt_init(&pvt, 0x400);
 	char input[100];
 	while (1) {
 		fgets(input, 100, stdin);
