@@ -27,7 +27,6 @@ typedef struct Eval_s {
 	u64 king_danger_zone_bb[2];
 	u64 pinned_bb[2];
 	u64 passed_pawn_bb[2];
-	int king_atkr_count[2];
 	int king_atk_pressure[2];
 	int eval[2];
 
@@ -237,10 +236,6 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 		mobility_mask = ~(ev->pawn_bb[c] | BB(ksq) | p_atks_bb[!c]);
 		xrayable_bb   =   c_bb ^ (BB(ksq) | ev->pawn_bb[c] | ev->pinned_bb[c]);
 
-		// TODO: Needs improvement
-		// Increment king attacker count based on number of passed pawns immediately in front of king
-		ev->king_atkr_count[!c] += king_cover[popcnt(passed_pawn_mask[c][ksq] & k_atks_bb[ksq] & ev->pawn_bb[c])];
-
 		for (pt = KNIGHT; pt != KING; ++pt) {
 			curr_bb = bb[pt] & c_bb;
 
@@ -271,10 +266,8 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 				eval[c]     += S(mobility_val, mobility_val);
 
 				// Update king attack statistics
-				if (atk_bb & ev->king_danger_zone_bb[!c]) {
-					++ev->king_atkr_count[c];
+				if (atk_bb & ev->king_danger_zone_bb[!c])
 					ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
-				}
 
 				// Knight or bishop on relative 4th, 5th or 6th rank and not attacked by an enemy pawn
 				if (   (pt == KNIGHT || pt == BISHOP)
@@ -318,10 +311,8 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 						: get_atks(sq, pt, full_bb);
 
 			// Update king attack statistics
-			if (atk_bb & ev->king_danger_zone_bb[!c]) {
-				++ev->king_atkr_count[c];
+			if (atk_bb & ev->king_danger_zone_bb[!c])
 				ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
-			}
 #ifdef STATS
 			es.pt_score[c][pt] = phased_val((eval[c] - accumulated), pos->state->phase);
 			accumulated       += eval[c];
@@ -446,7 +437,6 @@ int evaluate(Position* const pos)
 		ksq = pos->king_sq[c];
 		ev.pawn_bb[c] = pos->bb[PAWN] & pos->bb[c];
 		ev.passed_pawn_bb[c] = 0ULL;
-		ev.king_atkr_count[c] = 0;
 		ev.king_atk_pressure[c] = 0;
 		ev.king_danger_zone_bb[c] = (k_atks_bb[ksq] | pawn_shift(k_atks_bb[ksq], c) | BB(ksq));
 		for (pt = 0; pt != KING; ++pt)
