@@ -83,9 +83,10 @@ static inline void tt_age(TT* tt, int plies)
 	}
 }
 
-static inline void tt_init(TT* tt, u32 size)
+static inline void tt_alloc_MB(TT* tt, u32 size)
 {
-	tt->table = malloc(sizeof(TT_Entry) * size);
+	size     *= 0x10000;
+	tt->table = realloc(tt->table, sizeof(TT_Entry) * size);
 	tt->size  = size;
 	tt_clear(tt);
 }

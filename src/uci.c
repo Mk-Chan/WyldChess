@@ -18,11 +18,13 @@
 
 #include "defs.h"
 #include "engine.h"
+#include "tt.h"
 
 static inline void print_options_uci()
 {
 	fprintf(stdout, "id name %s\n", ENGINE_NAME);
 	fprintf(stdout, "id author %s\n", AUTHOR_NAME);
+	fprintf(stdout, "option name Hash type spin default 128 min 1 max 1048576\n");
 	fprintf(stdout, "uciok\n");
 }
 
@@ -132,6 +134,15 @@ void uci_loop()
 
 			transition(&engine, QUITTING);
 			goto cleanup_and_exit;
+
+		} else if (!strncmp(input, "setoption name", 14)) {
+
+			ptr = input + 15;
+			if (!strncmp(ptr, "Hash", 4)) {
+				ptr += 5;
+				if (!strncmp(ptr, "value", 5))
+					tt_alloc_MB(&tt, strtoul(ptr + 6, &end, 10));
+			}
 
 		} else if (!strncmp(input, "go", 2)) {
 

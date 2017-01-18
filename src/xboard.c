@@ -18,6 +18,7 @@
 
 #include "defs.h"
 #include "engine.h"
+#include "tt.h"
 
 enum Result {
 	NO_RESULT,
@@ -95,6 +96,7 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature setboard=1\n");
 	fprintf(stdout, "feature colors=0\n");
 	fprintf(stdout, "feature usermove=1\n");
+	fprintf(stdout, "feature memory=1\n");
 	fprintf(stdout, "feature done=1\n");
 }
 
@@ -188,6 +190,10 @@ void xboard_loop()
 		} else if (!strncmp(input, "ping", 4)) {
 
 			fprintf(stdout, "pong %d\n", atoi(input + 5));
+
+		} else if (!strncmp(input, "memory", 6)) {
+
+			tt_alloc_MB(&tt, strtoul(input + 7, &end, 10));
 
 		} else if (!strncmp(input, "new", 3)) {
 
