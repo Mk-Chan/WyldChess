@@ -346,7 +346,8 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		    &&  order(*move) <= PASSER_PUSH
 		    && !checked) {
 			int reduction = round(log(legal_moves) * log(depth) / 2)
-				     - (node_type == PV_NODE);
+				     - (node_type == PV_NODE)
+				     + (node_type == ALL_NODE);
 			depth_left = max(1, depth_left - reduction);
 		}
 #endif
