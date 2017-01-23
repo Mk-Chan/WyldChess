@@ -52,7 +52,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
     * Bad captures (negative SEE)
     * Passed pawn push
     * Castling
-    * Rest by piece square table (to - from value difference)
+    * Rest
 * Check extension at frontier nodes and SEE >= 0 moves
 * Late move reduction
 * Principal variation search
