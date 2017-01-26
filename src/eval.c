@@ -337,21 +337,15 @@ static void eval_king_attacks(Position* const pos, Eval* const ev)
 
 		/* King attack factors:
 		 *   1. Sum of squares attacked by each piece * their respective weights(pressure)
-		 *   2. Number of pieces attacking
-		 *   3. Queen check right next to king
+		 *   2. Queen check right next to king
 		 */
 		king_atks[c] += ev->king_atk_pressure[c]
-			      //+ ev->king_atkr_count[c]
 			      + popcnt(undefended_atkd_bb & pos->bb[QUEEN] & pos->bb[c]) * 6;
 	}
 
-	// Bring the counters within limits of the lookup table
-	king_atks[WHITE] = min(max(king_atks[WHITE], 0), 99);
-	king_atks[BLACK] = min(max(king_atks[BLACK], 0), 99);
-
 	// Lookup counter values
-	king_atks[WHITE] = king_atk_table[king_atks[WHITE]];
-	king_atks[BLACK] = king_atk_table[king_atks[BLACK]];
+	king_atks[WHITE] = king_atk_table[min(max(king_atks[WHITE], 0), 99)];
+	king_atks[BLACK] = king_atk_table[min(max(king_atks[BLACK], 0), 99)];
 
 #ifdef STATS
 	es.king_atks[WHITE] += phased_val(king_atks[WHITE], pos->state->phase);
