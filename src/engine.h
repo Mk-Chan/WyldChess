@@ -41,7 +41,6 @@ typedef struct Controller_s {
 	int is_stopped;
 	int analyzing;
 	int time_dependent;
-	int tpm;
 	u32 depth;
 	u32 moves_left;
 	u32 moves_per_session;
@@ -95,12 +94,10 @@ static inline void start_thinking(Engine* const engine)
 	Controller* const ctlr  = engine->ctlr;
 	ctlr->search_start_time = curr_time();
 	if (ctlr->time_dependent) {
+		ctlr->time_left += (ctlr->moves_left - 1) * ctlr->increment;
 		ctlr->search_end_time = ctlr->search_start_time
-			             + (ctlr->time_left / ctlr->moves_left);
-		if (ctlr->moves_left == 1)
-			ctlr->search_end_time -= 1;
-		else
-			ctlr->search_end_time += ctlr->increment;
+			             + (ctlr->time_left / ctlr->moves_left)
+				     -  10;
 	}
 	transition(engine, THINKING);
 	if (ctlr->moves_per_session) {

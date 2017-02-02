@@ -97,6 +97,7 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature colors=0\n");
 	fprintf(stdout, "feature usermove=1\n");
 	fprintf(stdout, "feature memory=1\n");
+	fprintf(stdout, "feature time=1\n");
 	fprintf(stdout, "feature done=1\n");
 }
 
@@ -121,6 +122,7 @@ void* engine_loop_xboard(void* args)
 		case THINKING:
 			engine->curr_state = THINKING;
 			move = begin_search(engine);
+			engine->target_state = WAITING;
 			move_str(move, mstr);
 			if (!legal_move(pos, move)) {
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
@@ -128,11 +130,6 @@ void* engine_loop_xboard(void* args)
 			}
 			do_move(pos, move);
 			fprintf(stdout, "move %s\n", mstr);
-			if (!engine->ctlr->tpm) {
-				engine->ctlr->time_left -= curr_time() - engine->ctlr->search_start_time;
-				engine->ctlr->time_left += engine->ctlr->increment;
-			}
-			engine->target_state     = WAITING;
 			break;
 
 		case ANALYZING:
@@ -201,14 +198,13 @@ void xboard_loop()
 			engine.game_over = 0;
 			init_pos(&pos);
 			set_pos(&pos, INITIAL_POSITION);
-			engine.side = BLACK;
-			ctlr.time_dependent = 1;
-			ctlr.depth  = MAX_PLY;
-			ctlr.tpm = 0;
+			engine.side            = BLACK;
+			ctlr.time_dependent    = 1;
+			ctlr.depth             = MAX_PLY;
 			ctlr.moves_per_session = 40;
-			ctlr.moves_left = ctlr.moves_per_session;
-			ctlr.time_left = 240000;
-			ctlr.increment = 0;
+			ctlr.moves_left        = ctlr.moves_per_session;
+			ctlr.time_left         = 240000;
+			ctlr.increment         = 0;
 
 		} else if (!strncmp(input, "quit", 4)) {
 
@@ -219,7 +215,6 @@ void xboard_loop()
 
 			transition(&engine, WAITING);
 			ctlr.time_dependent = 0;
-			ctlr.tpm            = 0;
 			ctlr.analyzing      = 1;
 			engine.side         = -1;
 			transition(&engine, ANALYZING);
@@ -243,13 +238,11 @@ void xboard_loop()
 		} else if (!strncmp(input, "time", 4)) {
 
 			ctlr.time_dependent = 1;
-			ctlr.tpm = 0;
 			ctlr.time_left = 10 * atoi(input + 5);
 
 		} else if (!strncmp(input, "level", 5)) {
 
 			ctlr.time_dependent = 1;
-			ctlr.tpm = 0;
 			ptr = input + 6;
 			ctlr.moves_per_session = strtol(ptr, &end, 10);
 			ctlr.moves_left = ctlr.moves_per_session;
@@ -274,7 +267,6 @@ void xboard_loop()
 
 			// Seconds per move
 			ctlr.time_dependent    = 1;
-			ctlr.tpm               = 1;
 			ctlr.time_left         = 1000 * atoi(input + 3);
 			ctlr.moves_per_session = 1;
 			ctlr.moves_left        = 1;
@@ -346,7 +338,6 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "undo", 4)) {
 
-			// Does not recover time
 			transition(&engine, WAITING);
 			if (pos.state > pos.hist)
 				undo_move(&pos);

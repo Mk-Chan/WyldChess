@@ -20,7 +20,7 @@
 
 static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
 {
-	if ( !(engine->ctlr->nodes_searched & 2047)
+	if ( !(engine->ctlr->nodes_searched & 0x7ff)
 	    && stopped(engine))
 		return 0;
 
@@ -123,7 +123,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	Controller* const ctlr = engine->ctlr;
 
 	if (ss->ply) {
-		if ( !(engine->ctlr->nodes_searched & 2047)
+		if ( !(engine->ctlr->nodes_searched & 0x7ff)
 		    && stopped(engine))
 			return 0;
 
@@ -207,28 +207,30 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 	    &&    node_type == CUT_NODE
 	    &&    ss->early_prune
 	    &&   !checked
-	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm]) > 0ULL
-	    &&    evaluate(pos) >= beta) {
+	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm])) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
-		int reduction = 4;
-		do_null_move(pos);
-		ss[1].node_type   = CUT_NODE;
-		ss[1].early_prune = 0;
-		val = -search(engine, ss + 1, -beta, -beta + 1, depth - reduction);
-		ss[1].early_prune = 1;
-		undo_null_move(pos);
-		if (ctlr->is_stopped)
-			return 0;
-		if (   val >= beta
-		    && abs(val) < MAX_MATE_VAL) {
+		int eval = evaluate(pos);
+		if (eval >= beta) {
+			int reduction = 4 + min(3, (eval - beta) / mg_val(piece_val[PAWN]));
+			ss[1].node_type   = CUT_NODE;
+			ss[1].early_prune = 0;
+			do_null_move(pos);
+			val = -search(engine, ss + 1, -beta, -beta + 1, depth - reduction);
+			undo_null_move(pos);
+			if (ctlr->is_stopped)
+				return 0;
+			if (val >= beta) {
 #ifdef STATS
-			++pos->stats.null_cutoffs;
-			++pos->stats.correct_nt_guess;
+				++pos->stats.null_cutoffs;
+				++pos->stats.correct_nt_guess;
 #endif
-			tt_store(&tt, val, FLAG_LOWER, depth, 0, pos->state->pos_key);
-			return val;
+				if (abs(val) >= MAX_MATE_VAL)
+					val = beta;
+				tt_store(&tt, val, FLAG_LOWER, depth, 0, pos->state->pos_key);
+				return val;
+			}
 		}
 	}
 #endif
@@ -346,8 +348,7 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 		    &&  order(*move) <= PASSER_PUSH
 		    && !checked) {
 			int reduction = round(log(legal_moves) * log(depth) / 2)
-				     - (node_type == PV_NODE)
-				     + (node_type == ALL_NODE);
+				     - (node_type == PV_NODE);
 			depth_left = max(1, depth_left - reduction);
 		}
 #endif
