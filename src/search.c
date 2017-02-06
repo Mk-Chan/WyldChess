@@ -306,11 +306,11 @@ static int search(Engine* const engine, Search_Stack* ss, int alpha, int beta, i
 				 && prom_type(*move) == QUEEN)
 				encode_order(*move, QUEEN_PROM);
 
-			else if (move_type(*move) == CASTLE)
-				encode_order(*move, CASTLING);
-
 			else if (is_passed_pawn(pos, from_sq(*move), pos->stm))
 				encode_order(*move, PASSER_PUSH);
+
+			else if (move_type(*move) == CASTLE)
+				encode_order(*move, CASTLING);
 
 			else
 				encode_order(*move, REST);
