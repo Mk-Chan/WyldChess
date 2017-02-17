@@ -49,12 +49,12 @@ static int psq_tmp[8][32] = {
 	{ 0 },
 	{	// Pawn
 		S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-		S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0),
-		S(  0,   5), S(  0,   5), S(  0,   5), S( 10,   5),
-		S(  0,  10), S(  0,  10), S(  0,  10), S( 20,  10),
-		S(  0,  30), S(  0,  30), S(  0,  30), S( 10,  30),
-		S(  0,  50), S(  0,  50), S(  0,  50), S(  0,  50),
-		S(  0,  80), S(  0,  80), S(  0,  80), S(  0,  80),
+		S(-10,   0), S(  0,   0), S(  0,   0), S(  0,   0),
+		S(-10,   5), S(  0,   5), S(  5,   5), S( 10,   5),
+		S(-10,  10), S(  0,  10), S( 10,  10), S( 20,  10),
+		S(-10,  30), S(  0,  30), S(  0,  30), S( 10,  30),
+		S(-10,  50), S(  0,  50), S(  0,  50), S(  0,  50),
+		S(-10,  80), S(  0,  80), S(  0,  80), S(  0,  80),
 		S(  0,   0), S(  0,   0), S(  0,   0), S(  0,   0)
 	},
 	{	// Knight
@@ -113,7 +113,6 @@ static int psq_tmp[8][32] = {
 
 // King terms
 int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
-int king_cover[4]  = { 3, 2, 1, 0 };
 int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
 	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
@@ -137,7 +136,7 @@ int mobility[7]      = { 0, 0, 0, 8, 5, 5, 4 };
 int min_mob_count[7] = { 0, 0, 0, 4, 4, 4, 7 };
 
 // Miscellaneous terms
-int dual_bishops   = S(20, 80);
+int dual_bishops   = S(50, 80);
 int rook_on_7th    = S(40, 20);
 int rook_open_file = S(20, 20);
 int rook_semi_open = S(5, 5);
@@ -324,6 +323,34 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 	ev->eval[BLACK] += eval[BLACK];
 }
 
+static void eval_king_cover(Position* const pos, Eval* const ev)
+{
+	static int king_open_file[2] = { S(-30, 0), S(-20, 0) };
+	int eval[2] = { 0, 0 };
+	u64 cover_pawns_bb;
+	int ksq, file, c;
+	for (c = WHITE; c <= BLACK; ++c) {
+		ksq = pos->king_sq[c];
+		file = file_of(ksq);
+
+		cover_pawns_bb = file_forward_mask[c][ksq] & ev->pawn_bb[c];
+		if (!cover_pawns_bb)
+			eval[c] += king_open_file[ON_KING];
+
+		cover_pawns_bb = adjacent_files_mask[file] & ev->pawn_bb[c];
+		if (file != FILE_A) {
+			if (!(cover_pawns_bb & file_mask[file - 1]))
+				eval[c] += king_open_file[NEAR_KING];
+		}
+		if (file != FILE_H) {
+			if (!(cover_pawns_bb & file_mask[file + 1]))
+				eval[c] += king_open_file[NEAR_KING];
+		}
+	}
+	ev->eval[WHITE] += eval[WHITE];
+	ev->eval[BLACK] += eval[BLACK];
+}
+
 static void eval_king_attacks(Position* const pos, Eval* const ev)
 {
 	int king_atks[2] = { 0, 0 };
@@ -453,6 +480,9 @@ int evaluate(Position* const pos)
 #endif
 #ifndef NO_EVAL_PIECES
 	eval_pieces(pos, &ev);
+#endif
+#ifndef NO_EVAL_KING_COVER
+	eval_king_cover(pos, &ev);
 #endif
 #ifndef NO_EVAL_KING_ATTACKS
 	eval_king_attacks(pos, &ev);
