@@ -113,6 +113,7 @@ static int psq_tmp[8][32] = {
 
 // King terms
 int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
+int king_open_file[2] = { S(-30, 0), S(-20, 0) };
 int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
 	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
@@ -325,7 +326,6 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 
 static void eval_king_cover(Position* const pos, Eval* const ev)
 {
-	static int king_open_file[2] = { S(-30, 0), S(-20, 0) };
 	int eval[2] = { 0, 0 };
 	u64 cover_pawns_bb;
 	int ksq, file, c;
