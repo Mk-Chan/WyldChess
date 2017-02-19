@@ -1,3 +1,6 @@
+#ifndef EVAL_H
+#define EVAL_H
+
 #include "defs.h"
 #include "position.h"
 #include "bitboard.h"
@@ -21,3 +24,5 @@ extern int roon_on_7th;
 extern int rook_open_file;
 extern int rook_semi_open;
 extern int outpost[2];
+
+#endif
