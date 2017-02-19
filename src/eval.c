@@ -16,7 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "eval.h"
+#include "position.h"
+#include "tune.h"
 
 typedef struct Eval_s {
 

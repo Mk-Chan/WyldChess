@@ -19,6 +19,7 @@
 #include "defs.h"
 #include "engine.h"
 #include "tt.h"
+#include "tune.h"
 
 static inline void print_options_uci()
 {
@@ -142,6 +143,13 @@ void uci_loop()
 				ptr += 5;
 				if (!strncmp(ptr, "value", 5))
 					tt_alloc_MB(&tt, strtoul(ptr + 6, &end, 10));
+			} else {
+				Tunable* tunable = get_tunable(ptr);
+				if (!tunable)
+					continue;
+				ptr += tunable->name_len + 1;
+				if (!strncmp(ptr, "value", 5)) // Directly accepts S(mg, eg)
+					tunable->set_val(strtoul(ptr + 6, &end, 10));
 			}
 
 		} else if (!strncmp(input, "go", 2)) {
