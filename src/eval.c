@@ -16,9 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "defs.h"
-#include "position.h"
-#include "bitboard.h"
+#include "eval.h"
 
 typedef struct Eval_s {
 
@@ -137,7 +135,7 @@ int mobility[7]      = { 0, 0, 0, 8, 5, 5, 4 };
 int min_mob_count[7] = { 0, 0, 0, 4, 4, 4, 7 };
 
 // Miscellaneous terms
-int dual_bishops   = S(50, 80);
+int bishop_pair    = S(50, 80);
 int rook_on_7th    = S(40, 20);
 int rook_open_file = S(20, 20);
 int rook_semi_open = S(5, 5);
@@ -241,7 +239,7 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 
 			// If there are 2 bishops of the same color => Dual bishops
 			if (pt == BISHOP && popcnt(curr_bb) >= 2)
-				eval[c] += dual_bishops;
+				eval[c] += bishop_pair;
 
 			curr_bb &= non_pinned_bb;
 			while (curr_bb) {
