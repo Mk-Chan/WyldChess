@@ -148,7 +148,7 @@ void uci_loop()
 				if (!tunable)
 					continue;
 				ptr += tunable->name_len + 1;
-				if (!strncmp(ptr, "value", 5)) // Directly accepts S(mg, eg)
+				if (!strncmp(ptr, "value", 5))
 					tunable->set_val(strtoul(ptr + 6, &end, 10));
 			}
 

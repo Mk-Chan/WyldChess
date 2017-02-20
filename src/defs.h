@@ -35,7 +35,7 @@
 #define BB(x)        (1ULL << (x))
 #define INFINITY     (30000)
 #define MAX_MATE_VAL (INFINITY - MAX_PLY)
-#define S(mg, eg)    (((mg) + (((unsigned int)eg) << 16)))
+#define S(mg, eg)    (((mg) + (((unsigned int)(eg)) << 16)))
 #define MAX_PHASE    (256)
 #define INVALID      (-INFINITY - 1)
 

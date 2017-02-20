@@ -29,6 +29,9 @@ typedef struct Search_Stack_s {
 
 } Search_Stack;
 
+extern int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta);
+extern int search(Engine* const engine, Search_Stack* const ss, int alpha, int beta, int depth);
+
 static u64 const HASH_MOVE   = 60000ULL;
 static u64 const GOOD_CAP    = 50000ULL;
 static u64 const KILLER_PLY  = 45000ULL;

@@ -29,21 +29,54 @@ typedef struct Tunable_s {
 
 	char*   name;
 	int     name_len;
+	fxn_ptr inc_val;
 	fxn_ptr set_val;
 
 } Tunable;
 
-#define T(name) { #name, sizeof(#name) / (sizeof(char)) - 1, &set_##name }
-
-#define TUNABLE(term) extern int term;                                                             \
-	int term;                                                                                  \
-	static inline void set_##term(int val, ...) { term = val; }
-#define TUNABLE_ARR(term, size) extern int term[size];                                             \
-	int term[size];                                                                            \
-	static inline void set_##term(int val, ...) {                                              \
+#define T(name) { #name"_mg", sizeof(#name"_mg") / (sizeof(char)) - 1,                                 \
+	&inc_##name##_mg, &set_##name##_mg },                                                      \
+                { #name"_eg", sizeof(#name"_eg") / (sizeof(char)) - 1,                                 \
+	&inc_##name##_eg, &set_##name##_eg }
+#define TUNABLE(name) extern int name;                                                             \
+	int name;                                                                                  \
+	static inline void set_##name##_mg(int val, ...) {                                         \
+		name = S(val, eg_val(name));                                                       \
+	}                                                                                          \
+	static inline void set_##name##_eg(int val, ...) {                                         \
+		name = S(mg_val(name), val);                                                       \
+	}                                                                                          \
+	static inline void inc_##name##_mg(int val, ...) {                                         \
+		name = S(mg_val(name) + val, eg_val(name));                                        \
+	}                                                                                          \
+	static inline void inc_##name##_eg(int val, ...) {                                         \
+		name = S(mg_val(name), eg_val(name) + val);                                        \
+	}
+#define TUNABLE_ARR(name, size) extern int name[size];                                             \
+	int name[size];                                                                            \
+	static inline void set_##name##_mg(int val, ...) {                                         \
 		va_list list;                                                                      \
 		va_start(list, val);                                                               \
-		term[va_arg(list, int)] = val;                                                     \
+		int i = va_arg(list, int);                                                         \
+		name[i] = S(val, eg_val(name[i]));                                                 \
+	}                                                                                          \
+	static inline void set_##name##_eg(int val, ...) {                                         \
+		va_list list;                                                                      \
+		va_start(list, val);                                                               \
+		int i = va_arg(list, int);                                                         \
+		name[i] = S(mg_val(name[i]), val);                                                 \
+	}                                                                                          \
+	static inline void inc_##name##_mg(int val, ...) {                                         \
+		va_list list;                                                                      \
+		va_start(list, val);                                                               \
+		int i = va_arg(list, int);                                                         \
+		name[i] = S(mg_val(name[i]) + val, eg_val(name[i]));                               \
+	}                                                                                          \
+	static inline void inc_##name##_eg(int val, ...) {                                         \
+		va_list list;                                                                      \
+		va_start(list, val);                                                               \
+		int i = va_arg(list, int);                                                         \
+		name[i] = S(mg_val(name[i]), eg_val(name[i]) + val);                               \
 	}
 
 /*

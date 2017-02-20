@@ -116,6 +116,7 @@ extern void gen_legal_moves(Position* pos, Movelist* list);
 extern void gen_check_evasions(Position* pos, Movelist* list);
 
 extern int evaluate(Position* const pos);
+extern void tune();
 
 static inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
