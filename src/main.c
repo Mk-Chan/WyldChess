@@ -34,10 +34,6 @@ int main()
 	initmagicmoves();
 	init_lookups();
 	init_eval_terms();
-
-	tune();
-	return 0;
-
 	tt_alloc_MB(&tt, 128);
 	pvt_init(&pvt, 0x400);
 	char input[100];
