@@ -29,9 +29,6 @@ typedef struct Search_Stack_s {
 
 } Search_Stack;
 
-extern int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta);
-extern int search(Engine* const engine, Search_Stack* const ss, int alpha, int beta, int depth);
-
 static u64 const HASH_MOVE   = 60000ULL;
 static u64 const GOOD_CAP    = 50000ULL;
 static u64 const KILLER_PLY  = 45000ULL;
@@ -137,7 +134,7 @@ static inline void sort_moves(Move* const start, Move* const end)
 	}
 }
 
-static int stopped(Engine* const engine)
+static inline int stopped(Engine* const engine)
 {
 	if (engine->ctlr->is_stopped)
 		return 1;
@@ -155,7 +152,7 @@ static int stopped(Engine* const engine)
 	return 0;
 }
 
-static int is_repeat(Position* const pos)
+static inline int is_repeat(Position* const pos)
 {
 	State* curr = pos->state;
 	State* ptr  = curr - 2;
@@ -189,7 +186,7 @@ static int valid_move(Position* const pos, Move* move)
 	return 0;
 }
 
-static int get_stored_moves(Position* const pos, int depth)
+static inline int get_stored_moves(Position* const pos, int depth)
 {
 	static char mstr[6];
 	if (!depth)
@@ -211,7 +208,7 @@ static int get_stored_moves(Position* const pos, int depth)
 	return 0;
 }
 
-static void clear_search(Engine* const engine, Search_Stack* const ss)
+static inline void clear_search(Engine* const engine, Search_Stack* const ss)
 {
 	Controller* const ctlr = engine->ctlr;
 	ctlr->is_stopped       = 0;

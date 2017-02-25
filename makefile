@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -std=c11 -Wall -O3 -flto -pipe $(OPTS)
 EXT_LIBS = -lm -pthread
-C_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c move.c mt19937-64.c perft.c position.c random.c search.c timer.c uci.c xboard.c
+C_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c move.c mt19937-64.c perft.c position.c random.c search.c timer.c uci.c xboard.c tune.c
 SRC_PATH = src
 SRC = $(patsubst %,$(SRC_PATH)/%,$(C_FILES))
 DEPS = src/bitboard.h src/defs.h src/engine.h src/magicmoves.h src/position.h src/random.h src/search.h src/timer.h src/tt.h src/tune.h

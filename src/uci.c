@@ -82,7 +82,8 @@ void uci_loop()
 	engine.ctlr = &ctlr;
 	engine.ctlr->time_dependent = 1;
 	engine.target_state = WAITING;
-	init_pos(&pos);
+	State state_list[MAX_MOVES + MAX_PLY];
+	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
 	pthread_t engine_thread;
 	pthread_create(&engine_thread, NULL, engine_loop_uci, (void*) &engine);
@@ -99,7 +100,7 @@ void uci_loop()
 			transition(&engine, WAITING);
 			ptr = input + 9;
 			engine.game_over = 0;
-			init_pos(&pos);
+			init_pos(&pos, state_list);
 			if (!strncmp(ptr, "startpos", 8)) {
 				ptr += 9;
 				set_pos(&pos, INITIAL_POSITION);
@@ -209,6 +210,7 @@ void uci_loop()
 		}
 	}
 cleanup_and_exit:
+	free(&engine.pos->hist);
 	pthread_cond_destroy(&engine.sleep_cv);
 	pthread_mutex_destroy(&engine.mutex);
 }

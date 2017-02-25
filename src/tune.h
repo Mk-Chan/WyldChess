@@ -27,21 +27,36 @@ typedef void (*fxn_ptr) (int, ...);
 
 typedef struct Tunable_s {
 
+	double  score;
 	char*   name;
 	int     name_len;
+	int     size;
+	int   (*get_val)(int);
 	fxn_ptr inc_val;
 	fxn_ptr set_val;
 
 } Tunable;
 
-#define T(name) { #name"_mg", sizeof(#name"_mg") / (sizeof(char)) - 1,                                 \
-	&inc_##name##_mg, &set_##name##_mg },                                                      \
-                { #name"_eg", sizeof(#name"_eg") / (sizeof(char)) - 1,                                 \
-	&inc_##name##_eg, &set_##name##_eg }
+static inline int tunable_comparator(void const * a, void const * b)
+{
+	return ((Tunable*)b)->score - ((Tunable*)a)->score;
+}
+
+#define T(name) { 0.0, #name"_mg", sizeof(#name"_mg") / (sizeof(char)) - 1,                        \
+	sizeof(name) / sizeof(int), &get_##name##_mg, &inc_##name##_mg, &set_##name##_mg },        \
+                { 0.0, #name"_eg", sizeof(#name"_eg") / (sizeof(char)) - 1,                        \
+	sizeof(name) / sizeof(int), &get_##name##_eg, &inc_##name##_eg, &set_##name##_eg }
+
 #define TUNABLE(name) extern int name;                                                             \
 	int name;                                                                                  \
+	static inline int get_##name##_mg(int dummy) {                                             \
+		return mg_val(name);                                                               \
+	}                                                                                          \
 	static inline void set_##name##_mg(int val, ...) {                                         \
 		name = S(val, eg_val(name));                                                       \
+	}                                                                                          \
+	static inline int get_##name##_eg(int dummy) {                                             \
+		return eg_val(name);                                                               \
 	}                                                                                          \
 	static inline void set_##name##_eg(int val, ...) {                                         \
 		name = S(mg_val(name), val);                                                       \
@@ -52,13 +67,20 @@ typedef struct Tunable_s {
 	static inline void inc_##name##_eg(int val, ...) {                                         \
 		name = S(mg_val(name), eg_val(name) + val);                                        \
 	}
+
 #define TUNABLE_ARR(name, size) extern int name[size];                                             \
 	int name[size];                                                                            \
+	static inline int get_##name##_mg(int index) {                                             \
+		return mg_val(name[index]);                                                        \
+	}                                                                                          \
 	static inline void set_##name##_mg(int val, ...) {                                         \
 		va_list list;                                                                      \
 		va_start(list, val);                                                               \
 		int i = va_arg(list, int);                                                         \
 		name[i] = S(val, eg_val(name[i]));                                                 \
+	}                                                                                          \
+	static inline int get_##name##_eg(int index) {                                             \
+		return eg_val(name[index]);                                                        \
 	}                                                                                          \
 	static inline void set_##name##_eg(int val, ...) {                                         \
 		va_list list;                                                                      \
@@ -105,26 +127,31 @@ TUNABLE(rook_on_7th)
 TUNABLE(rook_open_file)
 TUNABLE(rook_semi_open)
 
+TUNABLE_ARR(piece_val, 8)
 TUNABLE_ARR(king_atk_wt, 7)
 TUNABLE_ARR(king_open_file, 2)
 TUNABLE_ARR(passed_pawn, 8)
-TUNABLE_ARR(mobility, 7)
-TUNABLE_ARR(min_mob_count, 7)
 TUNABLE_ARR(outpost, 2)
+TUNABLE_ARR(mobility_knight, 9)
+TUNABLE_ARR(mobility_bishop, 14)
+TUNABLE_ARR(mobility_rook, 15)
+TUNABLE_ARR(mobility_queen, 28)
 
 static Tunable tunables[] = {
+	T(piece_val),
+	T(king_atk_wt),
+	T(king_open_file),
+	T(passed_pawn),
 	T(doubled_pawns),
 	T(isolated_pawn),
+	T(mobility_knight),
+	T(mobility_bishop),
+	T(mobility_rook),
+	T(mobility_queen),
 	T(bishop_pair),
 	T(rook_on_7th),
 	T(rook_open_file),
 	T(rook_semi_open),
-
-	T(king_atk_wt),
-	T(king_open_file),
-	T(passed_pawn),
-	T(mobility),
-	T(min_mob_count),
 	T(outpost)
 };
 static Tunable* tunables_end = tunables + (sizeof(tunables) / sizeof(tunables[0]));

@@ -65,7 +65,7 @@ Position get_position_copy(Position const * const pos)
 	return copy_pos;
 }
 
-void init_pos(Position* pos)
+void init_pos(Position* pos, State* state_list)
 {
 	u32 i;
 	for (i = 0; i != 64; ++i)
@@ -73,6 +73,7 @@ void init_pos(Position* pos)
 	for (i = 0; i != 9; ++i)
 		pos->bb[i] = 0ULL;
 	pos->stm                          = WHITE;
+	pos->hist                         = state_list;
 	pos->state                        = pos->hist;
 	pos->state->pos_key               = 0ULL;
 	pos->state->pinned_bb             = 0ULL;
@@ -88,7 +89,6 @@ void init_pos(Position* pos)
 
 int set_pos(Position* pos, char* fen)
 {
-	init_pos(pos);
 	u32 piece, pt, sq, pc,
 	    tsq   = 0,
 	    index = 0;

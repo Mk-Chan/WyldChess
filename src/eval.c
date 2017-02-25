@@ -34,11 +34,11 @@ typedef struct Eval_s {
 int piece_val[8] = {
 	0,
 	0,
-	S(90, 100),
-	S(400, 320),
-	S(400, 330),
-	S(600, 550),
-	S(1200, 1000),
+	S(98, 108),
+	S(331, 325),
+	S(334, 346),
+	S(540, 577),
+	S(1086, 1187),
 	S(0, 0)
 };
 
@@ -111,8 +111,6 @@ static int psq_tmp[8][32] = {
 };
 
 // King terms
-int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
-int king_open_file[2] = { S(-30, 0), S(-20, 0) };
 int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	  0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
 	  8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
@@ -125,22 +123,46 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
+int king_atk_wt[7] = { 0, 0, 0, 2, 3, 2, 4 };
+int king_open_file[2] = { S(-53, 11), S(-35, 3) };
 
 // Pawn structure
-int passed_pawn[8] = { 0, S(5, 5), S(20, 20), S(30, 40), S(40, 70), S(50, 120), S(60, 200), 0 };
-int doubled_pawns  = S(-10, -20);
-int isolated_pawn  = S(-10, -10);
+int passed_pawn[8] = { 0, S(12, 2), S(18, 7), S(21, 30), S(37, 50), S(57, 94), S(78, 198), 0 };
+int doubled_pawns  = S(-6, -21);
+int isolated_pawn  = S(-13, -3);
 
 // Mobility terms
-int mobility[7]      = { 0, 0, 0, 8, 5, 5, 4 };
-int min_mob_count[7] = { 0, 0, 0, 4, 4, 4, 7 };
+int mobility_knight[9] = {
+	S(-53, -35), S(-46, -21), S(-12, -9), S(-4, 5), S(0, 10), S(10, 20),
+	S(31, 30), S(46, 35), S(49, 40)
+};
+int mobility_bishop[14] = {
+	S(-50, -50), S(-35, -30), S(-10, -10), S(0, 0), S(10, 10), S(20, 20), S(25, 25), S(30, 30),
+	S(35, 35), S(45, 40), S(50, 45), S(55, 50), S(60, 55), S(60, 55)
+};
+int mobility_rook[15] = {
+	S(-40, -50), S(-30, -30), S(-20, -20), S(-10, -10), S(0, 0), S(5, 10), S(10, 15), S(15, 20),
+	S(20, 25), S(25, 30), S(30, 35), S(35, 40), S(40, 45), S(45, 50), S(50, 55)
+};
+int mobility_queen[28] = {
+	S(-10, -50), S(-5, -30), S(0, -10), S(5, 0), S(5, 5), S(10, 10), S(10, 10), S(15, 15),
+	S(15, 15), S(15, 15), S(15, 15), S(20, 20), S(20, 20), S(20, 20), S(25, 25),
+	S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25),
+	S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25)
+};
+int dummy1[] = { 0 };
+int dummy2[] = { 0 };
+int dummy3[] = { 0 };
+int *mobility[] = {
+	dummy1, dummy2, dummy3, mobility_knight, mobility_bishop, mobility_rook, mobility_queen
+};
 
 // Miscellaneous terms
-int bishop_pair    = S(50, 80);
-int rook_on_7th    = S(40, 20);
-int rook_open_file = S(20, 20);
-int rook_semi_open = S(5, 5);
-int outpost[2]     = { S(10, 5), S(20, 10) }; // Bishop, Knight
+int bishop_pair    = S(58, 70);
+int rook_on_7th    = S(33, 31);
+int rook_open_file = S(36, 24);
+int rook_semi_open = S(9, 11);
+int outpost[2]     = { S(14, 7), S(18, 2) }; // Bishop, Knight
 
 void init_eval_terms()
 {
@@ -261,7 +283,7 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 
 				// Calculate mobility count by counting attacked squares which are not attacked by
 				// an enemy pawn and does not have our king on it
-				mobility_val = mobility[pt] * (popcnt(atk_bb & mobility_mask) - min_mob_count[pt]);
+				mobility_val = mobility[pt][popcnt(atk_bb & mobility_mask)];
 				eval[c]     += S(mobility_val, mobility_val);
 
 				// Update king attack statistics

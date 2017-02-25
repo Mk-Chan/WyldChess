@@ -84,10 +84,10 @@ typedef struct Position_s {
 	u32    king_sq[2];
 	u32    board[64];
 	State* state;
-	State  hist[MAX_MOVES + MAX_PLY];
+	State* hist;
 
 #ifdef STATS
-	Stats    stats;
+	Stats  stats;
 #endif
 
 } Position;
@@ -101,7 +101,7 @@ extern void print_board(Position* pos);
 
 extern void performance_test(Position* const pos, u32 max_depth);
 
-extern void init_pos(Position* pos);
+extern void init_pos(Position* pos, State* state);
 extern int set_pos(Position* pos, char* fen);
 extern Position get_position_copy(Position const * const pos);
 

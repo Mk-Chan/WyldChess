@@ -167,7 +167,8 @@ void xboard_loop()
 	ctlr.time_dependent = 1;
 	ctlr.analyzing = 0;
 	engine.target_state = WAITING;
-	init_pos(&pos);
+	State state_list[MAX_MOVES + MAX_PLY];
+	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
 
 	pthread_t engine_thread;
@@ -196,7 +197,7 @@ void xboard_loop()
 
 			transition(&engine, WAITING);
 			engine.game_over = 0;
-			init_pos(&pos);
+			init_pos(&pos, state_list);
 			set_pos(&pos, INITIAL_POSITION);
 			engine.side            = BLACK;
 			ctlr.time_dependent    = 1;
@@ -228,6 +229,7 @@ void xboard_loop()
 
 			transition(&engine, WAITING);
 			engine.side = -1;
+			init_pos(&pos, state_list);
 			set_pos(&pos, input + 9);
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
