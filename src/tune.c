@@ -160,7 +160,7 @@ void tune()
 					local_improved = 0;
 					t->inc_val(1, i);
 					new_error = calc_error();
-					if (new_error < curr_error) {
+					if (new_error < curr_error - 0.000001) {
 						t->score = curr_error - new_error;
 						curr_error = new_error;
 						printf("New error: %f\n", curr_error);
@@ -170,7 +170,7 @@ void tune()
 					} else {
 						t->inc_val(-2, i);
 						new_error = calc_error();
-						if (new_error < curr_error) {
+						if (new_error < curr_error - 0.000001) {
 							t->score = curr_error - new_error;
 							curr_error = new_error;
 							printf("New error: %f\n", curr_error);

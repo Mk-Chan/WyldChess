@@ -138,21 +138,10 @@ TUNABLE_ARR(mobility_rook, 15)
 TUNABLE_ARR(mobility_queen, 28)
 
 static Tunable tunables[] = {
-	T(piece_val),
-	T(king_atk_wt),
-	T(king_open_file),
-	T(passed_pawn),
-	T(doubled_pawns),
-	T(isolated_pawn),
 	T(mobility_knight),
 	T(mobility_bishop),
 	T(mobility_rook),
 	T(mobility_queen),
-	T(bishop_pair),
-	T(rook_on_7th),
-	T(rook_open_file),
-	T(rook_semi_open),
-	T(outpost)
 };
 static Tunable* tunables_end = tunables + (sizeof(tunables) / sizeof(tunables[0]));
 

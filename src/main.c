@@ -35,25 +35,28 @@ int main()
 	init_lookups();
 	init_eval_terms();
 
-	tune();
-	return 0;
-
-	tt_alloc_MB(&tt, 128);
-	pvt_init(&pvt, 0x400);
 	char input[100];
 	while (1) {
 		fgets(input, 100, stdin);
 		if (!strncmp(input, "xboard", 6)) {
+			tt_alloc_MB(&tt, 128);
+			pvt_init(&pvt, 0x400);
 			xboard_loop();
+			tt_destroy(&tt);
 			break;
 		} else if (!strncmp(input, "uci", 3)) {
+			tt_alloc_MB(&tt, 128);
+			pvt_init(&pvt, 0x400);
 			uci_loop();
+			tt_destroy(&tt);
+			break;
+		} else if (!strncmp(input, "tune", 4)) {
+			tune();
 			break;
 		} else {
 			fprintf(stdout, "Protocol not found!\n");
 		}
 	}
 
-	tt_destroy(&tt);
 	return 0;
 }
