@@ -123,7 +123,7 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
-int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
+int king_atk_wt[7]    = { 0, 0, 0, 3, 3, 4, 5 };
 int king_open_file[2] = { S(-30, 0), S(-20, 0) };
 
 // Pawn structure
@@ -132,28 +132,8 @@ int doubled_pawns  = S(-10, -20);
 int isolated_pawn  = S(-10, -10);
 
 // Mobility terms
-int mobility_knight[9] = {
-	S(-53, -35), S(-46, -21), S(-12, -9), S(0, 4), S(3, 10), S(12, 20),
-	S(31, 25), S(35, 30), S(48, 39)
-};
-int mobility_bishop[14] = {
-	S(-20, -50), S(-10, -30), S(-1, -10), S(17, 0), S(18, 10), S(20, 21), S(24, 26), S(25, 30),
-	S(35, 35), S(40, 38), S(50, 42), S(55, 45), S(60, 55), S(60, 55)
-};
-int mobility_rook[15] = {
-	S(-40, -50), S(-33, -30), S(-25, -20), S(-20, -10), S(0, 0), S(10, 10), S(13, 17), S(15, 20),
-	S(20, 25), S(25, 30), S(30, 35), S(35, 40), S(40, 45), S(45, 45), S(48, 45)
-};
-int mobility_queen[28] = {
-	S(-10, -50), S(-5, -30), S(0, -10), S(5, 0), S(5, 5), S(10, 10), S(10, 10), S(15, 15),
-	S(15, 15), S(15, 15), S(15, 15), S(20, 20), S(20, 20), S(20, 20), S(25, 25),
-	S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25),
-	S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25), S(25, 25)
-};
-int dummy[] = { 0 };
-int *mobility[] = {
-	dummy, dummy, dummy, mobility_knight, mobility_bishop, mobility_rook, mobility_queen
-};
+int mobility[7]      = { 0, 0, 0, 8, 5, 5, 4 };
+int min_mob_count[7] = { 0, 0, 0, 4, 4, 4, 7 };
 
 // Miscellaneous terms
 int bishop_pair    = S(50, 80);
@@ -281,8 +261,8 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 
 				// Calculate mobility count by counting attacked squares which are not attacked by
 				// an enemy pawn and does not have our king on it
-				mobility_val = mobility[pt][popcnt(atk_bb & mobility_mask)];
-				eval[c]     += mobility_val;
+				mobility_val = mobility[pt] * (popcnt(atk_bb & mobility_mask) - min_mob_count[pt]);
+				eval[c]     += S(mobility_val, mobility_val);
 
 				// Update king attack statistics
 				if (atk_bb & ev->king_danger_zone_bb[!c])

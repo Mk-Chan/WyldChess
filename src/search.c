@@ -18,7 +18,7 @@
 
 #include "search.h"
 
-int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
+static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
 {
 	if ( !(engine->ctlr->nodes_searched & 0x7ff)
 	    && stopped(engine))
@@ -114,7 +114,7 @@ int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
 	return alpha;
 }
 
-int search(Engine* const engine, Search_Stack* const ss, int alpha, int beta, int depth)
+static int search(Engine* const engine, Search_Stack* const ss, int alpha, int beta, int depth)
 {
 	if (depth <= 0)
 		return qsearch(engine, ss, alpha, beta);
