@@ -132,16 +132,12 @@ TUNABLE_ARR(king_atk_wt, 7)
 TUNABLE_ARR(king_open_file, 2)
 TUNABLE_ARR(passed_pawn, 8)
 TUNABLE_ARR(outpost, 2)
-TUNABLE_ARR(mobility_knight, 9)
-TUNABLE_ARR(mobility_bishop, 14)
-TUNABLE_ARR(mobility_rook, 15)
-TUNABLE_ARR(mobility_queen, 28)
+TUNABLE_ARR(mobility, 7)
+TUNABLE_ARR(min_mob_count, 7)
 
 static Tunable tunables[] = {
-	T(mobility_knight),
-	T(mobility_bishop),
-	T(mobility_rook),
-	T(mobility_queen),
+	T(mobility),
+	T(min_mob_count)
 };
 static Tunable* tunables_end = tunables + (sizeof(tunables) / sizeof(tunables[0]));
 
