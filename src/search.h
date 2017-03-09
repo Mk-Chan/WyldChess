@@ -218,8 +218,6 @@ static inline void clear_search(Engine* const engine, Search_Stack* const ss)
 	pos->stats.correct_nt_guess   = 0;
 	pos->stats.iid_cutoffs        = 0;
 	pos->stats.iid_tries          = 0;
-	pos->stats.futility_cutoffs   = 0;
-	pos->stats.futility_tries     = 0;
 	pos->stats.null_cutoffs       = 0;
 	pos->stats.null_tries         = 0;
 	pos->stats.first_beta_cutoffs = 0;

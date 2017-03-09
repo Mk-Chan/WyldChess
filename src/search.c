@@ -490,8 +490,6 @@ int begin_search(Engine* const engine)
 		time ? ((double)ctlr->nodes_searched * 1000 / time) : 0);
 	fprintf(stdout, "iid cutoff rate:          %lf\n",
 		((double)pos->stats.iid_cutoffs) / pos->stats.iid_tries);
-	fprintf(stdout, "futility cutoff rate:     %lf\n",
-		((double)pos->stats.futility_cutoffs) / pos->stats.futility_tries);
 	fprintf(stdout, "null cutoff rate:         %lf\n",
 		((double)pos->stats.null_cutoffs) / pos->stats.null_tries);
 	fprintf(stdout, "hash hit rate:            %lf\n",
