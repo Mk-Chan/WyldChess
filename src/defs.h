@@ -30,14 +30,15 @@
 #define AUTHOR_NAME (("Manik Charan"))
 #define INITIAL_POSITION (("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
 
-#define MAX_MOVES    (2048)
-#define MAX_PLY      (128)
-#define BB(x)        (1ULL << (x))
-#define INFINITY     (30000)
-#define MAX_MATE_VAL (INFINITY - MAX_PLY)
-#define S(mg, eg)    (((mg) + (((unsigned int)(eg)) << 16)))
-#define MAX_PHASE    (256)
-#define INVALID      (-INFINITY - 1)
+#define MAX_MOVES_PER_GAME (2048)
+#define MAX_MOVES_PER_POS  (218)
+#define MAX_PLY            (128)
+#define BB(x)              (1ULL << (x))
+#define INFINITY           (30000)
+#define MAX_MATE_VAL       (INFINITY - MAX_PLY)
+#define S(mg, eg)          (((mg) + (((unsigned int)(eg)) << 16)))
+#define MAX_PHASE          (256)
+#define INVALID            (-INFINITY - 1)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
@@ -50,7 +51,6 @@
 
 typedef unsigned int       u32;
 typedef unsigned long long u64;
-typedef unsigned long long Move;
 
 enum Colors {
 	ALL = 0,
@@ -132,6 +132,23 @@ enum OpenFiles {
 	NEAR_KING
 };
 
+enum PassedPawnType {
+	CANT_PUSH,
+	UNSAFE_PUSH,
+	SAFE_PUSH
+};
+
+enum MoveOrder {
+	HASH_MOVE  = 30000,
+	GOOD_CAP   = 20000,
+	KILLER     = 10000,
+	QUEEN_PROM = 7000,
+	EQUAL_CAP  = 5000,
+	BAD_CAP    = 3000,
+	QUIET      = 0
+};
+
+
 static inline int max(int a, int b) { return a > b ? a : b; }
 static inline int min(int a, int b) { return a < b ? a : b; }
 
@@ -155,7 +172,6 @@ static int const is_prom_sq[64] = {
 #define move_type(m) (m & MOVE_TYPE_MASK)
 #define prom_type(m) ((m & PROM_TYPE_MASK) >> PROM_TYPE_SHIFT)
 #define cap_type(m)  ((m & CAP_TYPE_MASK) >> CAP_TYPE_SHIFT)
-#define order(m)     (((m) >> ORDER_SHIFT))
 
 #define popcnt(bb)  (__builtin_popcountll(bb))
 #define bitscan(bb) (__builtin_ctzll(bb))
@@ -169,8 +185,6 @@ static int const is_prom_sq[64] = {
 #define move_prom(from, to, prom)          (from | (to << 6) | PROMOTION | prom)
 #define move_prom_cap(from, to, prom, cap) (from | (to << 6) | PROMOTION | prom | (cap << CAP_TYPE_SHIFT))
 #define move(from, to, mt, prom, cap)      (from | (to << 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
-#define encode_cap(m, pt)                  (m    |= (pt << CAP_TYPE_SHIFT))
-#define encode_order(m, order)             (m    |= ((order) << ORDER_SHIFT))
 
 #define mg_val(val) ((int)((short)val))
 #define eg_val(val) ((int)((val + 0x8000) >> 16))

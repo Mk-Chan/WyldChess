@@ -47,7 +47,8 @@ static int check_stale_and_mate(Position* const pos)
 	set_pinned(pos);
 	set_checkers(pos);
 	gen_pseudo_legal_moves(pos, &list);
-	for (Move* move = list.moves; move != list.end; ++move) {
+	u32* move;
+	for (move = list.moves; move != list.end; ++move) {
 		if (!legal_move(pos, *move))
 			continue;
 		return NO_RESULT;
@@ -104,7 +105,7 @@ static inline void print_options_xboard()
 void* engine_loop_xboard(void* args)
 {
 	char mstr[6];
-	Move move;
+	u32 move;
 	Engine* engine = (Engine*) args;
 	Position* pos  = engine->pos;
 	while (1) {
@@ -152,7 +153,7 @@ void xboard_loop()
 	char  input[max_len];
 	char* ptr;
 	char* end;
-	Move move;
+	u32   move;
 
 	Position pos;
 	Controller ctlr;
@@ -167,7 +168,7 @@ void xboard_loop()
 	ctlr.time_dependent = 1;
 	ctlr.analyzing = 0;
 	engine.target_state = WAITING;
-	State state_list[MAX_MOVES + MAX_PLY];
+	State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
 	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
 

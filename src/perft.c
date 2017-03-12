@@ -29,7 +29,7 @@ static u64 perft(Position* const pos, Movelist* list, u32 depth)
 	gen_pseudo_legal_moves(pos, list);
 
 	u64 count = 0ULL;
-	Move* move;
+	u32* move;
 	if (depth == 1) {
 		for (move = list->moves; move < list->end; ++move) {
 			if (!legal_move(pos, *move)) continue;

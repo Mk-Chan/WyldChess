@@ -130,14 +130,12 @@ TUNABLE(rook_semi_open)
 TUNABLE_ARR(piece_val, 8)
 TUNABLE_ARR(king_atk_wt, 7)
 TUNABLE_ARR(king_open_file, 2)
-TUNABLE_ARR(passed_pawn, 8)
+//TUNABLE_ARR(passed_pawn, 8)
 TUNABLE_ARR(outpost, 2)
 TUNABLE_ARR(mobility, 7)
-TUNABLE_ARR(min_mob_count, 7)
 
 static Tunable tunables[] = {
-	T(mobility),
-	T(min_mob_count)
+	T(mobility)
 };
 static Tunable* tunables_end = tunables + (sizeof(tunables) / sizeof(tunables[0]));
 

@@ -55,14 +55,14 @@ Eval_Stats es;
 
 typedef struct Movelist_s {
 
-	Move  moves[218];
-	Move* end;
+	u32  moves[MAX_MOVES_PER_POS];
+	u32* end;
 
 } Movelist;
 
 typedef struct State_s {
 
-	Move move;
+	u32  move;
 	u64  pinned_bb;
 	u64  checkers_bb;
 	u64  ep_sq_bb;
@@ -106,7 +106,7 @@ extern Position get_position_copy(Position const * const pos);
 extern void do_null_move(Position* const pos);
 extern void undo_null_move(Position* const pos);
 extern void undo_move(Position* const pos);
-extern void  do_move(Position* const pos, Move const m);
+extern void  do_move(Position* const pos, u32 const m);
 
 extern void gen_pseudo_legal_moves(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
@@ -289,7 +289,7 @@ static inline int insufficient_material(Position* const pos)
 }
 
 // Idea from Stockfish 6
-static inline int legal_move(Position* const pos, Move move)
+static inline int legal_move(Position* const pos, u32 move)
 {
 	u32 c    = pos->stm;
 	u32 from = from_sq(move);
@@ -310,7 +310,7 @@ static inline int legal_move(Position* const pos, Move move)
 	}
 }
 
-static inline void move_str(Move move, char str[6])
+static inline void move_str(u32 move, char str[6])
 {
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
@@ -341,7 +341,7 @@ static inline void move_str(Move move, char str[6])
 	str[5] = '\0';
 }
 
-static inline int parse_move(Position* pos, char* str)
+static inline u32 parse_move(Position* pos, char* str)
 {
 	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
 	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
@@ -352,7 +352,8 @@ static inline int parse_move(Position* pos, char* str)
 	set_pinned(pos);
 	set_checkers(pos);
 	gen_pseudo_legal_moves(pos, &list);
-	for(Move* move = list.moves; move != list.end; ++move) {
+	u32* move;
+	for(move = list.moves; move != list.end; ++move) {
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {
 			if (   pos->board[from] == PAWN

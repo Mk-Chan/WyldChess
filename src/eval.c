@@ -126,7 +126,15 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 int king_atk_wt[7]    = { 0, 0, 0, 3, 3, 4, 5 };
 
 // Pawn structure
-int passed_pawn[8] = { 0, S(5, 5), S(20, 20), S(30, 40), S(40, 70), S(50, 120), S(60, 200), 0 };
+int passed_pawn[3][7] = {
+	// Square in front of passed pawn isn't vacant
+	{ 0, S(5, 5), S(10, 10), S(15, 15), S(20, 25), S(30, 50), S(50, 80) },
+	// Square in front of passed pawn is vacant
+	// Square in front of passed pawn is attacked
+	{ 0, S(5, 5), S(10, 10), S(15, 20), S(30, 40), S(50, 70), S(80, 120) },
+	// Square in front of passed pawn is not attacked
+	{ 0, S(5, 5), S(10, 10), S(15, 25), S(40, 60), S(70, 100), S(150, 180) }
+};
 int doubled_pawns  = S(-10, -20);
 int isolated_pawn  = S(-10, -10);
 
@@ -357,38 +365,26 @@ static void eval_king_attacks(Position* const pos, Eval* const ev)
 static void eval_passed_pawns(Position* const pos, Eval* const ev)
 {
 	int eval[2][2] = { { 0, 0 }, { 0, 0 } };
-	u64 passed_pawn_bb;
+	u64 passed_pawn_bb, forward_sq_bb;
 	u64 vacancy_mask = ~pos->bb[FULL];
-	int c, sq, val;
+	int c, sq, relative_rank, type;
 	for (c = WHITE; c <= BLACK; ++c) {
 		passed_pawn_bb = ev->passed_pawn_bb[c];
 		while (passed_pawn_bb) {
 			sq = bitscan(passed_pawn_bb);
 			passed_pawn_bb &= passed_pawn_bb - 1;
 
-			val = passed_pawn[(c == WHITE ? rank_of(sq) : rank_of((sq ^ 56)))];
+			relative_rank = c == WHITE ? rank_of(sq) : RANK_8 - rank_of(sq);
+			type = CANT_PUSH;
+			forward_sq_bb = pawn_shift(BB(sq), c);
 
 			// Square immediately ahead of the passed pawn is vacant
-			if (pawn_shift(BB(sq), c) & vacancy_mask) {
-				// TODO: Improve this
-				// A square ahead of the passed pawn is attacked by the opponent
-				if (file_forward_mask[c][sq] & ev->atks_bb[!c][ALL]) {
-					eval[c][0] += mg_val(val) / 3;
-					eval[c][1] += eg_val(val) / 2;
-				}
+			if (forward_sq_bb & vacancy_mask)
+				type = forward_sq_bb & ev->atks_bb[!c][ALL]
+					? UNSAFE_PUSH
+					: SAFE_PUSH;
 
-				// No square ahead of the passed pawn is attacked
-				else {
-					eval[c][0] += mg_val(val);
-					eval[c][1] += eg_val(val);
-				}
-			}
-
-			// Square immediately in front of passed pawn is not vacant
-			else {
-				eval[c][0] += mg_val(val) / 4;
-				eval[c][1] += eg_val(val) / 3;
-			}
+			ev->eval[c] += passed_pawn[type][relative_rank];
 		}
 	}
 

@@ -316,7 +316,7 @@ void gen_legal_moves(Position* pos, Movelist* list)
 	gen_pseudo_legal_moves(pos, list);
 	u32 ksq       = pos->king_sq[pos->stm];
 	u64 pinned_bb = pos->state->pinned_bb;
-	Move* move;
+	u32* move;
 	for (move = list->moves; move < list->end;) {
 		if (  ((pinned_bb & BB(from_sq(*move)))
 		     || from_sq(*move) == ksq

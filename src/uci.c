@@ -32,7 +32,7 @@ static inline void print_options_uci()
 void* engine_loop_uci(void* args)
 {
 	char mstr[6];
-	Move move;
+	u32 move;
 	Engine* engine = (Engine*) args;
 	while (1) {
 		switch(engine->target_state) {
@@ -67,7 +67,7 @@ void uci_loop()
 	char input[max_len];
 	char* ptr;
 	char* end;
-	Move move;
+	u32   move;
 
 	print_options_uci();
 
@@ -82,7 +82,7 @@ void uci_loop()
 	engine.ctlr = &ctlr;
 	engine.ctlr->time_dependent = 1;
 	engine.target_state = WAITING;
-	State state_list[MAX_MOVES + MAX_PLY];
+	State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
 	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
 	pthread_t engine_thread;

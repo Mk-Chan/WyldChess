@@ -27,6 +27,7 @@
 static double K = 1.1;
 static Movelist glist[MAX_PLY];
 
+// TODO: FIX THE ORDERING!!!
 static int qsearch(Position* pos, int ply, int alpha, int beta)
 {
 	if (pos->state->fifty_moves > 99)
@@ -55,7 +56,7 @@ static int qsearch(Position* pos, int ply, int alpha, int beta)
 	Movelist* list = glist + ply;
 	list->end      = list->moves;
 	set_pinned(pos);
-	Move* move;
+	u32* move;
 	if (checked) {
 		gen_check_evasions(pos, list);
 		if (list->end == list->moves)
@@ -68,19 +69,19 @@ static int qsearch(Position* pos, int ply, int alpha, int beta)
 	for (move = list->moves; move < list->end; ++move) {
 		if (   cap_type(*move)
 		    || move_type(*move) == ENPASSANT) {
-			order_cap(pos, move);
+			//order_cap(pos, move);
 		} else if (   move_type(*move) == PROMOTION
 			   && prom_type(*move) == QUEEN) {
-			encode_order(*move, QUEEN_PROM);
+			//encode_order(*move, QUEEN_PROM);
 		}
 	}
-	sort_moves(list->moves, list->end);
+	//sort_moves(list->moves, list->end);
 
 	int val;
 	for (move = list->moves; move != list->end; ++move) {
-		if (  !checked
-		    && order(*move) < BAD_CAP)
-			break;
+		//if (  !checked
+		    //&& order(*move) < BAD_CAP)
+		//	break;
 
 		if (!legal_move(pos, *move))
 			continue;

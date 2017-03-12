@@ -1,3 +1,6 @@
+#ifndef SEARCH_H
+#define SEARCH_H
+
 /*
  * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016  Manik Charan
@@ -24,21 +27,11 @@ typedef struct Search_Stack_s {
 	u32      node_type;
 	u32      early_prune;
 	u32      ply;
-	Move     killers[2];
+	u32      killers[2];
+	u32      order_arr[MAX_MOVES_PER_POS];
 	Movelist list;
 
 } Search_Stack;
-
-static u64 const HASH_MOVE   = 60000ULL;
-static u64 const GOOD_CAP    = 50000ULL;
-static u64 const KILLER_PLY  = 45000ULL;
-static u64 const KILLER_OLD  = 40000ULL;
-static u64 const QUEEN_PROM  = 30000ULL;
-static u64 const EQUAL_CAP   = 20000ULL;
-static u64 const BAD_CAP     = 10000ULL;
-static u64 const PASSER_PUSH = 9000ULL;
-static u64 const CASTLING    = 8000ULL;
-static u64 const REST        = 1000ULL;
 
 static int equal_cap_bound = 50;
 
@@ -61,7 +54,7 @@ static int min_attacker(Position const * const pos, int to, u64 const c_atkers_b
 }
 
 // Idea taken from Stockfish 6
-static int see(Position const * const pos, Move move)
+static int see(Position const * const pos, u32 move)
 {
 	if (move_type(move) == CASTLE)
 		return 0;
@@ -101,36 +94,37 @@ static int see(Position const * const pos, Move move)
 	return swap_list[0];
 }
 
-static inline void order_cap(Position const * const pos, Move* const m)
+static inline int cap_order(Position const * const pos, u32 const m)
 {
-	if (cap_type(*m)) {
-		int cap_val        = mg_val(piece_val[pos->board[to_sq(*m)]]);
-		int capper_pt      = pos->board[from_sq(*m)];
-		int piece_val_diff = cap_val - mg_val(piece_val[capper_pt]);
-		if (piece_val_diff > equal_cap_bound) {
-			encode_order(*m, GOOD_CAP + cap_val - capper_pt);
-			return;
-		}
+	if (cap_type(m)) {
+		int cap_val        = mg_val(piece_val[pos->board[to_sq(m)]]);
+		int capper_pt      = pos->board[from_sq(m)];
+		if (cap_val - mg_val(piece_val[capper_pt]) > equal_cap_bound)
+			return GOOD_CAP + cap_val - capper_pt;
 	}
-	int see_val = see(pos, *m);
+	int see_val = see(pos, m);
+	int cap_order;
 	if (see_val > equal_cap_bound)
-		encode_order(*m, (GOOD_CAP + see_val));
+		cap_order = GOOD_CAP;
 	else if (see_val > -equal_cap_bound)
-		encode_order(*m, (EQUAL_CAP + see_val));
+		cap_order = EQUAL_CAP;
 	else
-		encode_order(*m, (BAD_CAP + see_val));
+		cap_order = BAD_CAP;
+	return cap_order + see_val;
 }
 
-static inline void sort_moves(Move* const start, Move* const end)
+static inline void sort_moves(u32* const move_arr, u32* const order_arr, u32 len)
 {
-	Move* tmp;
-	Move* m;
-	Move to_shift;
-	for (m = start + 1; m < end; ++m) {
-		to_shift = *m;
-		for (tmp = m; tmp > start && order(to_shift) > order(*(tmp - 1)); --tmp)
-			*tmp = *(tmp - 1);
-		*tmp = to_shift;
+	u32 to_shift, to_shift_order, i, j;
+	for (i = 1; i < len; ++i) {
+		to_shift = move_arr[i];
+		to_shift_order = order_arr[i];
+		for (j = i; j && to_shift_order > order_arr[j - 1]; --j) {
+			move_arr[j] = move_arr[j - 1];
+			order_arr[j] = order_arr[j - 1];
+		}
+		move_arr[j] = to_shift;
+		order_arr[j] = to_shift_order;
 	}
 }
 
@@ -154,18 +148,18 @@ static inline int stopped(Engine* const engine)
 
 static inline int is_repeat(Position* const pos)
 {
-	State* curr = pos->state;
-	State* ptr  = curr - 2;
-	State* end  = ptr - curr->fifty_moves;
+	u64 curr_pos_key = pos->state->pos_key;
+	State* ptr       = pos->state - 2;
+	State* end       = ptr - pos->state->fifty_moves;
 	if (end < pos->hist)
 		end = pos->hist;
 	for (; ptr >= end; ptr -= 2)
-		if (ptr->pos_key == curr->pos_key)
+		if (ptr->pos_key == curr_pos_key)
 			return 1;
 	return 0;
 }
 
-static int valid_move(Position* const pos, Move* move)
+static int valid_move(Position* const pos, u32* move)
 {
 	u32 from = from_sq(*move),
 	    to   = to_sq(*move),
@@ -176,7 +170,8 @@ static int valid_move(Position* const pos, Move* move)
 	set_pinned(pos);
 	set_checkers(pos);
 	gen_pseudo_legal_moves(pos, &list);
-	for (Move* m = list.moves; m != list.end; ++m) {
+	u32* m;
+	for (m = list.moves; m != list.end; ++m) {
 		if (   from_sq(*m) == from
 		    && to_sq(*m) == to
 		    && move_type(*m) == mt
@@ -193,7 +188,7 @@ static inline int get_stored_moves(Position* const pos, int depth)
 		return 0;
 	PV_Entry entry = pvt_probe(&pvt, pos->state->pos_key);
 	if (entry.key == pos->state->pos_key) {
-		Move move = get_move(entry.move);
+		u32 move = get_move(entry.move);
 		if (  !valid_move(pos, &move)
 		   || !legal_move(pos, move))
 			return 0;
@@ -225,7 +220,7 @@ static inline void clear_search(Engine* const engine, Search_Stack* const ss)
 	pos->stats.hash_probes        = 0;
 	pos->stats.hash_hits          = 0;
 #endif
-	u32 i;
+	u32 i, j;
 	Search_Stack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
 		curr              = ss + i;
@@ -235,7 +230,11 @@ static inline void clear_search(Engine* const engine, Search_Stack* const ss)
 		curr->killers[0]  = 0;
 		curr->killers[1]  = 0;
 		curr->list.end    = ss->list.moves;
+		for (j = 0; j < MAX_MOVES_PER_POS; ++j)
+			curr->order_arr[j] = 0;
 	}
 	(ss - 1)->killers[0] = (ss - 1)->killers[1] = 0;
 	(ss - 2)->killers[0] = (ss - 2)->killers[1] = 0;
 }
+
+#endif

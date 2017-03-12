@@ -11,10 +11,6 @@ OBJS = $(patsubst %,$(OBJ_PATH)/%,$(_OBJS))
 EXEC_PATH = .
 EXEC = wyldchess
 
-ifeq ($(FAST), 1)
-	CFLAGS += -DTEST
-endif
-
 ifeq ($(POPCNT), 1)
 	CFLAGS += -mpopcnt
 endif
@@ -26,10 +22,6 @@ endif
 ifdef RELEASE
 
 EXEC := $(EXEC)$(RELEASE)
-
-ifeq ($(FAST), 1)
-	EXEC := $(EXEC)_fast_tc
-endif
 
 ifeq ($(POPCNT), 1)
 	EXEC := $(EXEC)_popcnt
