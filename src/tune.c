@@ -147,6 +147,8 @@ double calc_error()
 
 void tune()
 {
+	printf("Currently broken!\n");
+	return;
 	double curr_error = calc_error();
 	printf("Current error = %f\n", curr_error);
 	double new_error;
