@@ -210,7 +210,6 @@ void uci_loop()
 		}
 	}
 cleanup_and_exit:
-	free(&engine.pos->hist);
 	pthread_cond_destroy(&engine.sleep_cv);
 	pthread_mutex_destroy(&engine.mutex);
 }
