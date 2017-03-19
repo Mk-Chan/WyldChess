@@ -22,7 +22,7 @@
 #include <pthread.h>
 #include "defs.h"
 #include "position.h"
-#include "timer.h"
+#include "misc.h"
 
 enum Protocols {
 	XBOARD,
@@ -75,14 +75,10 @@ static inline void sync(Engine const * const engine)
 static inline void transition(Engine* const engine, int target_state)
 {
 	if (engine->curr_state == WAITING) {
-#ifndef TEST
 		pthread_mutex_lock(&engine->mutex);
 		engine->target_state = target_state;
 		pthread_cond_signal(&engine->sleep_cv);
 		pthread_mutex_unlock(&engine->mutex);
-#else
-		engine->target_state = target_state;
-#endif
 	}
 	else
 		engine->target_state = target_state;

@@ -19,10 +19,9 @@
 #include <time.h>
 #include "magicmoves.h"
 #include "position.h"
-#include "random.h"
+#include "misc.h"
 #include "tt.h"
 #include "engine.h"
-#include "timer.h"
 
 int main()
 {

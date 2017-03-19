@@ -20,7 +20,7 @@
  */
 
 #include "defs.h"
-#include "random.h"
+#include "misc.h"
 #include "bitboard.h"
 #include "magicmoves.h"
 
@@ -202,6 +202,19 @@ static inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 	}
 }
 
+static inline u64 get_all_atks(u32 sq, u32 pt, u32 c, u64 occupancy)
+{
+	switch (pt) {
+	case PAWN:   return p_atks_bb[c][sq];
+	case KNIGHT: return n_atks_bb[sq];
+	case BISHOP: return Bmagic(sq, occupancy);
+	case ROOK:   return Rmagic(sq, occupancy);
+	case QUEEN:  return Qmagic(sq, occupancy);
+	case KING:   return k_atks_bb[sq];
+	default:     return -1;
+	}
+}
+
 static inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
 {
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
@@ -288,7 +301,7 @@ static inline int insufficient_material(Position* const pos)
 	return 1;
 }
 
-// Idea from Stockfish 6
+// Idea from Stockfish
 static inline int legal_move(Position* const pos, u32 move)
 {
 	u32 c    = pos->stm;
@@ -307,6 +320,62 @@ static inline int legal_move(Position* const pos, u32 move)
 	} else {
 		return    !(pos->state->pinned_bb & BB(from))
 			|| (BB(to_sq(move)) & dirn_sqs_bb[from][ksq]);
+	}
+}
+
+// Idea taken from Stockfish
+static inline int gives_check(Position const * const pos, u32 move)
+{
+	int from = from_sq(move),
+	    pt   = pos->board[from],
+	    to   = to_sq(move),
+	    c    = pos->stm,
+	    ksq  = pos->king_sq[c ^ 1];
+	u64 occ_tmp_bb,
+	    to_bb        = BB(to),
+	    occupancy_bb = (pos->bb[FULL] ^ BB(from)) | to_bb; // Move the piece
+	u64 const * bb = pos->bb;
+
+	// Check if after piece moves, opponent is in check by piece
+	if (get_all_atks(ksq, pt, c ^ 1, occupancy_bb) & to_bb)
+		return 1;
+
+	// Check if after piece moves, opponent is in check by sliders behind piece
+	if (   (Bmagic(ksq, occupancy_bb) & (bb[c] & (bb[BISHOP] | bb[QUEEN])))
+	    || (Rmagic(ksq, occupancy_bb) & (bb[c] & (bb[ROOK] | bb[QUEEN]))))
+		return 1;
+
+	// Handle different move types
+	int mt = move_type(move);
+	switch (mt) {
+	case NORMAL:
+		return 0;
+	case DOUBLE_PUSH:
+		return 0;
+	case ENPASSANT:
+		// Direct check handled and discovery handled
+		// Remove opponent's enpassant-ed pawn and recheck for discovery
+		occ_tmp_bb = occupancy_bb ^ pawn_shift(pos->state->ep_sq_bb, c ^ 1);
+		if (   (Bmagic(ksq, occ_tmp_bb) & (bb[c] & (bb[BISHOP] | bb[QUEEN])))
+		    || (Rmagic(ksq, occ_tmp_bb) & (bb[c] & (bb[ROOK] | bb[QUEEN]))))
+			return 1;
+		return 0;
+	case CASTLE:
+		// Relocate the rook on the occupancy bitboard
+		// Check for direct check from the castled rook
+		occ_tmp_bb = (to == G1 ? BB(H1) ^ BB(F1)
+			               : to == C1 ? BB(A1) ^ BB(D1)
+						  : to == G8 ? BB(H8) ^ BB(F8)
+							     : BB(A8) ^ BB(D8));
+		occupancy_bb ^= occ_tmp_bb;
+		if (Rmagic(ksq, occupancy_bb) & occ_tmp_bb)
+			return 1;
+		return 0;
+	case PROMOTION:
+		return (get_atks(ksq, prom_type(move), occupancy_bb) & to_bb) > 0ULL;
+	default:
+		printf("Error!\n");
+		return 0;
 	}
 }
 

@@ -112,12 +112,10 @@ void* engine_loop_xboard(void* args)
 		switch (engine->target_state) {
 		case WAITING:
 			engine->curr_state = WAITING;
-#ifndef TEST
 			pthread_mutex_lock(&engine->mutex);
 			while (engine->target_state == WAITING)
 				pthread_cond_wait(&engine->sleep_cv, &engine->mutex);
 			pthread_mutex_unlock(&engine->mutex);
-#endif
 			break;
 
 		case THINKING:
@@ -210,6 +208,7 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "quit", 4)) {
 
+			transition(&engine, WAITING);
 			transition(&engine, QUITTING);
 			goto cleanup_and_exit;
 

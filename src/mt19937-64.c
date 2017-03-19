@@ -56,7 +56,7 @@
 
 #include <stdio.h>
 
-#include "random.h" // To extern the functions
+#include "misc.h" // To extern the functions
 
 #define NN 312
 #define MM 156

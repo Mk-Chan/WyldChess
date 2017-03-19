@@ -1,3 +1,6 @@
+#ifndef MISC_H
+#define MISC_H
+
 /*
  * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016  Manik Charan
@@ -16,20 +19,21 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "random.h"
+#include <sys/time.h>
 
-u64 psq_keys[2][8][64];
-u64 castle_keys[16];
-u64 stm_key;
+#include "defs.h"
 
-void init_zobrist_keys()
-{
-	int i, j, k;
-	for (i = 0; i != 2; ++i)
-		for (j = 0; j != 8; ++j)
-			for (k = 0; k != 64; ++k)
-				psq_keys[i][j][k] = rng();
-	for (i = 0; i != 16; ++i)
-		castle_keys[i] = rng();
-	stm_key = rng();
-}
+#define rng(void) (genrand64_int64())
+
+extern void init_genrand64(u64 seed);
+extern u64 genrand64_int64(void);
+extern void init_zobrist_keys();
+
+extern u64 psq_keys[2][8][64];
+extern u64 castle_keys[16];
+extern u64 stm_key;
+
+extern void init_timer();
+extern unsigned long long curr_time();
+
+#endif

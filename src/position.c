@@ -18,7 +18,7 @@
 
 #include <stdio.h>
 #include "position.h"
-#include "random.h"
+#include "misc.h"
 
 int phase[8] = { 0, 0, 1, 10, 10, 20, 40, 0 };
 

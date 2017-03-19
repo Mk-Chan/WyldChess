@@ -345,23 +345,21 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 			continue;
 		++legal_moves;
 
-		do_move(pos, *move);
-
 		depth_left = depth - 1;
-		checking_move = (checkers(pos, !pos->stm) > 0ULL);
+		checking_move = gives_check(pos, *move);
 
 		// Futility pruning
 		if (    depth < 8
 		    &&  legal_moves > 1
+		    &&  best_val > -MAX_MATE_VAL
 		    &&  node_type != PV_NODE
-		    &&  pos->board[from_sq(*move)] != PAWN
+		    &&  move_type(*move) != PROMOTION
 		    && !checking_move
 		    && !cap_type(*move)
-		    &&  move_type(*move) != PROMOTION
-		    &&  static_eval + 100 * depth_left <= alpha) {
-			undo_move(pos);
+		    &&  static_eval + 100 * depth_left <= alpha)
 			continue;
-		}
+
+		do_move(pos, *move);
 
 		// Check extension
 		if (    checking_move

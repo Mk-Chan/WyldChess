@@ -18,7 +18,7 @@ do
 	make clean
 	make CC="$CC" RELEASE=$1 TARGET="$T" $2
 	make clean
-	make CC="$CC" RELEASE=$1 TARGET="$T" POPCNT=1 $2
+	make popcnt CC="$CC" RELEASE=$1 TARGET="$T" $2
 done
 
 make clean
@@ -29,6 +29,11 @@ BASE=wyldchess
 for T in "${TARGETS[@]}"
 do
 	mv $T "$BASE"_$T
+done
+
+for F in wyldchess_win64/*
+do
+	mv $F $F.exe
 done
 
 tar cvzf WyldChess_v$1_linux.tar.gz "$BASE"_linux

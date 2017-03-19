@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include "defs.h"
 #include "position.h"
-#include "timer.h"
+#include "misc.h"
 
 static u64 perft(Position* const pos, Movelist* list, u32 depth)
 {
