@@ -94,6 +94,37 @@ static int see(Position const * const pos, u32 move)
 	return swap_list[0];
 }
 
+static inline int see_to_sq(Position const * const pos, int to)
+{
+	int swap_list[32];
+	swap_list[0] = mg_val(piece_val[pos->board[to]]);
+	int c = pos->stm;
+	u64 occupied_bb = pos->bb[FULL];
+	u64 atkers_bb = all_atkers_to_sq(pos, to, occupied_bb) & occupied_bb;
+	c = !c;
+	u64 c_atkers_bb = atkers_bb & pos->bb[c];
+	int cap = pos->board[to];
+	int i;
+	for (i = 1; c_atkers_bb;) {
+		swap_list[i] = -swap_list[i - 1] + mg_val(piece_val[cap]);
+		cap = min_attacker(pos, to, c_atkers_bb, &occupied_bb, &atkers_bb);
+		if (cap == KING) {
+			if (c_atkers_bb == atkers_bb)
+				++i;
+			break;
+		}
+
+		c = !c;
+		c_atkers_bb = atkers_bb & pos->bb[c];
+		++i;
+	}
+
+	while (--i)
+		if (-swap_list[i] < swap_list[i - 1])
+			swap_list[i - 1] = -swap_list[i];
+	return swap_list[0];
+}
+
 static inline int cap_order(Position const * const pos, u32 const m)
 {
 	if (cap_type(m)) {
