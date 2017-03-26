@@ -19,6 +19,8 @@ do
 	make CC="$CC" RELEASE=$1 TARGET="$T" $2
 	make clean
 	make popcnt CC="$CC" RELEASE=$1 TARGET="$T" $2
+	make clean
+	make bmi CC="$CC" RELEASE=$1 TARGET="$T" $2
 done
 
 make clean

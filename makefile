@@ -37,10 +37,13 @@ all: $(OBJS)
 popcnt:
 	$(MAKE) CFLAGS="$(CFLAGS) -mpopcnt" EXEC="$(EXEC)_popcnt"
 
+bmi:
+	$(MAKE) CFLAGS="$(CFLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
+
 stats:
 	$(MAKE) CFLAGS="$(CFLAGS) -DSTATS"
 
-$(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(DEPS)
+$(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(HEADERS)
 	@-mkdir -p $(OBJ_PATH)
 	$(CC) $(CFLAGS) -c $< -o $@
 
