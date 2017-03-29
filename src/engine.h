@@ -54,15 +54,15 @@ typedef struct Controller_s {
 
 typedef struct Engine_s {
 
-	Position*   volatile pos;
-	Controller* volatile ctlr;
-	u32         volatile side;
-	int         volatile target_state;
-	int         volatile curr_state;
-	int         volatile game_over;
-	int                  protocol;
-	pthread_mutex_t      mutex;
-	pthread_cond_t       sleep_cv;
+	Position*       pos;
+	Controller*     ctlr;
+	pthread_mutex_t mutex;
+	pthread_cond_t  sleep_cv;
+	int             protocol;
+	int             side;
+	int             game_over;
+	int    volatile target_state;
+	int    volatile curr_state;
 
 } Engine;
 

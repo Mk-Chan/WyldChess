@@ -94,42 +94,13 @@ static int see(Position const * const pos, u32 move)
 	return swap_list[0];
 }
 
-static inline int see_to_sq(Position const * const pos, int to)
-{
-	int swap_list[32];
-	swap_list[0] = mg_val(piece_val[pos->board[to]]);
-	int c = pos->stm;
-	u64 occupied_bb = pos->bb[FULL];
-	u64 atkers_bb = all_atkers_to_sq(pos, to, occupied_bb) & occupied_bb;
-	c = !c;
-	u64 c_atkers_bb = atkers_bb & pos->bb[c];
-	int cap = pos->board[to];
-	int i;
-	for (i = 1; c_atkers_bb;) {
-		swap_list[i] = -swap_list[i - 1] + mg_val(piece_val[cap]);
-		cap = min_attacker(pos, to, c_atkers_bb, &occupied_bb, &atkers_bb);
-		if (cap == KING) {
-			if (c_atkers_bb == atkers_bb)
-				++i;
-			break;
-		}
-
-		c = !c;
-		c_atkers_bb = atkers_bb & pos->bb[c];
-		++i;
-	}
-
-	while (--i)
-		if (-swap_list[i] < swap_list[i - 1])
-			swap_list[i - 1] = -swap_list[i];
-	return swap_list[0];
-}
-
 static inline int cap_order(Position const * const pos, u32 const m)
 {
 	if (cap_type(m)) {
-		int cap_val        = mg_val(piece_val[pos->board[to_sq(m)]]);
-		int capper_pt      = pos->board[from_sq(m)];
+		int cap_val   = mg_val(piece_val[pos->board[to_sq(m)]]);
+		int capper_pt = pos->board[from_sq(m)];
+		if (move_type(m) == PROMOTION)
+			cap_val += mg_val(piece_val[prom_type(m)]);
 		if (cap_val - mg_val(piece_val[capper_pt]) > equal_cap_bound)
 			return GOOD_CAP + cap_val - capper_pt;
 	}
@@ -142,21 +113,6 @@ static inline int cap_order(Position const * const pos, u32 const m)
 	else
 		cap_order = BAD_CAP;
 	return cap_order + see_val;
-}
-
-static inline void sort_moves(u32* const move_arr, u32* const order_arr, u32 len)
-{
-	u32 to_shift, to_shift_order, i, j;
-	for (i = 1; i < len; ++i) {
-		to_shift = move_arr[i];
-		to_shift_order = order_arr[i];
-		for (j = i; j && to_shift_order > order_arr[j - 1]; --j) {
-			move_arr[j] = move_arr[j - 1];
-			order_arr[j] = order_arr[j - 1];
-		}
-		move_arr[j] = to_shift;
-		order_arr[j] = to_shift_order;
-	}
 }
 
 static inline int stopped(Engine* const engine)
@@ -196,7 +152,7 @@ static int valid_move(Position* const pos, u32* move)
 	    to   = to_sq(*move),
 	    mt   = move_type(*move),
 	    prom = prom_type(*move);
-	static Movelist list;
+	Movelist list;
 	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
@@ -214,7 +170,7 @@ static int valid_move(Position* const pos, u32* move)
 
 static inline int get_stored_moves(Position* const pos, int depth)
 {
-	static char mstr[6];
+	char mstr[6];
 	if (!depth)
 		return 0;
 	PV_Entry entry = pvt_probe(&pvt, pos->state->pos_key);

@@ -18,6 +18,66 @@
 
 #include "search.h"
 
+static void order_moves(Position* const pos, Search_Stack* const ss, u32 tt_move)
+{
+	Movelist* list = &ss->list;
+	u32* order_list = ss->order_arr;
+	u32* move;
+	u32* order;
+	for (move = list->moves, order = order_list; move < list->end; ++move, ++order) {
+		if (*move == tt_move) {
+			*order = HASH_MOVE;
+		} else if (   cap_type(*move)
+			   || move_type(*move) == ENPASSANT) {
+			*order = cap_order(pos, *move);
+		} else {
+			if (*move == ss->killers[0])
+				*order = KILLER + 3;
+
+			else if (*move == ss->killers[1])
+				*order = KILLER + 2;
+
+			else if (*move == (ss - 2)->killers[0])
+				*order = KILLER + 1;
+
+			else if (*move == (ss - 2)->killers[1])
+				*order = KILLER;
+
+			else if (prom_type(*move) == QUEEN)
+				*order = QUEEN_PROM;
+
+			else if (is_passed_pawn(pos, from_sq(*move), pos->stm))
+				*order = QUIET + 2;
+
+			else if (move_type(*move) == CASTLE)
+				*order = QUIET + 1;
+
+			else
+				*order = QUIET;
+		}
+	}
+}
+
+static u32 get_next_move(Search_Stack* const ss)
+{
+	if (ss->list.end == ss->list.moves)
+		return 0;
+	Movelist* list = &ss->list;
+	u32* order = ss->order_arr;
+	int len = list->end - list->moves;
+	int best_index = 0;
+	int i = 1;
+	for (; i < len; ++i) {
+		if (order[i] > order[best_index])
+			best_index = i;
+	}
+	u32 best_move = list->moves[best_index];
+	--list->end;
+	list->moves[best_index] = *list->end;
+	order[best_index] = order[len - 1];
+	return best_move;
+}
+
 static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
 {
 	if ( !(engine->ctlr->nodes_searched & 0x7ff)
@@ -56,11 +116,9 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 			alpha = eval;
 	}
 
-	u32* order_list = ss->order_arr;
 	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
-	u32* move;
 	if (checked) {
 		gen_check_evasions(pos, list);
 		if (list->end == list->moves)
@@ -70,26 +128,15 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		gen_captures(pos, list);
 	}
 
-	u32* order;
-	for (move = list->moves, order = order_list; move < list->end; ++move, ++order) {
-		if (   cap_type(*move)
-		    || move_type(*move) == ENPASSANT) {
-			*order = cap_order(pos, *move);
-		} else if (   move_type(*move) == PROMOTION
-			   && prom_type(*move) == QUEEN) {
-			*order = QUEEN_PROM;
-		} else {
-			*order = 0;
-		}
-	}
-	sort_moves(list->moves, order_list, list->end - list->moves);
+	order_moves(pos, ss, 0);
 
 	int val;
 #ifdef STATS
 	u32 legal_moves = 0;
 #endif
-	for (move = list->moves; move != list->end; ++move) {
-		if (!legal_move(pos, *move))
+	u32 move;
+	while ((move = get_next_move(ss))) {
+		if (!legal_move(pos, move))
 			continue;
 #ifdef STATS
 		++legal_moves;
@@ -97,14 +144,14 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 
 		// Futility pruning
 		if (!checked) {
-			val = eval + mg_val(piece_val[pos->board[to_sq(*move)]]) + (mg_val(piece_val[PAWN]) / 2);
-			if (move_type(*move) == PROMOTION)
-				val += mg_val(piece_val[prom_type(*move)]);
+			val = eval + mg_val(piece_val[pos->board[to_sq(move)]]) + (mg_val(piece_val[PAWN]) / 2);
+			if (move_type(move) == PROMOTION)
+				val += mg_val(piece_val[prom_type(move)]);
 			if (val <= alpha)
 				continue;
 		}
 
-		do_move(pos, *move);
+		do_move(pos, move);
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
 		undo_move(pos);
 		if (ctlr->is_stopped)
@@ -247,99 +294,53 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 		tt_move = get_move(entry.data);
 	}
 
-	u32* order_list = ss->order_arr;
 	Movelist* list  = &ss->list;
 	list->end       = list->moves;
 	set_pinned(pos);
 	gen_pseudo_legal_moves(pos, list);
 
-	/*
-	 *  Move ordering:
-	 *   1. Hash move
-	 *   2. Good captures
-	 *   3. Queen promotions
-	 *   4. Equal captures
-	 *   5. Killer moves
-	 *   6. Killer moves from 2 plies ago
-	 *   7. Minor promotions
-	 *   8. Bad captures
-	 *   9. Passed pawn push
-	 *  10. Castling
-	 *  11. Rest
-	 */
-	u32* move;
-	u32* order;
-	for (move = list->moves, order = order_list; move != list->end; ++move, ++order) {
-		if (*move == tt_move) {
-			*order = HASH_MOVE;
-		} else if (   cap_type(*move)
-			   || move_type(*move) == ENPASSANT) {
-			*order = cap_order(pos, *move);
-		} else {
-			if (*move == ss->killers[0])
-				*order = KILLER + 3;
-
-			else if (*move == ss->killers[1])
-				*order = KILLER + 2;
-
-			else if (*move == (ss - 2)->killers[0])
-				*order = KILLER + 1;
-
-			else if (*move == (ss - 2)->killers[1])
-				*order = KILLER;
-
-			else if (prom_type(*move) == QUEEN)
-				*order = QUEEN_PROM;
-
-			else if (is_passed_pawn(pos, from_sq(*move), pos->stm))
-				*order = QUIET + 2;
-
-			else if (move_type(*move) == CASTLE)
-				*order = QUIET + 1;
-
-			else
-				*order = QUIET;
-		}
-	}
-
-	sort_moves(list->moves, order_list, list->end - list->moves);
+	order_moves(pos, ss, tt_move);
 
 	int old_alpha   = alpha,
 	    best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
 	int checking_move, depth_left;
-	for (move = list->moves, order = order_list; move != list->end; ++move, ++order) {
-		if (!legal_move(pos, *move))
+	u32 move;
+	while ((move = get_next_move(ss))) {
+		if (!legal_move(pos, move))
 			continue;
 		++legal_moves;
 
 		depth_left = depth - 1;
-		checking_move = gives_check(pos, *move);
+		checking_move = gives_check(pos, move);
 
 		// Futility pruning
 		if (    depth < 8
 		    &&  legal_moves > 1
 		    &&  best_val > -MAX_MATE_VAL
 		    &&  node_type != PV_NODE
-		    &&  move_type(*move) != PROMOTION
+		    &&  move_type(move) != PROMOTION
 		    && !checking_move
-		    && !cap_type(*move)
+		    && !cap_type(move)
 		    &&  static_eval + 100 * depth_left <= alpha)
 			continue;
 
-		do_move(pos, *move);
-
 		// Check extension
 		if (    checking_move
-		    && (depth == 1 || (cap_type(*move) ? *order > BAD_CAP : see_to_sq(pos, to_sq(*move)) > -equal_cap_bound)))
+		    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
 			++depth_left;
 
 		// Late move reduction
 		if (    ss->ply
 		    &&  depth > 2
 		    &&  legal_moves > (node_type == PV_NODE ? 5 : 3)
-		    &&  *order <= QUIET + 2
+		    &&  move != ss->killers[0]
+		    &&  move != ss->killers[1]
+		    &&  move != (ss-2)->killers[0]
+		    &&  move != (ss-2)->killers[1]
+		    &&  prom_type(move) != QUEEN
+		    && !cap_type(move)
 		    && !checking_move
 		    && !checked) {
 			int reduction = 2
@@ -347,6 +348,8 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 				     + (node_type != PV_NODE);
 			depth_left = max(1, depth - reduction);
 		}
+
+		do_move(pos, move);
 
 		// Principal Variation Search
 		if (   legal_moves == 1
@@ -382,7 +385,7 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 
 		if (val > best_val) {
 			best_val  = val;
-			best_move = *move;
+			best_move = move;
 
 			if (val > alpha) {
 				alpha = val;
@@ -396,12 +399,12 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 					if (node_type == CUT_NODE)
 						++pos->stats.correct_nt_guess;
 #endif
-					if (  !cap_type(*move)
-					    && ss->killers[0] != *move
-					    && move_type(*move) != ENPASSANT
-					    && move_type(*move) != PROMOTION) {
+					if (  !cap_type(move)
+					    && ss->killers[0] != move
+					    && move_type(move) != ENPASSANT
+					    && move_type(move) != PROMOTION) {
 						ss->killers[1] = ss->killers[0];
-						ss->killers[0] = *move;
+						ss->killers[0] = move;
 					}
 					tt_store(&tt, best_val, FLAG_LOWER, depth, best_move, pos->state->pos_key);
 					return best_val;
