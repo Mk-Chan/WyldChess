@@ -34,6 +34,9 @@ all: $(OBJS)
 	@-mkdir -p $(EXEC_PATH)
 	$(CC) $(CFLAGS) $^ -o $(BIN) $(EXT_LIBS)
 
+profiling:
+	$(MAKE) CFLAGS="$(CFLAGS) -mbmi -mbmi2 -mpopcnt -g -fno-omit-frame-pointer"
+
 popcnt:
 	$(MAKE) CFLAGS="$(CFLAGS) -mpopcnt" EXEC="$(EXEC)_popcnt"
 
@@ -42,6 +45,9 @@ bmi:
 
 stats:
 	$(MAKE) CFLAGS="$(CFLAGS) -DSTATS"
+
+plain:
+	$(MAKE) CFLAGS="$(CFLAGS) -DPLAIN_AB"
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(HEADERS)
 	@-mkdir -p $(OBJ_PATH)

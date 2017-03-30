@@ -142,14 +142,18 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 		++legal_moves;
 #endif
 
+#ifndef PLAIN_AB
 		// Futility pruning
-		if (!checked) {
-			val = eval + mg_val(piece_val[pos->board[to_sq(move)]]) + (mg_val(piece_val[PAWN]) / 2);
+		if (   !checked
+		    &&  alpha > -MAX_MATE_VAL
+		    && !gives_check(pos, move)) {
+			val = eval + mg_val(piece_val[cap_type(move)]) + (mg_val(piece_val[PAWN]) / 2);
 			if (move_type(move) == PROMOTION)
 				val += mg_val(piece_val[prom_type(move)]);
 			if (val <= alpha)
 				continue;
 		}
+#endif
 
 		do_move(pos, move);
 		val = -qsearch(engine, ss + 1, -beta, -alpha);
@@ -204,6 +208,7 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 #endif
 	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
 	u32 tt_move    = 0;
+#ifndef PLAIN_AB
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
 #ifdef STATS
 		++pos->stats.hash_hits;
@@ -227,6 +232,7 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 				return val;
 		}
 	}
+#endif
 
 	++ctlr->nodes_searched;
 
@@ -237,6 +243,7 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 	if (node_type != PV_NODE)
 		static_eval = evaluate(pos);
 
+#ifndef PLAIN_AB
 	// Null move pruning
 	if (      depth >= 4
 	    &&    node_type == CUT_NODE
@@ -267,11 +274,13 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 			}
 		}
 	}
+#endif
 
 	// Internal iterative deepening
 #ifdef STATS
 	int iid = 0;
 #endif
+#ifndef PLAIN_AB
 	// Conditions similar to stockfish as of now, seems to be effective
 	if (   !tt_move
 	    &&  depth >= 5
@@ -293,6 +302,7 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 		entry   = tt_probe(&tt, pos->state->pos_key);
 		tt_move = get_move(entry.data);
 	}
+#endif
 
 	Movelist* list  = &ss->list;
 	list->end       = list->moves;
@@ -315,6 +325,12 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 		depth_left = depth - 1;
 		checking_move = gives_check(pos, move);
 
+		// Check extension
+		if (    checking_move
+		    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
+			++depth_left;
+
+#ifndef PLAIN_AB
 		// Futility pruning
 		if (    depth < 8
 		    &&  legal_moves > 1
@@ -325,11 +341,6 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 		    && !cap_type(move)
 		    &&  static_eval + 100 * depth_left <= alpha)
 			continue;
-
-		// Check extension
-		if (    checking_move
-		    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
-			++depth_left;
 
 		// Late move reduction
 		if (    ss->ply
@@ -348,6 +359,7 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 				     + (node_type != PV_NODE);
 			depth_left = max(1, depth - reduction);
 		}
+#endif
 
 		do_move(pos, move);
 
