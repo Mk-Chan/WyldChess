@@ -44,7 +44,7 @@ bmi:
 	$(MAKE) CFLAGS="$(CFLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
 
 stats:
-	$(MAKE) CFLAGS="$(CFLAGS) -DSTATS"
+	$(MAKE) CFLAGS="$(CFLAGS) -DSTATS -mbmi -mbmi2 -mpopcnt"
 
 plain:
 	$(MAKE) CFLAGS="$(CFLAGS) -DPLAIN_AB"
@@ -56,4 +56,5 @@ $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(HEADERS)
 clean:
 	-rm -f $(OBJS)
 	-rm -f wyldchess
+	-rm -f wyldchess_bmi
 	-rm -f wyldchess_popcnt
