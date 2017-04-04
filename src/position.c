@@ -87,7 +87,7 @@ void init_pos(Position* pos, State* state_list)
 	pos->state->piece_psq_eval[BLACK] = 0;
 }
 
-int set_pos(Position* pos, char* fen)
+int set_pos(Position* pos, std::string fen)
 {
 	u32 piece, pt, sq, pc,
 	    tsq   = 0,

@@ -36,8 +36,8 @@ enum States {
 	QUITTING
 };
 
-typedef struct Controller_s {
-
+struct Controller
+{
 	int is_stopped;
 	int analyzing;
 	int time_dependent;
@@ -49,11 +49,10 @@ typedef struct Controller_s {
 	u64 search_start_time;
 	u64 search_end_time;
 	u64 nodes_searched;
+};
 
-} Controller;
-
-typedef struct Engine_s {
-
+struct Engine
+{
 	Position*       pos;
 	Controller*     ctlr;
 	pthread_mutex_t mutex;
@@ -63,16 +62,15 @@ typedef struct Engine_s {
 	int             game_over;
 	int    volatile target_state;
 	int    volatile curr_state;
+};
 
-} Engine;
-
-static inline void sync(Engine const * const engine)
+inline void sync(Engine const * const engine)
 {
 	while (engine->curr_state != engine->target_state)
 		continue;
 }
 
-static inline void transition(Engine* const engine, int target_state)
+inline void transition(Engine* const engine, int target_state)
 {
 	if (engine->curr_state == WAITING) {
 		pthread_mutex_lock(&engine->mutex);
@@ -85,7 +83,7 @@ static inline void transition(Engine* const engine, int target_state)
 	sync(engine);
 }
 
-static inline void start_thinking(Engine* const engine)
+inline void start_thinking(Engine* const engine)
 {
 	Controller* const ctlr  = engine->ctlr;
 	ctlr->search_start_time = curr_time();

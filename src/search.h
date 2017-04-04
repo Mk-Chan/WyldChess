@@ -22,16 +22,15 @@
 #include "engine.h"
 #include "tt.h"
 
-typedef struct Search_Stack_s {
-
-	u32      node_type;
-	u32      early_prune;
-	u32      ply;
-	u32      killers[2];
-	u32      order_arr[MAX_MOVES_PER_POS];
+struct SearchStack
+{
+	int node_type;
+	int early_prune;
+	u32 ply;
+	u32 killers[2];
+	u32 order_arr[MAX_MOVES_PER_POS];
 	Movelist list;
-
-} Search_Stack;
+};
 
 static int equal_cap_bound = 50;
 
@@ -94,7 +93,7 @@ static int see(Position const * const pos, u32 move)
 	return swap_list[0];
 }
 
-static inline int cap_order(Position const * const pos, u32 const m)
+inline int cap_order(Position const * const pos, u32 const m)
 {
 	if (cap_type(m)) {
 		int cap_val   = mg_val(piece_val[pos->board[to_sq(m)]]);
@@ -115,7 +114,7 @@ static inline int cap_order(Position const * const pos, u32 const m)
 	return cap_order + see_val;
 }
 
-static inline int stopped(Engine* const engine)
+inline int stopped(Engine* const engine)
 {
 	if (engine->ctlr->is_stopped)
 		return 1;
@@ -133,7 +132,7 @@ static inline int stopped(Engine* const engine)
 	return 0;
 }
 
-static inline int is_repeat(Position* const pos)
+inline int is_repeat(Position* const pos)
 {
 	u64 curr_pos_key = pos->state->pos_key;
 	State* ptr       = pos->state - 2;
@@ -168,12 +167,12 @@ static int valid_move(Position* const pos, u32* move)
 	return 0;
 }
 
-static inline int get_stored_moves(Position* const pos, int depth)
+inline int get_stored_moves(Position* const pos, int depth)
 {
 	char mstr[6];
 	if (!depth)
 		return 0;
-	PV_Entry entry = pvt_probe(&pvt, pos->state->pos_key);
+	PVEntry entry = pvt_probe(&pvt, pos->state->pos_key);
 	if (entry.key == pos->state->pos_key) {
 		u32 move = get_move(entry.move);
 		if (  !valid_move(pos, &move)
@@ -190,7 +189,7 @@ static inline int get_stored_moves(Position* const pos, int depth)
 	return 0;
 }
 
-static inline void clear_search(Engine* const engine, Search_Stack* const ss)
+inline void clear_search(Engine* const engine, SearchStack* const ss)
 {
 	Controller* const ctlr = engine->ctlr;
 	ctlr->is_stopped       = 0;
@@ -208,7 +207,7 @@ static inline void clear_search(Engine* const engine, Search_Stack* const ss)
 	pos->stats.hash_hits          = 0;
 #endif
 	u32 i, j;
-	Search_Stack* curr;
+	SearchStack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
 		curr              = ss + i;
 		curr->node_type   = ALL_NODE;

@@ -39,9 +39,9 @@ extern u64 color_sq_mask[2];
 extern u64 adjacent_forward_mask[2][64];
 extern u64 outpost_ranks_mask[2];
 
-extern u32 distance[64][64];
-extern u32 sq_color[64];
-extern u32 rank_lookup[2][8];
+extern int distance[64][64];
+extern int sq_color[64];
+extern int rank_lookup[2][8];
 
 extern u64 rank_mask[8];
 extern u64 file_mask[8];

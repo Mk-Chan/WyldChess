@@ -25,8 +25,8 @@
 #include "magicmoves.h"
 
 #ifdef STATS
-typedef struct Stats_s {
-
+struct Stats
+{
 	u64 correct_nt_guess;
 	u64 iid_cutoffs;
 	u64 iid_tries;
@@ -37,32 +37,28 @@ typedef struct Stats_s {
 	u64 hash_probes;
 	u64 hash_hits;
 	u64 total_nodes;
+};
 
-} Stats;
-
-typedef struct Eval_Stats_s {
-
+struct EvalStats
+{
 	int piece_psq_eval[2];
 	int pt_score[2][7];
 	int passed_pawn[2];
 	int king_atks[2];
+};
 
-} Eval_Stats;
-
-Eval_Stats es;
+extern EvalStats es;
 
 #endif
 
-typedef struct Movelist_s {
-
+struct Movelist
+{
 	u32  moves[MAX_MOVES_PER_POS];
 	u32* end;
+};
 
-} Movelist;
-
-typedef struct State_s {
-
-	u32  move;
+struct State
+{
 	u64  pinned_bb;
 	u64  checkers_bb;
 	u64  ep_sq_bb;
@@ -70,25 +66,24 @@ typedef struct State_s {
 	u32  castling_rights;
 	u32  fifty_moves;
 	u32  full_moves;
+	u32  move;
 	int  phase;
 	int  piece_psq_eval[2];
+};
 
-} State;
-
-typedef struct Position_s {
-
+struct Position
+{
 	u64    bb[9];
-	u32    stm;
-	u32    king_sq[2];
-	u32    board[64];
+	int    stm;
+	int    king_sq[2];
+	int    board[64];
 	State* state;
 	State* hist;
 
 #ifdef STATS
 	Stats  stats;
 #endif
-
-} Position;
+};
 
 extern int piece_val[8];
 extern int psqt[2][8][64];
@@ -100,7 +95,7 @@ extern void print_board(Position* pos);
 extern void performance_test(Position* const pos, u32 max_depth);
 
 extern void init_pos(Position* pos, State* state);
-extern int set_pos(Position* pos, char* fen);
+extern int set_pos(Position* pos, std::string fen);
 extern Position get_position_copy(Position const * const pos);
 
 extern void do_null_move(Position* const pos);
@@ -116,7 +111,7 @@ extern void gen_check_evasions(Position* pos, Movelist* list);
 extern int evaluate(Position* const pos);
 extern void tune();
 
-static inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
+inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
 	u64 from_to       = BB(from) ^ BB(to);
 	pos->bb[FULL]    ^= from_to;
@@ -126,7 +121,7 @@ static inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u3
 	pos->board[from]  = 0;
 }
 
-static inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
+inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 set         = BB(sq);
 	pos->bb[FULL]  |= set;
@@ -135,7 +130,7 @@ static inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->board[sq]  = pt;
 }
 
-static inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
+inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 clr         = BB(sq);
 	pos->bb[FULL]  ^= clr;
@@ -144,7 +139,7 @@ static inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->board[sq]  = 0;
 }
 
-static inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
+inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
 	u64 from_to          = BB(from) ^ BB(to);
 	pos->bb[FULL]       ^= from_to;
@@ -156,7 +151,7 @@ static inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 	pos->state->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
 }
 
-static inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
+inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 set              = BB(sq);
 	pos->bb[FULL]       |= set;
@@ -168,7 +163,7 @@ static inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->state->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
 }
 
-static inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
+inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 clr              = BB(sq);
 	pos->bb[FULL]       ^= clr;
@@ -180,17 +175,17 @@ static inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->state->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
 }
 
-static inline u64 pawn_shift(u64 bb, u32 c)
+inline u64 pawn_shift(u64 bb, u32 c)
 {
 	return (c == WHITE ? bb << 8 : bb >> 8);
 }
 
-static inline u64 pawn_double_shift(u64 bb, u32 c)
+inline u64 pawn_double_shift(u64 bb, u32 c)
 {
 	return (c == WHITE ? bb << 16 : bb >> 16);
 }
 
-static inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
+inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 {
 	switch (pt) {
 	case KNIGHT: return n_atks_bb[sq];
@@ -202,7 +197,7 @@ static inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 	}
 }
 
-static inline u64 get_all_atks(u32 sq, u32 pt, u32 c, u64 occupancy)
+inline u64 get_all_atks(u32 sq, u32 pt, u32 c, u64 occupancy)
 {
 	switch (pt) {
 	case PAWN:   return p_atks_bb[c][sq];
@@ -215,7 +210,7 @@ static inline u64 get_all_atks(u32 sq, u32 pt, u32 c, u64 occupancy)
 	}
 }
 
-static inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
+inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
 {
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
 		| ( pos->bb[PAWN]                     & p_atks_bb[!by_color][sq])
@@ -225,7 +220,7 @@ static inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color,
 		& pos->bb[by_color];
 }
 
-static inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
+inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
 {
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
 		| ( pos->bb[PAWN]                     & pos->bb[WHITE] & p_atks_bb[BLACK][sq])
@@ -235,7 +230,7 @@ static inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occup
 		| ( pos->bb[KING]                     & k_atks_bb[sq]));
 }
 
-static inline u64 checkers(Position const * const pos, u32 by_color)
+inline u64 checkers(Position const * const pos, u32 by_color)
 {
 	const u32 sq = pos->king_sq[!by_color];
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
@@ -246,7 +241,7 @@ static inline u64 checkers(Position const * const pos, u32 by_color)
 		& pos->bb[by_color];
 }
 
-static inline u64 get_pinned(Position* const pos, int to_color)
+inline u64 get_pinned(Position* const pos, int to_color)
 {
 	u32 const ksq = pos->king_sq[to_color];
 	u32 sq;
@@ -268,17 +263,17 @@ static inline u64 get_pinned(Position* const pos, int to_color)
 	return pinned_bb;
 }
 
-static inline void set_pinned(Position* const pos)
+inline void set_pinned(Position* const pos)
 {
 	pos->state->pinned_bb = get_pinned(pos, pos->stm);
 }
 
-static inline void set_checkers(Position* pos)
+inline void set_checkers(Position* pos)
 {
 	pos->state->checkers_bb = checkers(pos, !pos->stm);
 }
 
-static inline int insufficient_material(Position* const pos)
+inline int insufficient_material(Position* const pos)
 {
 	u64 const * const bb = pos->bb;
 	if (bb[PAWN] | bb[QUEEN] | bb[ROOK])
@@ -302,7 +297,7 @@ static inline int insufficient_material(Position* const pos)
 }
 
 // Idea from Stockfish
-static inline int legal_move(Position* const pos, u32 move)
+inline int legal_move(Position* const pos, u32 move)
 {
 	u32 c    = pos->stm;
 	u32 from = from_sq(move);
@@ -324,7 +319,7 @@ static inline int legal_move(Position* const pos, u32 move)
 }
 
 // Idea taken from Stockfish
-static inline int gives_check(Position const * const pos, u32 move)
+inline int gives_check(Position const * const pos, u32 move)
 {
 	int from = from_sq(move),
 	    pt   = pos->board[from],
@@ -379,7 +374,7 @@ static inline int gives_check(Position const * const pos, u32 move)
 	}
 }
 
-static inline void move_str(u32 move, char str[6])
+inline void move_str(u32 move, char str[6])
 {
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
@@ -410,7 +405,7 @@ static inline void move_str(u32 move, char str[6])
 	str[5] = '\0';
 }
 
-static inline u32 parse_move(Position* pos, char* str)
+inline u32 parse_move(Position* pos, char* str)
 {
 	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
 	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
@@ -444,7 +439,7 @@ static inline u32 parse_move(Position* pos, char* str)
 	return 0;
 }
 
-static inline int is_passed_pawn(Position* const pos, int sq, int c)
+inline int is_passed_pawn(Position* const pos, int sq, int c)
 {
 	return (    (pos->board[sq] == PAWN)
 		&& !(passed_pawn_mask[c][sq] & pos->bb[PAWN] & pos->bb[!c])

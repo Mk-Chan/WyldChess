@@ -40,9 +40,9 @@ u64 color_sq_mask[2];
 u64 adjacent_forward_mask[2][64];
 u64 outpost_ranks_mask[2];
 
-u32 distance[64][64];
-u32 sq_color[64];
-u32 rank_lookup[2][8];
+int distance[64][64];
+int sq_color[64];
+int rank_lookup[2][8];
 
 u64 rank_mask[8] = {
 	0xffULL,

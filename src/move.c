@@ -21,16 +21,16 @@
 
 void do_null_move(Position* const pos)
 {
-	State*  const curr = pos->state;
-	State*  const next = ++pos->state;
+	State* const curr = pos->state;
+	State* const next = ++pos->state;
 
+	pos->stm                   ^= 1;
 	next->full_moves            = curr->full_moves + 1;
 	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
 	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
 	next->fifty_moves           = curr->fifty_moves + 1;
-	next->ep_sq_bb              = 0;
+	next->ep_sq_bb              = 0ULL;
 	next->castling_rights       = curr->castling_rights;
-	pos->stm                   ^= 1;
 	next->pos_key               = curr->pos_key ^ stm_key;
 	if (curr->ep_sq_bb)
 		next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
@@ -218,8 +218,8 @@ void do_move(Position* const pos, u32 const m)
 
 	pos->stm ^= 1;
 
-	next->castling_rights =  (curr->castling_rights & castle_perms[from]) & castle_perms[to];
-	next->pos_key        ^=   stm_key
-		                ^ castle_keys[curr->castling_rights]
-		                ^ castle_keys[next->castling_rights];
+	next->castling_rights = (curr->castling_rights & castle_perms[from]) & castle_perms[to];
+	next->pos_key        ^=  stm_key
+		               ^ castle_keys[curr->castling_rights]
+		               ^ castle_keys[next->castling_rights];
 }

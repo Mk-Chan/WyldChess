@@ -20,13 +20,13 @@
 #include "position.h"
 #include "magicmoves.h"
 
-static inline void add_move(u32 m, Movelist* list)
+inline void add_move(u32 m, Movelist* list)
 {
 	*list->end = m;
 	++list->end;
 }
 
-static void extract_moves(u32 from, u64 atks_bb, Movelist* list)
+static void extract_moves(int from, u64 atks_bb, Movelist* list)
 {
 	u32 to;
 	while (atks_bb) {
@@ -36,9 +36,9 @@ static void extract_moves(u32 from, u64 atks_bb, Movelist* list)
 	}
 }
 
-static void extract_caps(Position* const pos, u32 from, u64 atks_bb, Movelist* list)
+static void extract_caps(Position* const pos, int from, u64 atks_bb, Movelist* list)
 {
-	u32 to;
+	int to;
 	while (atks_bb) {
 		to       = bitscan(atks_bb);
 		atks_bb &= atks_bb - 1;
@@ -49,8 +49,8 @@ static void extract_caps(Position* const pos, u32 from, u64 atks_bb, Movelist* l
 static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list)
 {
 	u64 blockers_poss_bb, pawn_block_poss_bb;
-	u32 blocking_sq, blocker;
-	u32 const c              = pos->stm;
+	int blocking_sq, blocker;
+	int const c              = pos->stm;
 	u64       pawns_bb       = pos->bb[PAWN] & pos->bb[c];
 	u64 const inlcusion_mask = ~(pawns_bb | pos->bb[KING] | pos->state->pinned_bb),
 	          full_bb        = pos->bb[FULL],
@@ -86,15 +86,15 @@ static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list
 static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 {
 	u64 atkers_bb;
-	u32 checker, atker, checker_pt;
-	u32 const c             = pos->stm;
+	int checker, atker, checker_pt;
+	int const c             = pos->stm;
 	u64 const pawns_bb      = pos->bb[PAWN] & pos->bb[c],
 	          non_king_mask = ~pos->bb[KING],
 	          ep_sq_bb      = pos->state->ep_sq_bb,
 		  full_bb       = pos->bb[FULL];
 	if (    ep_sq_bb
 	    && (pawn_shift(ep_sq_bb, !c) & checkers_bb)) {
-		u32 const ep_sq = bitscan(ep_sq_bb);
+		int const ep_sq = bitscan(ep_sq_bb);
 		u64 ep_poss     = pawns_bb & p_atks_bb[!c][ep_sq];
 		while (ep_poss) {
 			atker    = bitscan(ep_poss);
@@ -125,7 +125,7 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 
 void gen_check_evasions(Position* pos, Movelist* list)
 {
-	u32 const c   = pos->stm,
+	int const c   = pos->stm,
 	          ksq = pos->king_sq[c];
 
 	u64 checkers_bb = pos->state->checkers_bb,
@@ -134,7 +134,7 @@ void gen_check_evasions(Position* pos, Movelist* list)
 	u64 const full_bb      = pos->bb[FULL];
 	u64 const sans_king_bb = full_bb ^ BB(ksq);
 
-	u32 sq;
+	int sq;
 	while (evasions_bb) {
 		sq = bitscan(evasions_bb);
 		evasions_bb &= evasions_bb - 1;
@@ -158,11 +158,11 @@ void gen_check_evasions(Position* pos, Movelist* list)
 static void gen_pawn_captures(Position* pos, Movelist* list)
 {
 	u64 cap_candidates;
-	u32 from, to, cap_pt;
-	u32 const  c        = pos->stm;
+	int from, to, cap_pt;
+	int const  c        = pos->stm;
 	u64        pawns_bb = pos->bb[PAWN] & pos->bb[c];
 	if (pos->state->ep_sq_bb) {
-		u32 const ep_sq   = bitscan(pos->state->ep_sq_bb);
+		int const ep_sq   = bitscan(pos->state->ep_sq_bb);
 		u64       ep_poss = pawns_bb & p_atks_bb[!c][ep_sq];
 		while (ep_poss) {
 			from     = bitscan(ep_poss);
@@ -192,8 +192,8 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 
 void gen_captures(Position* pos, Movelist* list)
 {
-	u32 from, pt;
-	u32 const c          = pos->stm;
+	int from, pt;
+	int const c          = pos->stm;
 	u64 const full_bb    = pos->bb[FULL],
 	          enemy_mask = pos->bb[!c],
 	          us_mask    = pos->bb[c];
@@ -214,7 +214,7 @@ void gen_captures(Position* pos, Movelist* list)
 static void gen_pawn_quiets(Position* pos, Movelist* list)
 {
 	u64 single_push, from;
-	u32 const c            = pos->stm;
+	int const c            = pos->stm;
 	u64 const vacancy_mask = ~pos->bb[FULL];
 	u64       pawns_bb     = pos->bb[PAWN] & pos->bb[c];
 	while (pawns_bb) {
@@ -224,7 +224,7 @@ static void gen_pawn_quiets(Position* pos, Movelist* list)
 		if (single_push & vacancy_mask) {
 			if (   (single_push & rank_mask[RANK_1])
 			    || (single_push & rank_mask[RANK_8])) {
-				u32 const fr = bitscan(from),
+				int const fr = bitscan(from),
 				          to = bitscan(single_push);
 				add_move(move_prom(fr, to, TO_QUEEN), list);
 				add_move(move_prom(fr, to, TO_KNIGHT), list);
@@ -248,15 +248,15 @@ static void gen_pawn_quiets(Position* pos, Movelist* list)
 
 static void gen_castling(Position* pos, Movelist* list)
 {
-	static u32 const castling_poss[2][2] = {
+	static int const castling_poss[2][2] = {
 		{ WKC, WQC },
 		{ BKC, BQC }
 	};
-	static u32 const castling_intermediate_sqs[2][2][2] = {
+	static int const castling_intermediate_sqs[2][2][2] = {
 		{ { F1, G1 }, { D1, C1 } },
 		{ { F8, G8 }, { D8, C8 } }
 	};
-	static u32 const castling_king_sqs[2][2][2] = {
+	static int const castling_king_sqs[2][2][2] = {
 		{ { E1, G1 }, { E1, C1 } },
 		{ { E8, G8 }, { E8, C8 } }
 	};
@@ -265,7 +265,7 @@ static void gen_castling(Position* pos, Movelist* list)
 		{ (BB(F8) | BB(G8)), (BB(D8) | BB(C8) | BB(B8)) }
 	};
 
-	u32 const c       = pos->stm;
+	int const c       = pos->stm;
 	u64 const full_bb = pos->bb[FULL];
 
 	if (    (castling_poss[c][0] & pos->state->castling_rights)
@@ -286,8 +286,8 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
 	} else {
-		u32 from, pt;
-		u32 const c            = pos->stm;
+		int from, pt;
+		int const c            = pos->stm;
 		u64 const full_bb      = pos->bb[FULL],
 			  enemy_mask   = pos->bb[!c],
 			  vacancy_mask = ~full_bb,
@@ -314,7 +314,7 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 void gen_legal_moves(Position* pos, Movelist* list)
 {
 	gen_pseudo_legal_moves(pos, list);
-	u32 ksq       = pos->king_sq[pos->stm];
+	int ksq       = pos->king_sq[pos->stm];
 	u64 pinned_bb = pos->state->pinned_bb;
 	u32* move;
 	for (move = list->moves; move < list->end;) {

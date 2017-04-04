@@ -21,7 +21,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <cstring>
+#include <string>
 #include <math.h>
 
 #undef INFINITY
@@ -36,14 +37,12 @@
 #define BB(x)              (1ULL << (x))
 #define INFINITY           (30000)
 #define MAX_MATE_VAL       (INFINITY - MAX_PLY)
-#define S(mg, eg)          (((mg) + (((unsigned int)(eg)) << 16)))
 #define MAX_PHASE          (256)
 #define INVALID            (-INFINITY - 1)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
 #define CAP_TYPE_SHIFT  (18)
-#define ORDER_SHIFT     (21)
 
 #define MOVE_TYPE_MASK (7 << MOVE_TYPE_SHIFT)
 #define PROM_TYPE_MASK (7 << PROM_TYPE_SHIFT)
@@ -149,8 +148,8 @@ enum MoveOrder {
 };
 
 
-static inline int max(int a, int b) { return a > b ? a : b; }
-static inline int min(int a, int b) { return a < b ? a : b; }
+inline int max(int a, int b) { return a > b ? a : b; }
+inline int min(int a, int b) { return a < b ? a : b; }
 
 static int const is_prom_sq[64] = {
 	1, 1, 1, 1, 1, 1, 1, 1,
@@ -167,11 +166,11 @@ static int const is_prom_sq[64] = {
 #define rank_of(sq)  (sq >> 3)
 #define file_of(sq)  (sq & 7)
 
-#define from_sq(m)   (m & 0x3f)
-#define to_sq(m)     ((m >> 6) & 0x3f)
-#define move_type(m) (m & MOVE_TYPE_MASK)
-#define prom_type(m) ((m & PROM_TYPE_MASK) >> PROM_TYPE_SHIFT)
-#define cap_type(m)  ((m & CAP_TYPE_MASK) >> CAP_TYPE_SHIFT)
+#define from_sq(m)   ((int)(m & 0x3f))
+#define to_sq(m)     ((int)(m >> 6) & 0x3f)
+#define move_type(m) ((int)(m & MOVE_TYPE_MASK))
+#define prom_type(m) ((int)(m & PROM_TYPE_MASK) >> PROM_TYPE_SHIFT)
+#define cap_type(m)  ((int)(m & CAP_TYPE_MASK) >> CAP_TYPE_SHIFT)
 
 #define popcnt(bb)  (__builtin_popcountll(bb))
 #define bitscan(bb) (__builtin_ctzll(bb))
@@ -186,9 +185,33 @@ static int const is_prom_sq[64] = {
 #define move_prom_cap(from, to, prom, cap) (from | (to << 6) | PROMOTION | prom | (cap << CAP_TYPE_SHIFT))
 #define move(from, to, mt, prom, cap)      (from | (to << 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
 
-#define mg_val(val) ((int)((short)val))
-#define eg_val(val) ((int)((val + 0x8000) >> 16))
-
 #define phased_val(val, phase) ((((mg_val(val) * phase) + (eg_val(val) * (MAX_PHASE - phase))) / MAX_PHASE))
+
+inline int S(int mg, int eg)
+{
+	return (int) (mg + (((unsigned int) eg) << 16));
+}
+
+inline int eg_val(int val)
+{
+	union {
+		unsigned short u;
+		short s;
+	} eg = {
+		(unsigned short)((unsigned)(val + 0x8000) >> 16)
+	};
+	return eg.s;
+}
+
+inline int mg_val(int val)
+{
+	union {
+		unsigned short u;
+		short s;
+	} mg = {
+		(unsigned short)((unsigned)(val))
+	};
+	return mg.s;
+}
 
 #endif

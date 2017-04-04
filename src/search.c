@@ -18,7 +18,7 @@
 
 #include "search.h"
 
-static void order_moves(Position* const pos, Search_Stack* const ss, u32 tt_move)
+static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 {
 	Movelist* list = &ss->list;
 	u32* order_list = ss->order_arr;
@@ -58,7 +58,7 @@ static void order_moves(Position* const pos, Search_Stack* const ss, u32 tt_move
 	}
 }
 
-static u32 get_next_move(Search_Stack* const ss)
+static u32 get_next_move(SearchStack* const ss)
 {
 	if (ss->list.end == ss->list.moves)
 		return 0;
@@ -78,7 +78,7 @@ static u32 get_next_move(Search_Stack* const ss)
 	return best_move;
 }
 
-static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int beta)
+static int qsearch(Engine* const engine, SearchStack* const ss, int alpha, int beta)
 {
 	if ( !(engine->ctlr->nodes_searched & 0x7ff)
 	    && stopped(engine))
@@ -175,7 +175,7 @@ static int qsearch(Engine* const engine, Search_Stack* const ss, int alpha, int 
 	return alpha;
 }
 
-static int search(Engine* const engine, Search_Stack* const ss, int alpha, int beta, int depth)
+static int search(Engine* const engine, SearchStack* const ss, int alpha, int beta, int depth)
 {
 	if (depth <= 0)
 		return qsearch(engine, ss, alpha, beta);
@@ -206,7 +206,7 @@ static int search(Engine* const engine, Search_Stack* const ss, int alpha, int b
 #ifdef STATS
 	++pos->stats.hash_probes;
 #endif
-	TT_Entry entry = tt_probe(&tt, pos->state->pos_key);
+	TTEntry entry = tt_probe(&tt, pos->state->pos_key);
 	u32 tt_move    = 0;
 #ifndef PLAIN_AB
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
@@ -464,7 +464,7 @@ int begin_search(Engine* const engine)
 	int best_move = 0;
 
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
-	Search_Stack ss[MAX_PLY + 2];
+	SearchStack ss[MAX_PLY + 2];
 	clear_search(engine, ss + 2);
 	pvt_clear(&pvt);
 

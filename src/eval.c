@@ -17,10 +17,9 @@
  */
 
 #include "position.h"
-#include "tune.h"
 
-typedef struct Eval_s {
-
+struct Eval
+{
 	u64 atks_bb[2][7];
 	u64 pawn_bb[2];
 	u64 king_danger_zone_bb[2];
@@ -28,8 +27,7 @@ typedef struct Eval_s {
 	u64 passed_pawn_bb[2];
 	int king_atk_pressure[2];
 	int eval[2];
-
-} Eval;
+};
 
 int piece_val[8] = {
 	0,

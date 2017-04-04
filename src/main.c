@@ -23,6 +23,12 @@
 #include "tt.h"
 #include "engine.h"
 
+TT tt;
+PVT pvt;
+#ifdef STATS
+EvalStats es;
+#endif
+
 int main()
 {
 	setbuf(stdout, NULL);
@@ -33,29 +39,25 @@ int main()
 	initmagicmoves();
 	init_lookups();
 	init_eval_terms();
+	tt_alloc_MB(&tt, 128);
+	pvt_init(&pvt, 0x400);
 
 	char input[100];
 	while (1) {
 		fgets(input, 100, stdin);
 		if (!strncmp(input, "xboard", 6)) {
-			tt_alloc_MB(&tt, 128);
-			pvt_init(&pvt, 0x400);
 			xboard_loop();
-			tt_destroy(&tt);
 			break;
 		} else if (!strncmp(input, "uci", 3)) {
-			tt_alloc_MB(&tt, 128);
-			pvt_init(&pvt, 0x400);
 			uci_loop();
-			tt_destroy(&tt);
 			break;
-		} else if (!strncmp(input, "tune", 4)) {
-			tune();
+		} else if (!strncmp(input, "quit", 4)) {
 			break;
-		} else {
+		}else {
 			fprintf(stdout, "Protocol not found!\n");
 		}
 	}
+	tt_destroy(&tt);
 
 	return 0;
 }
