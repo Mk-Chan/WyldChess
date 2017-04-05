@@ -87,7 +87,11 @@ static int qsearch(Engine* const engine, SearchStack* const ss, int alpha, int b
 	Position* const pos    = engine->pos;
 	Controller* const ctlr = engine->ctlr;
 
-	if (pos->state->fifty_moves > 99 || is_repeat(pos))
+	if (pos->state->fifty_moves > 99)
+		return 0;
+
+	if (  !cap_type((pos->state - 1)->move)
+	    && is_repeat(pos))
 		return 0;
 
 	if (ss->ply >= MAX_PLY)
@@ -207,7 +211,7 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 	++pos->stats.hash_probes;
 #endif
 	TTEntry entry = tt_probe(&tt, pos->state->pos_key);
-	u32 tt_move    = 0;
+	u32 tt_move   = 0;
 #ifndef PLAIN_AB
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
 #ifdef STATS
@@ -305,8 +309,8 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 	}
 #endif
 
-	Movelist* list  = &ss->list;
-	list->end       = list->moves;
+	Movelist* list = &ss->list;
+	list->end      = list->moves;
 	set_pinned(pos);
 	gen_pseudo_legal_moves(pos, list);
 
@@ -323,7 +327,7 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 			continue;
 		++legal_moves;
 
-		depth_left = depth - 1;
+		depth_left    = depth - 1;
 		checking_move = gives_check(pos, move);
 
 		// Check extension

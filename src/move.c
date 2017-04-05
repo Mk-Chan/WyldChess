@@ -25,6 +25,7 @@ void do_null_move(Position* const pos)
 	State* const next = ++pos->state;
 
 	pos->stm                   ^= 1;
+	next->move                  = 0;
 	next->full_moves            = curr->full_moves + 1;
 	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
 	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
