@@ -378,10 +378,10 @@ inline void move_str(u32 move, char str[6])
 {
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
-	str[0]    = file_of(from) + 'a';
-	str[1]    = rank_of(from) + '1';
-	str[2]    = file_of(to)   + 'a';
-	str[3]    = rank_of(to)   + '1';
+	str[0]   = file_of(from) + 'a';
+	str[1]   = rank_of(from) + '1';
+	str[2]   = file_of(to)   + 'a';
+	str[3]   = rank_of(to)   + '1';
 	if (move_type(move) == PROMOTION) {
 		const u32 prom = prom_type(move);
 		switch (prom) {

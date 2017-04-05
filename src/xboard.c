@@ -310,33 +310,9 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "eval", 4)) {
 
-#ifdef STATS
 			transition(&engine, WAITING);
 			fprintf(stdout, "evaluation = %d\n", evaluate(&pos));
 			fprintf(stdout, "phase = %d\n", pos.state->phase);
-
-			static char* c_str[2]  = { "WHITE", "BLACK" };
-			static char* pt_str[7] = { "\0", "\0", "PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN" };
-			int c, pt;
-			fprintf(stdout, "Split eval:\n");
-			for (c = WHITE; c <= BLACK; ++c)
-				fprintf(stdout, "%7s                        ", c_str[c]);
-			fprintf(stdout, "\n");
-			for (pt = PAWN; pt != KING; ++pt) {
-				for (c = WHITE; c <= BLACK; ++c)
-					fprintf(stdout, "%7s: %5d                 ", pt_str[pt], es.pt_score[c][pt]);
-				fprintf(stdout, "\n");
-			}
-			for (c = WHITE; c <= BLACK; ++c)
-				fprintf(stdout, "PASSERS: %5d                 ", es.passed_pawn[c]);
-			fprintf(stdout, "\n");
-			for (c = WHITE; c <= BLACK; ++c)
-				fprintf(stdout, " K_ATKS: %5d                 ", es.king_atks[c]);
-			fprintf(stdout, "\n");
-			for (c = WHITE; c <= BLACK; ++c)
-				fprintf(stdout, "  P_PSQ: %5d                 ", es.piece_psq_eval[c]);
-			fprintf(stdout, "\n");
-#endif
 
 		} else if (!strncmp(input, "undo", 4)) {
 

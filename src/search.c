@@ -254,11 +254,12 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 		++pos->stats.null_tries;
 #endif
 		if (static_eval >= beta) {
-			int reduction = 4 + min(3, (static_eval - beta) / mg_val(piece_val[PAWN]));
+			int reduction = 4 + min(3, max(0, (static_eval - beta) / mg_val(piece_val[PAWN])));
+			int depth_left = max(1, depth - reduction);
 			ss[1].node_type   = CUT_NODE;
 			ss[1].early_prune = 0;
 			do_null_move(pos);
-			val = -search(engine, ss + 1, -beta, -beta + 1, depth - reduction);
+			val = -search(engine, ss + 1, -beta, -beta + 1, depth_left);
 			undo_null_move(pos);
 			if (ctlr->is_stopped)
 				return 0;
@@ -269,7 +270,7 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 #endif
 				if (abs(val) >= MAX_MATE_VAL)
 					val = beta;
-				tt_store(&tt, val, FLAG_LOWER, depth, 0, pos->state->pos_key);
+
 				return val;
 			}
 		}
