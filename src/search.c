@@ -264,30 +264,29 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 	    &&    node_type == CUT_NODE
 	    &&    ss->early_prune
 	    &&   !checked
+	    &&    static_eval >= beta
 	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm])) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
-		if (static_eval >= beta) {
-			int reduction = 4 + min(3, max(0, (static_eval - beta) / mg_val(piece_val[PAWN])));
-			int depth_left = max(1, depth - reduction);
-			ss[1].node_type   = CUT_NODE;
-			ss[1].early_prune = 0;
-			do_null_move(pos);
-			val = -search(engine, ss + 1, -beta, -beta + 1, depth_left);
-			undo_null_move(pos);
-			if (ctlr->is_stopped)
-				return 0;
-			if (val >= beta) {
+		int reduction = 4 + min(3, max(0, (static_eval - beta) / mg_val(piece_val[PAWN])));
+		int depth_left = max(1, depth - reduction);
+		ss[1].node_type   = CUT_NODE;
+		ss[1].early_prune = 0;
+		do_null_move(pos);
+		val = -search(engine, ss + 1, -beta, -beta + 1, depth_left);
+		undo_null_move(pos);
+		if (ctlr->is_stopped)
+			return 0;
+		if (val >= beta) {
 #ifdef STATS
-				++pos->stats.null_cutoffs;
-				++pos->stats.correct_nt_guess;
+			++pos->stats.null_cutoffs;
+			++pos->stats.correct_nt_guess;
 #endif
-				if (abs(val) >= MAX_MATE_VAL)
-					val = beta;
+			if (abs(val) >= MAX_MATE_VAL)
+				val = beta;
 
-				return val;
-			}
+			return val;
 		}
 	}
 #endif
