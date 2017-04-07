@@ -247,6 +247,17 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 	if (node_type != PV_NODE)
 		static_eval = evaluate(pos);
 
+	// Futility pruning
+	if (    depth < 3
+	    &&  node_type != PV_NODE
+	    &&  ss->early_prune
+	    && !checked) {
+		val = static_eval - (200 * depth);
+		if (   abs(val) < MAX_MATE_VAL
+		    && val >= beta)
+			return val;
+	}
+
 #ifndef PLAIN_AB
 	// Null move pruning
 	if (      depth >= 4
