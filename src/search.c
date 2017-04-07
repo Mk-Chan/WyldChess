@@ -260,12 +260,12 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 
 #ifndef PLAIN_AB
 	// Null move pruning
-	if (      depth >= 4
-	    &&    node_type == CUT_NODE
-	    &&    ss->early_prune
-	    &&   !checked
-	    &&    static_eval >= beta
-	    && (((pos->bb[KING] | pos->bb[PAWN]) & pos->bb[pos->stm]) ^ pos->bb[pos->stm])) {
+	if (    depth >= 4
+	    &&  node_type == CUT_NODE
+	    &&  ss->early_prune
+	    && !checked
+	    &&  static_eval >= beta
+	    && (pos->bb[pos->stm] & ~(pos->bb[KING] ^ pos->bb[PAWN]))) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
