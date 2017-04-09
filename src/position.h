@@ -101,10 +101,11 @@ extern Position get_position_copy(Position const * const pos);
 extern void do_null_move(Position* const pos);
 extern void undo_null_move(Position* const pos);
 extern void undo_move(Position* const pos);
-extern void  do_move(Position* const pos, u32 const m);
+extern void do_move(Position* const pos, u32 const m);
 
 extern void gen_pseudo_legal_moves(Position* pos, Movelist* list);
 extern void gen_captures(Position* pos, Movelist* list);
+extern void gen_quiesce_moves(Position* pos, Movelist* list);
 extern void gen_legal_moves(Position* pos, Movelist* list);
 extern void gen_check_evasions(Position* pos, Movelist* list);
 
@@ -173,6 +174,11 @@ inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->state->pos_key ^= psq_keys[c][pt][sq];
 	pos->state->phase   -= phase[pt];
 	pos->state->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
+}
+
+inline u64 pawn_push(int from, u32 c)
+{
+	return (c == WHITE ? from + 8 : from - 8);
 }
 
 inline u64 pawn_shift(u64 bb, u32 c)

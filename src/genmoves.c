@@ -211,36 +211,54 @@ void gen_captures(Position* pos, Movelist* list)
 	extract_caps(pos, from, k_atks_bb[from] & enemy_mask, list);
 }
 
+static void gen_quiet_proms(Position* pos, Movelist* list)
+{
+	int from, to;
+	int const c = pos->stm;
+	u64 prom_candidates_bb = pos->bb[PAWN] & pos->bb[c];
+	if (c == WHITE) {
+		prom_candidates_bb &= rank_mask[RANK_7];
+		prom_candidates_bb  = ((prom_candidates_bb << 8) & ~pos->bb[FULL]) >> 8;
+	} else {
+		prom_candidates_bb &= rank_mask[RANK_2];
+		prom_candidates_bb  = ((prom_candidates_bb >> 8) & ~pos->bb[FULL]) << 8;
+	}
+	while (prom_candidates_bb) {
+		from = bitscan(prom_candidates_bb);
+		prom_candidates_bb &= prom_candidates_bb - 1;
+		to   = pawn_push(from, c);
+		add_move(move_prom(from, to, TO_QUEEN), list);
+		add_move(move_prom(from, to, TO_KNIGHT), list);
+		add_move(move_prom(from, to, TO_ROOK), list);
+		add_move(move_prom(from, to, TO_BISHOP), list);
+	}
+}
+
 static void gen_pawn_quiets(Position* pos, Movelist* list)
 {
+	gen_quiet_proms(pos, list);
 	u64 single_push, from;
 	int const c            = pos->stm;
 	u64 const vacancy_mask = ~pos->bb[FULL];
 	u64       pawns_bb     = pos->bb[PAWN] & pos->bb[c];
+	if (c == WHITE)
+		pawns_bb &= ~rank_mask[RANK_7];
+	else
+		pawns_bb &= ~rank_mask[RANK_2];
 	while (pawns_bb) {
 		from        = pawns_bb & -pawns_bb;
 		pawns_bb   &= pawns_bb - 1;
 		single_push = pawn_shift(from, c);
 		if (single_push & vacancy_mask) {
-			if (   (single_push & rank_mask[RANK_1])
-			    || (single_push & rank_mask[RANK_8])) {
-				int const fr = bitscan(from),
-				          to = bitscan(single_push);
-				add_move(move_prom(fr, to, TO_QUEEN), list);
-				add_move(move_prom(fr, to, TO_KNIGHT), list);
-				add_move(move_prom(fr, to, TO_ROOK), list);
-				add_move(move_prom(fr, to, TO_BISHOP), list);
-			} else {
-				add_move(move_normal(bitscan(from), bitscan(single_push)), list);
-				if (c == WHITE && (from & rank_mask[RANK_2])) {
-					u64 const double_push = single_push << 8;
-					if (double_push & vacancy_mask)
-						add_move(move_double_push(bitscan(from), bitscan(double_push)), list);
-				} else if (c == BLACK && (from & rank_mask[RANK_7])) {
-					u64 const double_push = single_push >> 8;
-					if (double_push & vacancy_mask)
-						add_move(move_double_push(bitscan(from), bitscan(double_push)), list);
-				}
+			add_move(move_normal(bitscan(from), bitscan(single_push)), list);
+			if (c == WHITE && (from & rank_mask[RANK_2])) {
+				u64 const double_push = single_push << 8;
+				if (double_push & vacancy_mask)
+					add_move(move_double_push(bitscan(from), bitscan(double_push)), list);
+			} else if (c == BLACK && (from & rank_mask[RANK_7])) {
+				u64 const double_push = single_push >> 8;
+				if (double_push & vacancy_mask)
+					add_move(move_double_push(bitscan(from), bitscan(double_push)), list);
 			}
 		}
 	}
@@ -279,6 +297,12 @@ static void gen_castling(Position* pos, Movelist* list)
 	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][0], !c, full_bb))
 	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][1], !c, full_bb)))
 		add_move(move_castle(castling_king_sqs[c][1][0], castling_king_sqs[c][1][1]), list);
+}
+
+void gen_quiesce_moves(Position* pos, Movelist* list)
+{
+	gen_captures(pos, list);
+	gen_quiet_proms(pos, list);
 }
 
 void gen_pseudo_legal_moves(Position* pos, Movelist* list)

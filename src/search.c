@@ -129,7 +129,7 @@ static int qsearch(Engine* const engine, SearchStack* const ss, int alpha, int b
 			return -INFINITY + ss->ply;
 
 	} else {
-		gen_captures(pos, list);
+		gen_quiesce_moves(pos, list);
 	}
 
 	order_moves(pos, ss, 0);
