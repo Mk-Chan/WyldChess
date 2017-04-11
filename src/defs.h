@@ -138,12 +138,12 @@ enum PassedPawnType {
 };
 
 enum MoveOrder {
-	HASH_MOVE  = 30000,
-	GOOD_CAP   = 20000,
-	KILLER     = 10000,
-	QUEEN_PROM = 7000,
-	EQUAL_CAP  = 5000,
-	BAD_CAP    = 3000,
+	HASH_MOVE  = 6000000,
+	GOOD_CAP   = 5000000,
+	KILLER     = 4000000,
+	QUEEN_PROM = 3000000,
+	EQUAL_CAP  = 2000000,
+	BAD_CAP    = 1050000,
 	QUIET      = 0
 };
 
@@ -192,6 +192,7 @@ inline int S(int mg, int eg)
 	return (int) (mg + (((unsigned int) eg) << 16));
 }
 
+// Taken from stockfish to clean out my old narrowing solution
 inline int eg_val(int val)
 {
 	union {

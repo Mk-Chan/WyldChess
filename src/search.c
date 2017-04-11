@@ -18,6 +18,18 @@
 
 #include "search.h"
 
+int history[8][64];
+
+#define HISTORY_LIM ((1 << 20))
+
+static void reduce_history()
+{
+	int pt, sq;
+	for (pt = PAWN; pt <= KING; ++pt)
+		for (sq = 0; sq < 64; ++sq)
+			history[pt][sq] /= 256;
+}
+
 static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 {
 	Movelist* list = &ss->list;
@@ -46,14 +58,8 @@ static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 			else if (prom_type(*move) == QUEEN)
 				*order = QUEEN_PROM;
 
-			else if (is_passed_pawn(pos, from_sq(*move), pos->stm))
-				*order = QUIET + 2;
-
-			else if (move_type(*move) == CASTLE)
-				*order = QUIET + 1;
-
 			else
-				*order = QUIET;
+				*order = history[pos->board[from_sq(*move)]][to_sq(*move)];
 		}
 	}
 }
@@ -436,6 +442,15 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 					tt_store(&tt, best_val, FLAG_LOWER, depth, best_move, pos->state->pos_key);
 					return best_val;
 				}
+
+				if (  !cap_type(move)
+				    && move_type(move) != ENPASSANT
+				    && move_type(move) != PROMOTION) {
+					int pt = pos->board[from_sq(move)];
+					history[pt][to_sq(move)] += depth * depth;
+					if (history[pt][to_sq(move)] > HISTORY_LIM)
+						reduce_history();
+				}
 			}
 		}
 
@@ -477,6 +492,8 @@ int begin_search(Engine* const engine)
 	u64 time;
 	int val, alpha, beta, asp_win_tries, depth;
 	int best_move = 0;
+
+	memset(history, 0, sizeof(int) * 8 * 64);
 
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
 	SearchStack ss[MAX_PLY + 2];
