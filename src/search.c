@@ -72,8 +72,7 @@ static u32 get_next_move(SearchStack* const ss)
 	u32* order = ss->order_arr;
 	int len = list->end - list->moves;
 	int best_index = 0;
-	int i = 1;
-	for (; i < len; ++i) {
+	for (int i = 1; i < len; ++i) {
 		if (order[i] > order[best_index])
 			best_index = i;
 	}
@@ -126,8 +125,8 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 			alpha = eval;
 	}
 
-	Movelist* list  = &ss->list;
-	list->end       = list->moves;
+	Movelist* list = &ss->list;
+	list->end      = list->moves;
 	set_pinned(pos);
 	if (checked) {
 		gen_check_evasions(pos, list);

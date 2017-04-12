@@ -78,8 +78,9 @@ inline void transition(SearchUnit* const su, int target_state)
 		pthread_cond_signal(&su->sleep_cv);
 		pthread_mutex_unlock(&su->mutex);
 	}
-	else
+	else {
 		su->target_state = target_state;
+	}
 	sync(su);
 }
 
