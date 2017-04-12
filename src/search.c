@@ -84,14 +84,14 @@ static u32 get_next_move(SearchStack* const ss)
 	return best_move;
 }
 
-static int qsearch(Engine* const engine, SearchStack* const ss, int alpha, int beta)
+static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int beta)
 {
-	if ( !(engine->ctlr->nodes_searched & 0x7ff)
-	    && stopped(engine))
+	if ( !(su->ctlr->nodes_searched & 0x7ff)
+	    && stopped(su))
 		return 0;
 
-	Position* const pos    = engine->pos;
-	Controller* const ctlr = engine->ctlr;
+	Position* const pos    = su->pos;
+	Controller* const ctlr = su->ctlr;
 
 	if (pos->state->fifty_moves > 99)
 		return 0;
@@ -109,9 +109,9 @@ static int qsearch(Engine* const engine, SearchStack* const ss, int alpha, int b
 	if (alpha >= beta)
 		return alpha;
 
-	++engine->ctlr->nodes_searched;
+	++su->ctlr->nodes_searched;
 #ifdef STATS
-	++engine->pos->stats.correct_nt_guess;
+	++su->pos->stats.correct_nt_guess;
 #endif
 
 	set_checkers(pos);
@@ -166,7 +166,7 @@ static int qsearch(Engine* const engine, SearchStack* const ss, int alpha, int b
 #endif
 
 		do_move(pos, move);
-		val = -qsearch(engine, ss + 1, -beta, -alpha);
+		val = -qsearch(su, ss + 1, -beta, -alpha);
 		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
@@ -185,17 +185,17 @@ static int qsearch(Engine* const engine, SearchStack* const ss, int alpha, int b
 	return alpha;
 }
 
-static int search(Engine* const engine, SearchStack* const ss, int alpha, int beta, int depth)
+static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int beta, int depth)
 {
 	if (depth <= 0)
-		return qsearch(engine, ss, alpha, beta);
+		return qsearch(su, ss, alpha, beta);
 
-	Position* const pos    = engine->pos;
-	Controller* const ctlr = engine->ctlr;
+	Position* const pos    = su->pos;
+	Controller* const ctlr = su->ctlr;
 
 	if (ss->ply) {
-		if ( !(engine->ctlr->nodes_searched & 0x7ff)
-		    && stopped(engine))
+		if ( !(su->ctlr->nodes_searched & 0x7ff)
+		    && stopped(su))
 			return 0;
 
 		if (pos->state->fifty_moves > 99 || is_repeat(pos))
@@ -280,7 +280,7 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 		ss[1].node_type   = CUT_NODE;
 		ss[1].early_prune = 0;
 		do_null_move(pos);
-		val = -search(engine, ss + 1, -beta, -beta + 1, depth_left);
+		val = -search(su, ss + 1, -beta, -beta + 1, depth_left);
 		undo_null_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
@@ -315,7 +315,7 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 		int nt          = ss->node_type;
 		ss->early_prune = 0;
 
-		search(engine, ss, alpha, beta, depth - reduction);
+		search(su, ss, alpha, beta, depth - reduction);
 
 		ss->early_prune = ep;
 		ss->node_type   = nt;
@@ -394,20 +394,20 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 			else
 				ss[1].node_type = CUT_NODE;
 			ss[1].early_prune = 1;
-			val = -search(engine, ss + 1, -beta, -alpha, depth_left);
+			val = -search(su, ss + 1, -beta, -alpha, depth_left);
 			if (   val > alpha
 			    && depth_left < depth - 1) {
 				ss[1].node_type = node_type;
 				ss[1].early_prune = 1;
-				val = -search(engine, ss + 1, -beta, -alpha, depth - 1);
+				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
 			}
 		} else {
 			ss[1].node_type = CUT_NODE;
 			ss[1].early_prune = 1;
-			val = -search(engine, ss + 1, -alpha - 1, -alpha, depth_left);
+			val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
 			if (val > alpha) {
 				ss[1].node_type = PV_NODE;
-				val = -search(engine, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
+				val = -search(su, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
 			}
 		}
 
@@ -487,7 +487,7 @@ static int search(Engine* const engine, SearchStack* const ss, int alpha, int be
 	return alpha;
 }
 
-int begin_search(Engine* const engine)
+int begin_search(SearchUnit* const su)
 {
 	u64 time;
 	int val, alpha, beta, asp_win_tries, depth;
@@ -497,28 +497,29 @@ int begin_search(Engine* const engine)
 
 	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
 	SearchStack ss[MAX_PLY + 2];
-	clear_search(engine, ss + 2);
+	clear_search(su, ss + 2);
 	pvt_clear(&pvt);
 
-	Position* const pos    = engine->pos;
-	Controller* const ctlr = engine->ctlr;
+	Position* const pos    = su->pos;
+	Controller* const ctlr = su->ctlr;
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int asp_wins[] = { 10, 25, 50, 100, 200, INFINITY };
 	for (depth = 1; depth <= max_depth; ++depth) {
 		if (depth < 5) {
 			ss[2].node_type = PV_NODE;
-			val = search(engine, ss + 2, -INFINITY, +INFINITY, depth);
+			val = search(su, ss + 2, -INFINITY, +INFINITY, depth);
 		} else {
 			asp_win_tries = 0;
 			while (1) {
 				ss[2].node_type = PV_NODE;
 				alpha = val - asp_wins[asp_win_tries];
 				beta  = val + asp_wins[asp_win_tries];
-				val   = search(engine, ss + 2, alpha, beta, depth);
 
+				val   = search(su, ss + 2, alpha, beta, depth);
 				if (val > alpha && val < beta)
 					break;
+
 				++asp_win_tries;
 			}
 		}
@@ -528,9 +529,9 @@ int begin_search(Engine* const engine)
 			break;
 
 		time = curr_time() - ctlr->search_start_time;
-		if (engine->protocol == XBOARD)
+		if (su->protocol == XBOARD)
 			fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, ctlr->nodes_searched);
-		else if (engine->protocol == UCI)
+		else if (su->protocol == UCI)
 			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
 		best_move = get_stored_moves(pos, depth);
 		fprintf(stdout, "\n");

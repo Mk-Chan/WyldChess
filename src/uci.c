@@ -17,7 +17,7 @@
  */
 
 #include "defs.h"
-#include "engine.h"
+#include "search_unit.h"
 #include "tt.h"
 
 static inline void print_options_uci()
@@ -28,31 +28,31 @@ static inline void print_options_uci()
 	fprintf(stdout, "uciok\n");
 }
 
-void* engine_loop_uci(void* args)
+void* su_loop_uci(void* args)
 {
 	char mstr[6];
 	u32 move;
-	Engine* engine = (Engine*) args;
+	SearchUnit* su = (SearchUnit*) args;
 	while (1) {
-		switch(engine->target_state) {
+		switch(su->target_state) {
 		case WAITING:
-			engine->curr_state = WAITING;
-			pthread_mutex_lock(&engine->mutex);
-			while (engine->target_state == WAITING)
-				pthread_cond_wait(&engine->sleep_cv, &engine->mutex);
-			pthread_mutex_unlock(&engine->mutex);
+			su->curr_state = WAITING;
+			pthread_mutex_lock(&su->mutex);
+			while (su->target_state == WAITING)
+				pthread_cond_wait(&su->sleep_cv, &su->mutex);
+			pthread_mutex_unlock(&su->mutex);
 			break;
 
 		case THINKING:
-			engine->curr_state = THINKING;
-			move = begin_search(engine);
+			su->curr_state = THINKING;
+			move = begin_search(su);
 			move_str(move, mstr);
 			fprintf(stdout, "bestmove %s\n", mstr);
-			engine->target_state = WAITING;
+			su->target_state = WAITING;
 			break;
 
 		case QUITTING:
-			engine->curr_state = QUITTING;
+			su->curr_state = QUITTING;
 			pthread_exit(0);
 		}
 	}
@@ -71,20 +71,20 @@ void uci_loop()
 	Position pos;
 	Controller ctlr;
 	ctlr.depth = MAX_PLY;
-	Engine engine;
-	engine.protocol = UCI;
-	pthread_mutex_init(&engine.mutex, NULL);
-	pthread_cond_init(&engine.sleep_cv, NULL);
-	engine.pos  = &pos;
-	engine.ctlr = &ctlr;
-	engine.ctlr->time_dependent = 1;
-	engine.target_state = WAITING;
+	SearchUnit su;
+	su.protocol = UCI;
+	pthread_mutex_init(&su.mutex, NULL);
+	pthread_cond_init(&su.sleep_cv, NULL);
+	su.pos  = &pos;
+	su.ctlr = &ctlr;
+	su.ctlr->time_dependent = 1;
+	su.target_state = WAITING;
 	State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
 	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
-	pthread_t engine_thread;
-	pthread_create(&engine_thread, NULL, engine_loop_uci, (void*) &engine);
-	pthread_detach(engine_thread);
+	pthread_t su_thread;
+	pthread_create(&su_thread, NULL, su_loop_uci, (void*) &su);
+	pthread_detach(su_thread);
 
 	while (1) {
 		fgets(input, max_len, stdin);
@@ -94,9 +94,9 @@ void uci_loop()
 
 		} else if (!strncmp(input, "position", 8)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			ptr = input + 9;
-			engine.game_over = 0;
+			su.game_over = 0;
 			init_pos(&pos, state_list);
 			if (!strncmp(ptr, "startpos", 8)) {
 				ptr += 9;
@@ -122,17 +122,17 @@ void uci_loop()
 
 		} else if (!strncmp(input, "print", 5)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			print_board(&pos);
 
 		} else if (!strncmp(input, "stop", 4)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 
 		} else if (!strncmp(input, "quit", 4)) {
 
-			transition(&engine, WAITING);
-			transition(&engine, QUITTING);
+			transition(&su, WAITING);
+			transition(&su, QUITTING);
 			goto cleanup_and_exit;
 
 		} else if (!strncmp(input, "setoption name", 14)) {
@@ -146,8 +146,8 @@ void uci_loop()
 
 		} else if (!strncmp(input, "go", 2)) {
 
-			transition(&engine, WAITING);
-			engine.game_over       = 0;
+			transition(&su, WAITING);
+			su.game_over       = 0;
 			ctlr.time_dependent    = 1;
 			ctlr.moves_per_session = 0;
 			ctlr.moves_left        = 40;
@@ -196,11 +196,11 @@ void uci_loop()
 				}
 			}
 
-			start_thinking(&engine);
+			start_thinking(&su);
 
 		}
 	}
 cleanup_and_exit:
-	pthread_cond_destroy(&engine.sleep_cv);
-	pthread_mutex_destroy(&engine.mutex);
+	pthread_cond_destroy(&su.sleep_cv);
+	pthread_mutex_destroy(&su.mutex);
 }

@@ -51,7 +51,7 @@ struct Controller
 	u64 nodes_searched;
 };
 
-struct Engine
+struct SearchUnit
 {
 	Position*       pos;
 	Controller*     ctlr;
@@ -60,32 +60,32 @@ struct Engine
 	int             protocol;
 	int             side;
 	int             game_over;
-	int    volatile target_state;
-	int    volatile curr_state;
+	int volatile    target_state;
+	int volatile    curr_state;
 };
 
-inline void sync(Engine const * const engine)
+inline void sync(SearchUnit const * const su)
 {
-	while (engine->curr_state != engine->target_state)
+	while (su->curr_state != su->target_state)
 		continue;
 }
 
-inline void transition(Engine* const engine, int target_state)
+inline void transition(SearchUnit* const su, int target_state)
 {
-	if (engine->curr_state == WAITING) {
-		pthread_mutex_lock(&engine->mutex);
-		engine->target_state = target_state;
-		pthread_cond_signal(&engine->sleep_cv);
-		pthread_mutex_unlock(&engine->mutex);
+	if (su->curr_state == WAITING) {
+		pthread_mutex_lock(&su->mutex);
+		su->target_state = target_state;
+		pthread_cond_signal(&su->sleep_cv);
+		pthread_mutex_unlock(&su->mutex);
 	}
 	else
-		engine->target_state = target_state;
-	sync(engine);
+		su->target_state = target_state;
+	sync(su);
 }
 
-inline void start_thinking(Engine* const engine)
+inline void start_thinking(SearchUnit* const su)
 {
-	Controller* const ctlr  = engine->ctlr;
+	Controller* const ctlr  = su->ctlr;
 	ctlr->search_start_time = curr_time();
 	if (ctlr->time_dependent) {
 		ctlr->time_left += (ctlr->moves_left - 1) * ctlr->increment;
@@ -93,7 +93,7 @@ inline void start_thinking(Engine* const engine)
 			             + (ctlr->time_left / ctlr->moves_left)
 				     -  10;
 	}
-	transition(engine, THINKING);
+	transition(su, THINKING);
 	if (ctlr->moves_per_session) {
 		--ctlr->moves_left;
 		if (ctlr->moves_left < 1)
@@ -101,7 +101,7 @@ inline void start_thinking(Engine* const engine)
 	}
 }
 
-extern int begin_search(Engine* const engine);
+extern int begin_search(SearchUnit* const su);
 extern void xboard_loop();
 extern void uci_loop();
 

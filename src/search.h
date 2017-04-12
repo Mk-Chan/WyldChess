@@ -19,7 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "engine.h"
+#include "search_unit.h"
 #include "tt.h"
 
 struct SearchStack
@@ -114,18 +114,18 @@ inline int cap_order(Position const * const pos, u32 const m)
 	return cap_order + see_val;
 }
 
-inline int stopped(Engine* const engine)
+inline int stopped(SearchUnit* const su)
 {
-	if (engine->ctlr->is_stopped)
+	if (su->ctlr->is_stopped)
 		return 1;
-	if (   engine->target_state != THINKING
-	    && engine->target_state != ANALYZING) {
-		engine->ctlr->is_stopped = 1;
+	if (   su->target_state != THINKING
+	    && su->target_state != ANALYZING) {
+		su->ctlr->is_stopped = 1;
 		return 1;
 	}
-	if (   engine->ctlr->time_dependent
-	    && curr_time() >= engine->ctlr->search_end_time) {
-		engine->ctlr->is_stopped = 1;
+	if (   su->ctlr->time_dependent
+	    && curr_time() >= su->ctlr->search_end_time) {
+		su->ctlr->is_stopped = 1;
 		return 1;
 	}
 
@@ -189,13 +189,13 @@ inline int get_stored_moves(Position* const pos, int depth)
 	return 0;
 }
 
-inline void clear_search(Engine* const engine, SearchStack* const ss)
+inline void clear_search(SearchUnit* const su, SearchStack* const ss)
 {
-	Controller* const ctlr = engine->ctlr;
+	Controller* const ctlr = su->ctlr;
 	ctlr->is_stopped       = 0;
 	ctlr->nodes_searched   = 0ULL;
 #ifdef STATS
-	Position* const pos           = engine->pos;
+	Position* const pos           = su->pos;
 	pos->stats.correct_nt_guess   = 0;
 	pos->stats.iid_cutoffs        = 0;
 	pos->stats.iid_tries          = 0;

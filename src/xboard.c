@@ -17,7 +17,7 @@
  */
 
 #include "defs.h"
-#include "engine.h"
+#include "search_unit.h"
 #include "tt.h"
 
 enum Result {
@@ -102,26 +102,26 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature done=1\n");
 }
 
-void* engine_loop_xboard(void* args)
+void* su_loop_xboard(void* args)
 {
 	char mstr[6];
 	u32 move;
-	Engine* engine = (Engine*) args;
-	Position* pos  = engine->pos;
+	SearchUnit* su = (SearchUnit*) args;
+	Position* pos  = su->pos;
 	while (1) {
-		switch (engine->target_state) {
+		switch (su->target_state) {
 		case WAITING:
-			engine->curr_state = WAITING;
-			pthread_mutex_lock(&engine->mutex);
-			while (engine->target_state == WAITING)
-				pthread_cond_wait(&engine->sleep_cv, &engine->mutex);
-			pthread_mutex_unlock(&engine->mutex);
+			su->curr_state = WAITING;
+			pthread_mutex_lock(&su->mutex);
+			while (su->target_state == WAITING)
+				pthread_cond_wait(&su->sleep_cv, &su->mutex);
+			pthread_mutex_unlock(&su->mutex);
 			break;
 
 		case THINKING:
-			engine->curr_state = THINKING;
-			move = begin_search(engine);
-			engine->target_state = WAITING;
+			su->curr_state = THINKING;
+			move = begin_search(su);
+			su->target_state = WAITING;
 			move_str(move, mstr);
 			if (!legal_move(pos, move)) {
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
@@ -132,14 +132,14 @@ void* engine_loop_xboard(void* args)
 			break;
 
 		case ANALYZING:
-			engine->curr_state = ANALYZING;
-			engine->ctlr->search_start_time = curr_time();
-			begin_search(engine);
-			engine->target_state = WAITING;
+			su->curr_state = ANALYZING;
+			su->ctlr->search_start_time = curr_time();
+			begin_search(su);
+			su->target_state = WAITING;
 			break;
 
 		case QUITTING:
-			engine->curr_state = QUITTING;
+			su->curr_state = QUITTING;
 			pthread_exit(0);
 		}
 	}
@@ -156,23 +156,23 @@ void xboard_loop()
 	Position pos;
 	Controller ctlr;
 	ctlr.depth = MAX_PLY;
-	Engine engine;
-	engine.protocol = XBOARD;
-	pthread_mutex_init(&engine.mutex, NULL);
-	pthread_cond_init(&engine.sleep_cv, NULL);
-	engine.pos  = &pos;
-	engine.ctlr = &ctlr;
-	engine.side = BLACK;
+	SearchUnit su;
+	su.protocol = XBOARD;
+	pthread_mutex_init(&su.mutex, NULL);
+	pthread_cond_init(&su.sleep_cv, NULL);
+	su.pos  = &pos;
+	su.ctlr = &ctlr;
+	su.side = BLACK;
 	ctlr.time_dependent = 1;
 	ctlr.analyzing = 0;
-	engine.target_state = WAITING;
+	su.target_state = WAITING;
 	State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
 	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
 
-	pthread_t engine_thread;
-	pthread_create(&engine_thread, NULL, engine_loop_xboard, (void*) &engine);
-	pthread_detach(engine_thread);
+	pthread_t su_thread;
+	pthread_create(&su_thread, NULL, su_loop_xboard, (void*) &su);
+	pthread_detach(su_thread);
 
 	while (1) {
 		fgets(input, max_len, stdin);
@@ -194,11 +194,11 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "new", 3)) {
 
-			transition(&engine, WAITING);
-			engine.game_over = 0;
+			transition(&su, WAITING);
+			su.game_over = 0;
 			init_pos(&pos, state_list);
 			set_pos(&pos, INITIAL_POSITION);
-			engine.side            = BLACK;
+			su.side            = BLACK;
 			ctlr.time_dependent    = 1;
 			ctlr.depth             = MAX_PLY;
 			ctlr.moves_per_session = 40;
@@ -208,34 +208,34 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "quit", 4)) {
 
-			transition(&engine, WAITING);
-			transition(&engine, QUITTING);
+			transition(&su, WAITING);
+			transition(&su, QUITTING);
 			goto cleanup_and_exit;
 
 		} else if (!strncmp(input, "analyze", 7)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			ctlr.time_dependent = 0;
 			ctlr.analyzing      = 1;
-			engine.side         = -1;
-			transition(&engine, ANALYZING);
+			su.side         = -1;
+			transition(&su, ANALYZING);
 
 		} else if (!strncmp(input, "exit", 4)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			ctlr.analyzing = 0;
 
 		} else if (!strncmp(input, "setboard", 8)) {
 
-			transition(&engine, WAITING);
-			engine.side = -1;
+			transition(&su, WAITING);
+			su.side = -1;
 			init_pos(&pos, state_list);
 			set_pos(&pos, input + 9);
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
-			engine.side = pos.stm == WHITE ? BLACK : WHITE;
+			su.side = pos.stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
 
@@ -262,7 +262,7 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "perft", 5)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			performance_test(&pos, atoi(input + 6));
 
 		} else if (!strncmp(input, "st", 2)) {
@@ -280,48 +280,48 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "force", 5)) {
 
-			transition(&engine, WAITING);
-			engine.side = -1;
+			transition(&su, WAITING);
+			su.side = -1;
 
 		} else if (!strncmp(input, "result", 6)) {
 
-			transition(&engine, WAITING);
-			engine.game_over = 1;
+			transition(&su, WAITING);
+			su.game_over = 1;
 
 		} else if (!strncmp(input, "?", 1)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 
 		} else if (!strncmp(input, "go", 2)) {
 
-			transition(&engine, WAITING);
-			engine.side = pos.stm;
+			transition(&su, WAITING);
+			su.side = pos.stm;
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
 
-			if (engine.game_over)
+			if (su.game_over)
 				check_result(&pos);
 			else if (check_result(&pos) != NO_RESULT)
-				engine.game_over = 1;
+				su.game_over = 1;
 			else
-				start_thinking(&engine);
+				start_thinking(&su);
 
 		} else if (!strncmp(input, "eval", 4)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			fprintf(stdout, "evaluation = %d\n", evaluate(&pos));
 			fprintf(stdout, "phase = %d\n", pos.state->phase);
 
 		} else if (!strncmp(input, "undo", 4)) {
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			if (pos.state > pos.hist)
 				undo_move(&pos);
-			engine.side = -1;
+			su.side = -1;
 			if (ctlr.analyzing)
-				transition(&engine, ANALYZING);
+				transition(&su, ANALYZING);
 
 		} else {
 
@@ -334,7 +334,7 @@ void xboard_loop()
 				continue;
 			}
 
-			transition(&engine, WAITING);
+			transition(&su, WAITING);
 			move = parse_move(&pos, ptr);
 			if (  !move
 			   || !legal_move(&pos, move))
@@ -342,18 +342,18 @@ void xboard_loop()
 			else
 				do_move(&pos, move);
 
-			if (engine.game_over)
+			if (su.game_over)
 				check_result(&pos);
 			else if (check_result(&pos) != NO_RESULT)
-				engine.game_over = 1;
-			else if (engine.side == pos.stm)
-				start_thinking(&engine);
+				su.game_over = 1;
+			else if (su.side == pos.stm)
+				start_thinking(&su);
 			else if (ctlr.analyzing)
-				transition(&engine, ANALYZING);
+				transition(&su, ANALYZING);
 
 		}
 	}
 cleanup_and_exit:
-	pthread_cond_destroy(&engine.sleep_cv);
-	pthread_mutex_destroy(&engine.mutex);
+	pthread_cond_destroy(&su.sleep_cv);
+	pthread_mutex_destroy(&su.mutex);
 }

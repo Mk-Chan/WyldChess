@@ -17,11 +17,11 @@
  */
 
 #include <time.h>
+#include "search_unit.h"
 #include "magicmoves.h"
 #include "position.h"
 #include "misc.h"
 #include "tt.h"
-#include "engine.h"
 
 TT tt;
 PVT pvt;

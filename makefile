@@ -2,7 +2,7 @@ CC = g++
 CFLAGS = -std=c++11 -Wall -O3 -flto -pipe
 EXT_LIBS = -lm -pthread
 
-HEADERS = $(addprefix $(SRC_PATH)/, bitboard.h defs.h engine.h magicmoves.h position.h misc.h search.h tt.h)
+HEADERS = $(addprefix $(SRC_PATH)/, bitboard.h defs.h search_unit.h magicmoves.h position.h misc.h search.h tt.h)
 
 C_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c move.c mt19937-64.c perft.c position.c search.c uci.c xboard.c misc.c
 SRC_PATH = src
