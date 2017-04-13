@@ -18,9 +18,9 @@
 
 #include "search.h"
 
-int history[8][64];
-
 #define HISTORY_LIM ((1 << 20))
+
+int history[8][64];
 
 static void reduce_history()
 {
@@ -85,12 +85,14 @@ static u32 get_next_move(SearchStack* const ss)
 
 static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int beta)
 {
-	if ( !(su->ctlr->nodes_searched & 0x7ff)
+	Controller* const ctlr = su->ctlr;
+	++ctlr->nodes_searched;
+
+	if ( !(ctlr->nodes_searched & 0x7ff)
 	    && stopped(su))
 		return 0;
 
 	Position* const pos    = su->pos;
-	Controller* const ctlr = su->ctlr;
 
 	if (pos->state->fifty_moves > 99)
 		return 0;
@@ -108,9 +110,8 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 	if (alpha >= beta)
 		return alpha;
 
-	++su->ctlr->nodes_searched;
 #ifdef STATS
-	++su->pos->stats.correct_nt_guess;
+	++pos->stats.correct_nt_guess;
 #endif
 
 	set_checkers(pos);
@@ -191,6 +192,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	Position* const pos    = su->pos;
 	Controller* const ctlr = su->ctlr;
+	++ctlr->nodes_searched;
 
 	if (ss->ply) {
 		if ( !(su->ctlr->nodes_searched & 0x7ff)
@@ -242,8 +244,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		}
 	}
 #endif
-
-	++ctlr->nodes_searched;
 
 	set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
@@ -351,33 +351,33 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			++depth_left;
 
 #ifndef PLAIN_AB
-		// Futility pruning
-		if (    depth < 8
-		    &&  legal_moves > 1
-		    &&  best_val > -MAX_MATE_VAL
-		    &&  node_type != PV_NODE
-		    &&  move_type(move) != PROMOTION
-		    && !checking_move
-		    && !cap_type(move)
-		    &&  static_eval + 100 * depth_left <= alpha)
-			continue;
-
-		// Late move reduction
+		// Heuristic pruning
 		if (    ss->ply
-		    &&  depth > 2
-		    &&  legal_moves > (node_type == PV_NODE ? 5 : 3)
-		    &&  move != ss->killers[0]
-		    &&  move != ss->killers[1]
-		    &&  move != (ss-2)->killers[0]
-		    &&  move != (ss-2)->killers[1]
+		    &&  best_val > -MAX_MATE_VAL
 		    &&  prom_type(move) != QUEEN
-		    && !cap_type(move)
 		    && !checking_move
-		    && !checked) {
-			int reduction = 2
-				     + (legal_moves > 10)
-				     + (node_type != PV_NODE);
-			depth_left = max(1, depth - reduction);
+		    && !cap_type(move)) {
+
+			// Futility pruning
+			if (    depth < 8
+			    &&  legal_moves > 1
+			    &&  node_type != PV_NODE
+			    &&  static_eval + 100 * depth_left <= alpha)
+				continue;
+
+			// Late move reduction
+			if (    depth > 2
+			    &&  legal_moves > (node_type == PV_NODE ? 5 : 3)
+			    &&  move != ss->killers[0]
+			    &&  move != ss->killers[1]
+			    &&  move != (ss-2)->killers[0]
+			    &&  move != (ss-2)->killers[1]
+			    && !checked) {
+				int reduction = 2
+					     + (legal_moves > 10)
+					     + (node_type != PV_NODE);
+				depth_left = max(1, depth - reduction);
+			}
 		}
 #endif
 

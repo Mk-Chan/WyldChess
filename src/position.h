@@ -48,7 +48,6 @@ struct EvalStats
 };
 
 extern EvalStats es;
-
 #endif
 
 struct Movelist
