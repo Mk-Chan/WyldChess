@@ -4,12 +4,12 @@ EXT_LIBS = -lm -pthread
 
 HEADERS = $(addprefix $(SRC_PATH)/, bitboard.h defs.h search_unit.h magicmoves.h position.h misc.h search.h tt.h)
 
-C_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c move.c mt19937-64.c perft.c position.c search.c uci.c xboard.c misc.c
+C_FILES = bitboard.cpp eval.cpp genmoves.cpp magicmoves.cpp main.cpp move.cpp mt19937-64.cpp perft.cpp position.cpp search.cpp uci.cpp xboard.cpp misc.cpp
 SRC_PATH = src
 SRC = $(addprefix $(SRC_PATH)/, $(C_FILES))
 
 OBJ_PATH = objs
-OBJS = $(addprefix $(OBJ_PATH)/, $(C_FILES:.c=.o))
+OBJS = $(addprefix $(OBJ_PATH)/, $(C_FILES:.cpp=.o))
 
 EXEC_PATH = .
 EXEC = wyldchess
@@ -49,7 +49,7 @@ stats:
 plain:
 	$(MAKE) CFLAGS="$(CFLAGS) -DPLAIN_AB -DSTATS"
 
-$(OBJ_PATH)/%.o: $(SRC_PATH)/%.c $(HEADERS)
+$(OBJ_PATH)/%.o: $(SRC_PATH)/%.cpp $(HEADERS)
 	@-mkdir -p $(OBJ_PATH)
 	$(CC) $(CFLAGS) -c $< -o $@
 
