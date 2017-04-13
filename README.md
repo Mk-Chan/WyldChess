@@ -15,7 +15,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 * Piece square tables (custom)
 * King attack:
 	* Glaurung 1.2 attack table
-	* Pawn cover
+	* Queen next to king
 
 * Pawn structure:
 	* Passed pawns
@@ -63,7 +63,6 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 * `README.md`: The file you're currently reading.
 * `build.sh` : The file outlining the automated build process of the release.
 * `makefile` : The file outlining the automated compile process.
-* `notes`    : Some notes.
 
 ### Binaries
 All binaries are 64-bit
