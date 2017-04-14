@@ -252,10 +252,13 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	if (node_type != PV_NODE)
 		static_eval = evaluate(pos);
 
+	u64 non_pawn_pieces_bb = (pos->bb[pos->stm] & ~(pos->bb[KING] ^ pos->bb[PAWN]));
+
 	// Futility pruning
 	if (    depth < 3
 	    &&  node_type != PV_NODE
 	    &&  ss->early_prune
+	    &&  non_pawn_pieces_bb
 	    && !checked) {
 		val = static_eval - (200 * depth);
 		if (   abs(val) < MAX_MATE_VAL
@@ -270,7 +273,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	    &&  ss->early_prune
 	    && !checked
 	    &&  static_eval >= beta
-	    && (pos->bb[pos->stm] & ~(pos->bb[KING] ^ pos->bb[PAWN]))) {
+	    &&  non_pawn_pieces_bb) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
@@ -355,6 +358,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		if (    ss->ply
 		    &&  best_val > -MAX_MATE_VAL
 		    &&  prom_type(move) != QUEEN
+		    &&  non_pawn_pieces_bb
 		    && !checking_move
 		    && !cap_type(move)) {
 
@@ -370,8 +374,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			    &&  legal_moves > (node_type == PV_NODE ? 5 : 3)
 			    &&  move != ss->killers[0]
 			    &&  move != ss->killers[1]
-			    &&  move != (ss-2)->killers[0]
-			    &&  move != (ss-2)->killers[1]
 			    && !checked) {
 				int reduction = 2
 					     + (legal_moves > 10)
@@ -434,17 +436,18 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 					if (  !cap_type(move)
 					    && ss->killers[0] != move
 					    && move_type(move) != ENPASSANT
-					    && move_type(move) != PROMOTION) {
+					    && prom_type(move) != QUEEN) {
 						ss->killers[1] = ss->killers[0];
 						ss->killers[0] = move;
 					}
+
 					tt_store(&tt, best_val, FLAG_LOWER, depth, best_move, pos->state->pos_key);
 					return best_val;
 				}
 
 				if (  !cap_type(move)
 				    && move_type(move) != ENPASSANT
-				    && move_type(move) != PROMOTION) {
+				    && prom_type(move) != QUEEN) {
 					int pt = pos->board[from_sq(move)];
 					history[pt][to_sq(move)] += depth * depth;
 					if (history[pt][to_sq(move)] > HISTORY_LIM)
