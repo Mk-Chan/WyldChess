@@ -26,13 +26,11 @@ inline void add_move(u32 m, Movelist* list)
 	++list->end;
 }
 
-static void extract_moves(int from, u64 atks_bb, Movelist* list)
+static void extract_quiets(int from, u64 atks_bb, Movelist* list)
 {
-	u32 to;
 	while (atks_bb) {
-		to       = bitscan(atks_bb);
+		add_move(move_normal(from, bitscan(atks_bb)), list);
 		atks_bb &= atks_bb - 1;
-		add_move(move_normal(from, to), list);
 	}
 }
 
@@ -159,8 +157,10 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 {
 	u64 cap_candidates;
 	int from, to, cap_pt;
-	int const  c        = pos->stm;
-	u64        pawns_bb = pos->bb[PAWN] & pos->bb[c];
+	int const c            = pos->stm;
+	u64 pawns_bb           = pos->bb[PAWN] & pos->bb[c],
+	    prom_candidates_bb = pawns_bb & (c == WHITE ? rank_mask[RANK_7] : rank_mask[RANK_2]);
+	pawns_bb              ^= prom_candidates_bb;
 	if (pos->state->ep_sq_bb) {
 		int const ep_sq   = bitscan(pos->state->ep_sq_bb);
 		u64       ep_poss = pawns_bb & p_atks_bb[!c][ep_sq];
@@ -170,22 +170,28 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 			add_move(move_ep(from, ep_sq), list);
 		}
 	}
+	while (prom_candidates_bb) {
+		from                = bitscan(prom_candidates_bb);
+		prom_candidates_bb &= prom_candidates_bb - 1;
+		cap_candidates      = p_atks_bb[c][from] & pos->bb[!c];
+		while (cap_candidates) {
+			to              = bitscan(cap_candidates);
+			cap_pt          = pos->board[to];
+			cap_candidates &= cap_candidates - 1;
+			add_move(move_prom_cap(from, to, TO_QUEEN, cap_pt), list);
+			add_move(move_prom_cap(from, to, TO_KNIGHT, cap_pt), list);
+			add_move(move_prom_cap(from, to, TO_ROOK, cap_pt), list);
+			add_move(move_prom_cap(from, to, TO_BISHOP, cap_pt), list);
+		}
+	}
 	while (pawns_bb) {
 		from           = bitscan(pawns_bb);
 		pawns_bb      &= pawns_bb - 1;
 		cap_candidates = p_atks_bb[c][from] & pos->bb[!c];
 		while (cap_candidates) {
 			to              = bitscan(cap_candidates);
-			cap_pt          = pos->board[to];
 			cap_candidates &= cap_candidates - 1;
-			if (is_prom_sq[to]) {
-				add_move(move_prom_cap(from, to, TO_QUEEN, cap_pt), list);
-				add_move(move_prom_cap(from, to, TO_KNIGHT, cap_pt), list);
-				add_move(move_prom_cap(from, to, TO_ROOK, cap_pt), list);
-				add_move(move_prom_cap(from, to, TO_BISHOP, cap_pt), list);
-			} else {
-				add_move(move_cap(from, to, cap_pt), list);
-			}
+			add_move(move_cap(from, to, pos->board[to]), list);
 		}
 	}
 }
@@ -241,10 +247,7 @@ static void gen_pawn_quiets(Position* pos, Movelist* list)
 	int const c            = pos->stm;
 	u64 const vacancy_mask = ~pos->bb[FULL];
 	u64       pawns_bb     = pos->bb[PAWN] & pos->bb[c];
-	if (c == WHITE)
-		pawns_bb &= ~rank_mask[RANK_7];
-	else
-		pawns_bb &= ~rank_mask[RANK_2];
+	pawns_bb              &= ~(c == WHITE ? rank_mask[RANK_7] : rank_mask[RANK_2]);
 	while (pawns_bb) {
 		from        = pawns_bb & -pawns_bb;
 		pawns_bb   &= pawns_bb - 1;
@@ -326,12 +329,12 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 				from           = bitscan(curr_piece_bb);
 				curr_piece_bb &= curr_piece_bb - 1;
 				extract_caps(pos, from, get_atks(from, pt, full_bb) & enemy_mask, list);
-				extract_moves(from, get_atks(from, pt, full_bb) & vacancy_mask, list);
+				extract_quiets(from, get_atks(from, pt, full_bb) & vacancy_mask, list);
 			}
 		}
 		from = pos->king_sq[c];
 		extract_caps(pos, from, k_atks_bb[from] & enemy_mask, list);
-		extract_moves(from, k_atks_bb[from] & vacancy_mask, list);
+		extract_quiets(from, k_atks_bb[from] & vacancy_mask, list);
 	}
 }
 
