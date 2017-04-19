@@ -399,7 +399,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
 			}
 		} else {
-			ss[1].node_type = CUT_NODE;
+			ss[1].node_type   = CUT_NODE;
 			ss[1].early_prune = 1;
 			val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
 			if (val > alpha) {

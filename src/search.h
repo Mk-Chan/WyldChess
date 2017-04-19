@@ -95,17 +95,16 @@ static int see(Position const * const pos, u32 move)
 
 inline int cap_order(Position const * const pos, u32 const m)
 {
-	if (cap_type(m)) {
-		int cap_val   = mg_val(piece_val[pos->board[to_sq(m)]]);
-		int capper_pt = pos->board[from_sq(m)];
-		if (move_type(m) == PROMOTION)
-			cap_val += mg_val(piece_val[prom_type(m)]);
-		if (cap_val - mg_val(piece_val[capper_pt]) > equal_cap_bound)
-			return GOOD_CAP + cap_val - capper_pt;
-	}
+	int cap_val   = mg_val(piece_val[pos->board[to_sq(m)]]);
+	int capper_pt = pos->board[from_sq(m)];
+	if (move_type(m) == PROMOTION)
+		cap_val += mg_val(piece_val[prom_type(m)]);
+	if (cap_val - mg_val(piece_val[capper_pt]) > equal_cap_bound)
+		return GOOD_CAP + cap_val - capper_pt;
+
 	int see_val = see(pos, m);
 	int cap_order;
-	if (see_val > equal_cap_bound)
+	if (see_val >= equal_cap_bound)
 		cap_order = GOOD_CAP;
 	else if (see_val > -equal_cap_bound)
 		cap_order = EQUAL_CAP;
