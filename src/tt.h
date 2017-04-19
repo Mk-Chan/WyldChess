@@ -64,16 +64,12 @@ extern TT tt;
 
 inline int val_to_tt(int val, int ply)
 {
-	return    val >= MAX_MATE_VAL  ? val + ply
-		: val <= -MAX_MATE_VAL ? val - ply
-		: val;
+	return val;
 }
 
 inline int val_from_tt(int val, int ply)
 {
-	return    val >= MAX_MATE_VAL  ? val - ply
-		: val <= -MAX_MATE_VAL ? val + ply
-		: val;
+	return val;
 }
 
 inline void tt_clear(TT* tt)
