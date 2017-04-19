@@ -382,19 +382,19 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		do_move(pos, move);
 
 		// Principal Variation Search
-		if (   legal_moves == 1
-		    || node_type != PV_NODE) {
-			if (node_type == PV_NODE)
-				ss[1].node_type = PV_NODE;
-			else if (node_type == CUT_NODE && legal_moves == 1)
-				ss[1].node_type = ALL_NODE;
-			else
-				ss[1].node_type = CUT_NODE;
+		if (legal_moves == 1) {
+			ss[1].node_type = node_type == PV_NODE  ? PV_NODE
+				        : node_type == CUT_NODE ? ALL_NODE
+					: CUT_NODE;
+			ss[1].early_prune = 1;
+			val = -search(su, ss + 1, -beta , -alpha, depth_left);
+		} else if (node_type != PV_NODE) {
+			ss[1].node_type   = CUT_NODE;
 			ss[1].early_prune = 1;
 			val = -search(su, ss + 1, -beta, -alpha, depth_left);
 			if (   val > alpha
 			    && depth_left < depth - 1) {
-				ss[1].node_type = node_type == PV_NODE ? PV_NODE : ALL_NODE;
+				ss[1].node_type   = ALL_NODE;
 				ss[1].early_prune = 1;
 				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
 			}
