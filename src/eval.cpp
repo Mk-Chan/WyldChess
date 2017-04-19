@@ -414,8 +414,7 @@ int evaluate(Position* const pos)
 	}
 #endif
 
-	if (   popcnt(pos->bb[FULL]) <= 4
-	    && insufficient_material(pos))
+	if (insufficient_material(pos))
 		return 0;
 	Eval ev;
 	int ksq, c, pt;

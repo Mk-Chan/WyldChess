@@ -36,14 +36,23 @@ unsigned long long curr_time()
 	return (curr.tv_sec * 1000 + (curr.tv_usec / 1000.0));
 }
 
+u64 get_rand()
+{
+	u64 r;
+	do {
+		r = rng();
+	} while (!r);
+	return r;
+}
+
 void init_zobrist_keys()
 {
 	int i, j, k;
 	for (i = 0; i != 2; ++i)
 		for (j = 0; j != 8; ++j)
 			for (k = 0; k != 64; ++k)
-				psq_keys[i][j][k] = rng();
+				psq_keys[i][j][k] = get_rand();
 	for (i = 0; i != 16; ++i)
-		castle_keys[i] = rng();
-	stm_key = rng();
+		castle_keys[i] = get_rand();
+	stm_key = get_rand();
 }

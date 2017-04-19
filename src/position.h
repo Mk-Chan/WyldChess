@@ -280,6 +280,8 @@ inline void set_checkers(Position* pos)
 
 inline int insufficient_material(Position* const pos)
 {
+	if (popcnt(pos->bb[FULL]) > 4)
+		return 0;
 	u64 const * const bb = pos->bb;
 	if (bb[PAWN] | bb[QUEEN] | bb[ROOK])
 		return 0;

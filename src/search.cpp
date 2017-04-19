@@ -92,21 +92,24 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 	    && stopped(su))
 		return 0;
 
-	Position* const pos    = su->pos;
+	Position* const pos = su->pos;
 
 	if (pos->state->fifty_moves > 99)
 		return 0;
 
-	if (  !cap_type((pos->state - 1)->move)
-	    && is_repeat(pos))
+	if (cap_type((pos->state - 1)->move)) {
+		if (insufficient_material(pos))
+			return 0;
+	} else if (is_repeat(pos)) {
 		return 0;
+	}
 
 	if (ss->ply >= MAX_PLY)
 		return evaluate(pos);
 
 	// Mate distance pruning
-	alpha = max((-MAX_MATE_VAL + ss->ply), alpha);
-	beta  = min((MAX_MATE_VAL - ss->ply), beta);
+	alpha = max((-MATE + ss->ply), alpha);
+	beta  = min((MATE - ss->ply - 1), beta);
 	if (alpha >= beta)
 		return alpha;
 
@@ -132,7 +135,7 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 	if (checked) {
 		gen_check_evasions(pos, list);
 		if (list->end == list->moves)
-			return -INFINITY + ss->ply;
+			return -MATE + ss->ply;
 
 	} else {
 		gen_quiesce_moves(pos, list);
@@ -152,7 +155,6 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 		++legal_moves;
 #endif
 
-#ifndef PLAIN_AB
 		// Futility pruning
 		if (   !checked
 		    &&  alpha > -MAX_MATE_VAL
@@ -163,7 +165,6 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 			if (val <= alpha)
 				continue;
 		}
-#endif
 
 		do_move(pos, move);
 		val = -qsearch(su, ss + 1, -beta, -alpha);
@@ -193,21 +194,24 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	Position* const pos    = su->pos;
 	Controller* const ctlr = su->ctlr;
 	++ctlr->nodes_searched;
+	int old_alpha = alpha;
 
 	if (ss->ply) {
 		if ( !(su->ctlr->nodes_searched & 0x7ff)
 		    && stopped(su))
 			return 0;
 
-		if (pos->state->fifty_moves > 99 || is_repeat(pos))
+		if (   pos->state->fifty_moves > 99
+		    || insufficient_material(pos)
+		    || is_repeat(pos))
 			return 0;
 
 		if (ss->ply >= MAX_PLY)
 			return evaluate(pos);
 
 		// Mate distance pruning
-		alpha = max((-MAX_MATE_VAL + ss->ply), alpha);
-		beta  = min((MAX_MATE_VAL - ss->ply), beta);
+		alpha = max((-MATE + ss->ply), alpha);
+		beta  = min((MATE - ss->ply - 1), beta);
 		if (alpha >= beta)
 			return alpha;
 	}
@@ -219,15 +223,15 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 #endif
 	TTEntry entry = tt_probe(&tt, pos->state->pos_key);
 	u32 tt_move   = 0;
-#ifndef PLAIN_AB
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
 #ifdef STATS
 		++pos->stats.hash_hits;
 #endif
 		tt_move = get_move(entry.data);
-		if (    node_type != PV_NODE
-		    &&  DEPTH(entry.data) >= depth) {
-			int val  = SCORE(entry.data);
+		if (   node_type != PV_NODE
+		    && DEPTH(entry.data) >= depth) {
+
+			int val  = val_from_tt(SCORE(entry.data), ss->ply);
 			u64 flag = FLAG(entry.data);
 			int a    = alpha,
 			    b    = beta;
@@ -243,7 +247,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 				return val;
 		}
 	}
-#endif
 
 	set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
@@ -266,7 +269,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			return val;
 	}
 
-#ifndef PLAIN_AB
 	// Null move pruning
 	if (    depth >= 4
 	    &&  node_type == CUT_NODE
@@ -297,13 +299,11 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			return val;
 		}
 	}
-#endif
 
 	// Internal iterative deepening
 #ifdef STATS
 	int iid = 0;
 #endif
-#ifndef PLAIN_AB
 	// Conditions similar to stockfish as of now, seems to be effective
 	if (   !tt_move
 	    &&  depth >= 5
@@ -325,7 +325,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		entry   = tt_probe(&tt, pos->state->pos_key);
 		tt_move = get_move(entry.data);
 	}
-#endif
 
 	Movelist* list = &ss->list;
 	list->end      = list->moves;
@@ -334,8 +333,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	order_moves(pos, ss, tt_move);
 
-	int old_alpha   = alpha,
-	    best_val    = -INFINITY,
+	int best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
 	int checking_move, depth_left;
@@ -353,20 +351,19 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
 			++depth_left;
 
-#ifndef PLAIN_AB
 		// Heuristic pruning
 		if (    ss->ply
 		    &&  best_val > -MAX_MATE_VAL
+		    &&  legal_moves > 1
 		    &&  prom_type(move) != QUEEN
 		    &&  non_pawn_pieces_bb
 		    && !checking_move
 		    && !cap_type(move)) {
 
 			// Futility pruning
-			if (    depth < 8
-			    &&  legal_moves > 1
-			    &&  node_type != PV_NODE
-			    &&  static_eval + 100 * depth_left <= alpha)
+			if (   depth < 8
+			    && node_type != PV_NODE
+			    && static_eval + 100 * depth_left <= alpha)
 				continue;
 
 			// Late move reduction
@@ -381,7 +378,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 				depth_left = max(1, depth - reduction);
 			}
 		}
-#endif
 
 		do_move(pos, move);
 
@@ -398,7 +394,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			val = -search(su, ss + 1, -beta, -alpha, depth_left);
 			if (   val > alpha
 			    && depth_left < depth - 1) {
-				ss[1].node_type = node_type;
+				ss[1].node_type = node_type == PV_NODE ? PV_NODE : ALL_NODE;
 				ss[1].early_prune = 1;
 				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
 			}
@@ -424,27 +420,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			if (val > alpha) {
 				alpha = val;
 
-				if (val >= beta) {
-#ifdef STATS
-					if (legal_moves == 1)
-						++pos->stats.first_beta_cutoffs;
-					++pos->stats.beta_cutoffs;
-					pos->stats.iid_cutoffs += iid;
-					if (node_type == CUT_NODE)
-						++pos->stats.correct_nt_guess;
-#endif
-					if (  !cap_type(move)
-					    && ss->killers[0] != move
-					    && move_type(move) != ENPASSANT
-					    && prom_type(move) != QUEEN) {
-						ss->killers[1] = ss->killers[0];
-						ss->killers[0] = move;
-					}
-
-					tt_store(&tt, best_val, FLAG_LOWER, depth, best_move, pos->state->pos_key);
-					return best_val;
-				}
-
 				if (  !cap_type(move)
 				    && move_type(move) != ENPASSANT
 				    && prom_type(move) != QUEEN) {
@@ -453,51 +428,68 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 					if (history[pt][to_sq(move)] > HISTORY_LIM)
 						reduce_history();
 				}
+
+				if (val >= beta) {
+#ifdef STATS
+					if (legal_moves == 1)
+						++pos->stats.first_beta_cutoffs;
+					++pos->stats.beta_cutoffs;
+					pos->stats.iid_cutoffs += iid;
+#endif
+					if (  !cap_type(move)
+					    && ss->killers[0] != move
+					    && move_type(move) != ENPASSANT
+					    && prom_type(move) != QUEEN) {
+						ss->killers[1] = ss->killers[0];
+						ss->killers[0] = move;
+					}
+					break;
+				}
 			}
 		}
-
-		if (node_type == CUT_NODE)
-			node_type = ALL_NODE;
 	}
 
 #ifdef STATS
-	if (old_alpha == alpha)
-		pos->stats.correct_nt_guess += (node_type == ALL_NODE);
-	else
+	if (alpha >= beta)
+		pos->stats.correct_nt_guess += (node_type == CUT_NODE);
+	else if (alpha > old_alpha)
 		pos->stats.correct_nt_guess += (node_type == PV_NODE);
+	else
+		pos->stats.correct_nt_guess += (node_type == ALL_NODE);
 #endif
 
 	if (  !ss->ply
+	    && alpha < beta
 	    && legal_moves == 1)
 		ctlr->is_stopped = 1;
 
 	if (!legal_moves) {
 		if (checked)
-			return -INFINITY + ss->ply;
+			alpha = best_val = -MATE + ss->ply;
 		else
-			return 0;
+			alpha = best_val = 0;
 	}
 
+	u64 flag = alpha >= beta     ? FLAG_LOWER
+		 : alpha > old_alpha ? FLAG_EXACT
+		 : FLAG_UPPER;
 
-	if (old_alpha == alpha)
-		tt_store(&tt, best_val, FLAG_UPPER, depth, best_move, pos->state->pos_key);
-	else {
-		tt_store(&tt, alpha, FLAG_EXACT, depth, best_move, pos->state->pos_key);
-		pvt_store(&pvt, get_move(best_move), pos->state->pos_key, depth);
-	}
+	tt_store(&tt, val_to_tt(alpha, ss->ply), flag, depth, best_move, pos->state->pos_key);
+	if (   node_type == PV_NODE
+	    && flag == FLAG_EXACT)
+		pvt_store(&pvt, best_move, pos->state->pos_key, depth);
 
-	return alpha;
+	return best_val;
 }
 
 int begin_search(SearchUnit* const su)
 {
 	u64 time;
-	int val, alpha, beta, asp_win_tries, depth;
+	int val, alpha, beta, depth;
 	int best_move = 0;
 
 	memset(history, 0, sizeof(int) * 8 * 64);
 
-	// To accomodate (ss - 2) during killer move check at 0 and 1 ply when starting with ss + 2
 	SearchStack ss[MAX_PLY + 2];
 	clear_search(su, ss + 2);
 	pvt_clear(&pvt);
@@ -507,23 +499,25 @@ int begin_search(SearchUnit* const su)
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int asp_wins[] = { 10, 25, 50, 100, 200, INFINITY };
+	static int* aspiration;
 	for (depth = 1; depth <= max_depth; ++depth) {
-		if (depth < 5) {
-			ss[2].node_type = PV_NODE;
-			val = search(su, ss + 2, -INFINITY, +INFINITY, depth);
-		} else {
-			asp_win_tries = 0;
-			while (1) {
-				ss[2].node_type = PV_NODE;
-				alpha = val - asp_wins[asp_win_tries];
-				beta  = val + asp_wins[asp_win_tries];
-
-				val   = search(su, ss + 2, alpha, beta, depth);
-				if (val > alpha && val < beta)
-					break;
-
-				++asp_win_tries;
+		aspiration = asp_wins;
+		while (1) {
+			if (    depth < 5
+			    || *aspiration == INFINITY) {
+				alpha = -INFINITY;
+				beta  =  INFINITY;
+			} else {
+				alpha = val - *aspiration;
+				beta  = val + *aspiration;
 			}
+
+			ss[2].node_type = PV_NODE;
+			val = search(su, ss + 2, alpha, beta, depth);
+			if (val > alpha && val < beta)
+				break;
+
+			++aspiration;
 		}
 
 		if (   depth > 1
@@ -531,12 +525,28 @@ int begin_search(SearchUnit* const su)
 			break;
 
 		time = curr_time() - ctlr->search_start_time;
-		if (su->protocol == XBOARD)
+		if (su->protocol == XBOARD) {
 			fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, ctlr->nodes_searched);
-		else if (su->protocol == UCI)
-			fprintf(stdout, "info depth %u score cp %d nodes %llu time %llu pv", depth, val, ctlr->nodes_searched, time);
-		best_move = get_stored_moves(pos, depth);
+		} else if (su->protocol == UCI) {
+			fprintf(stdout, "info ");
+			fprintf(stdout, "depth %u ", depth);
+			fprintf(stdout, "score ");
+			if (abs(val) < MAX_MATE_VAL) {
+				printf("cp %d ", val);
+			} else {
+				printf("mate ");
+				if (val <= -MAX_MATE_VAL)
+					printf("%d ", (-val - MATE) / 2);
+				else
+					printf("%d ", (-val + MATE + 1) / 2);
+			}
+			fprintf(stdout, "nodes %llu ", ctlr->nodes_searched);
+			fprintf(stdout, "time %llu ", time);
+			fprintf(stdout, "pv");
+		}
+		print_pv_line(pos, depth);
 		fprintf(stdout, "\n");
+		best_move = get_pv_move(pos);
 	}
 #ifdef STATS
 	fprintf(stdout, "nps:                      %lf\n",

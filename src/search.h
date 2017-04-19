@@ -26,7 +26,7 @@ struct SearchStack
 {
 	int node_type;
 	int early_prune;
-	u32 ply;
+	int ply;
 	u32 killers[2];
 	u32 order_arr[MAX_MOVES_PER_POS];
 	Movelist list;
@@ -155,7 +155,7 @@ static int valid_move(Position* const pos, u32* move)
 	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
-	gen_pseudo_legal_moves(pos, &list);
+	gen_legal_moves(pos, &list);
 	u32* m;
 	for (m = list.moves; m != list.end; ++m) {
 		if (   from_sq(*m) == from
@@ -167,24 +167,30 @@ static int valid_move(Position* const pos, u32* move)
 	return 0;
 }
 
-inline int get_stored_moves(Position* const pos, int depth)
+inline void print_pv_line(Position* const pos, int depth)
 {
 	char mstr[6];
-	if (!depth)
-		return 0;
 	PVEntry entry = pvt_probe(&pvt, pos->state->pos_key);
 	if (entry.key == pos->state->pos_key) {
 		u32 move = get_move(entry.move);
-		if (  !valid_move(pos, &move)
-		   || !legal_move(pos, move))
-			return 0;
+		if (!valid_move(pos, &move))
+			return;
 		do_move(pos, move);
-		fprintf(stdout, " ");
 		move_str(move, mstr);
-		fprintf(stdout, "%s", mstr);
-		get_stored_moves(pos, depth - 1);
+		fprintf(stdout, " %s", mstr);
+		if (depth > 1)
+			print_pv_line(pos, depth - 1);
 		undo_move(pos);
-		return move;
+	}
+}
+
+inline u32 get_pv_move(Position* const pos)
+{
+	PVEntry entry = pvt_probe(&pvt, pos->state->pos_key);
+	if (entry.key == pos->state->pos_key) {
+		u32 move = get_move(entry.move);
+		if (valid_move(pos, &move))
+			return move;
 	}
 	return 0;
 }

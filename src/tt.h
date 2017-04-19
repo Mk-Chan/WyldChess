@@ -30,7 +30,7 @@
 #define FLAG_LOWER  ((3ULL << FLAG_SHIFT))
 #define FLAG_MASK   ((3ULL << FLAG_SHIFT))
 
-#define FLAG(data)  ( (data) & FLAG_MASK)
+#define FLAG(data)  ((data) & FLAG_MASK)
 #define DEPTH(data) ((int)((data) >> DEPTH_SHIFT) & 0x7f)
 #define SCORE(data) ((int)((data) >> SCORE_SHIFT))
 
@@ -62,21 +62,23 @@ struct TT
 
 extern TT tt;
 
+inline int val_to_tt(int val, int ply)
+{
+	return    val >= MAX_MATE_VAL  ? val + ply
+		: val <= -MAX_MATE_VAL ? val - ply
+		: val;
+}
+
+inline int val_from_tt(int val, int ply)
+{
+	return    val >= MAX_MATE_VAL  ? val - ply
+		: val <= -MAX_MATE_VAL ? val + ply
+		: val;
+}
+
 inline void tt_clear(TT* tt)
 {
 	memset(tt->table, 0, sizeof(TTEntry) * tt->size);
-}
-
-inline void tt_age(TT* tt, int plies)
-{
-	TTEntry* curr;
-	TTEntry* end = tt->table + tt->size;
-	int depth;
-	for (curr = tt->table; curr != end; ++curr) {
-		depth       = DEPTH(curr->data);
-		curr->data &= ~(0x7f << DEPTH_SHIFT);
-		curr->data ^= max(depth - plies, 0) << DEPTH_SHIFT;
-	}
 }
 
 inline void tt_alloc_MB(TT* tt, u32 size)
@@ -92,6 +94,7 @@ inline void tt_destroy(TT* tt)
 	free(tt->table);
 }
 
+// Maybe change to a 4-slot bucket scheme
 inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
 {
 	u32 index      = key < tt->size ? key : key % tt->size;

@@ -33,10 +33,11 @@
 
 #define MAX_MOVES_PER_GAME (2048)
 #define MAX_MOVES_PER_POS  (218)
-#define MAX_PLY            (128)
+#define MAX_PLY            (127)
 #define BB(x)              (1ULL << (x))
 #define INFINITY           (30000)
-#define MAX_MATE_VAL       (INFINITY - MAX_PLY)
+#define MATE               (25000)
+#define MAX_MATE_VAL       (MATE - MAX_PLY)
 #define MAX_PHASE          (256)
 #define INVALID            (-INFINITY - 1)
 
