@@ -64,11 +64,19 @@ extern TT tt;
 
 inline int val_to_tt(int val, int ply)
 {
+	if (val >= MAX_MATE_VAL)
+		val += ply;
+	else if (val <= -MAX_MATE_VAL)
+		val -= ply;
 	return val;
 }
 
 inline int val_from_tt(int val, int ply)
 {
+	if (val >= MAX_MATE_VAL)
+		val += ply;
+	else if (val <= -MAX_MATE_VAL)
+		val -= ply;
 	return val;
 }
 

@@ -334,6 +334,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		++legal_moves;
 
 		if (  !ss->ply
+		    && su->protocol == UCI
 		    && curr_time() - ctlr->search_start_time >= 1000) {
 			char mstr[6];
 			move_str(move, mstr);
@@ -497,17 +498,16 @@ int begin_search(SearchUnit* const su)
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
-	static int* alpha_delta;
-	static int* beta_delta;
+	static int* delta;
 	for (depth = 1; depth <= max_depth; ++depth) {
-		alpha_delta = beta_delta = deltas;
+		delta = deltas;
 		while (1) {
 			if (depth < 5) {
 				alpha = -INFINITY;
 				beta  =  INFINITY;
 			} else {
-				alpha = max(val - *alpha_delta, -INFINITY);
-				beta  = min(val + *beta_delta, +INFINITY);
+				alpha = max(val - *delta, -INFINITY);
+				beta  = min(val + *delta, +INFINITY);
 			}
 
 			val = search(su, ss + 2, alpha, beta, depth);
@@ -539,10 +539,8 @@ int begin_search(SearchUnit* const su)
 			print_pv_line(pos, depth);
 			fprintf(stdout, "\n");
 
-			if (val >= beta)
-				++beta_delta;
-			else if (val <= alpha)
-				++alpha_delta;
+			if (val <= alpha || val >= beta)
+				++delta;
 			else
 				break;
 		}
