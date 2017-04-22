@@ -36,10 +36,9 @@
 #define MAX_PLY            (127)
 #define BB(x)              (1ULL << (x))
 #define INFINITY           (30000)
-#define MATE               (25000)
+#define MATE               (29000)
 #define MAX_MATE_VAL       (MATE - MAX_PLY)
 #define MAX_PHASE          (256)
-#define INVALID            (-INFINITY - 1)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)
