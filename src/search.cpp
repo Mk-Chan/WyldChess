@@ -97,12 +97,9 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 	if (pos->state->fifty_moves > 99)
 		return 0;
 
-	if (cap_type((pos->state - 1)->move)) {
-		if (insufficient_material(pos))
-			return 0;
-	} else if (is_repeat(pos)) {
+	if (  !cap_type((pos->state - 1)->move)
+	    && is_repeat(pos))
 		return 0;
-	}
 
 	if (ss->ply >= MAX_PLY)
 		return evaluate(pos);
@@ -201,7 +198,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			return 0;
 
 		if (   pos->state->fifty_moves > 99
-		    || insufficient_material(pos)
 		    || is_repeat(pos))
 			return 0;
 
@@ -242,7 +238,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
-	int val;
 	int static_eval;
 	if (node_type != PV_NODE)
 		static_eval = evaluate(pos);
@@ -252,11 +247,10 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	// Futility pruning
 	if (    depth < 3
 	    &&  node_type != PV_NODE
-	    && !cap_type((pos->state - 1)->move)
 	    &&  ss->early_prune
-	    &&  non_pawn_pieces_count > 1
+	    &&  non_pawn_pieces_count
 	    && !checked) {
-		val = static_eval - (200 * depth);
+		int val = static_eval - (200 * depth);
 		if (   abs(val) < MAX_MATE_VAL
 		    && val >= beta)
 			return val;
@@ -268,7 +262,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	    &&  ss->early_prune
 	    && !checked
 	    &&  static_eval >= beta
-	    &&  non_pawn_pieces_count > 1) {
+	    &&  non_pawn_pieces_count) {
 #ifdef STATS
 		++pos->stats.null_tries;
 #endif
@@ -277,7 +271,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		ss[1].node_type   = CUT_NODE;
 		ss[1].early_prune = 0;
 		do_null_move(pos);
-		val = -search(su, ss + 1, -beta, -beta + 1, depth_left);
+		int val = -search(su, ss + 1, -beta, -beta + 1, depth_left);
 		undo_null_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
@@ -326,7 +320,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	int best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
-	int checking_move, depth_left;
+	int checking_move, depth_left, val;
 	u32 move;
 	while ((move = get_next_move(ss))) {
 		if (!legal_move(pos, move))
@@ -354,7 +348,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		    &&  best_val > -MAX_MATE_VAL
 		    &&  legal_moves > 1
 		    &&  prom_type(move) != QUEEN
-		    &&  non_pawn_pieces_count > 1
+		    &&  non_pawn_pieces_count
 		    && !checking_move
 		    && !cap_type(move)) {
 
@@ -392,7 +386,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			val = -search(su, ss + 1, -beta, -alpha, depth_left);
 			if (   val > alpha
 			    && depth_left < depth - 1) {
-				ss[1].node_type   = ALL_NODE;
+				ss[1].node_type = ALL_NODE;
 				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
 			}
 		} else {
@@ -498,18 +492,18 @@ int begin_search(SearchUnit* const su)
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
-	static int* delta;
+	static int* alpha_delta;
+	static int* beta_delta;
 	for (depth = 1; depth <= max_depth; ++depth) {
-		delta = deltas;
+		alpha_delta = beta_delta = deltas;
+		if (depth < 5) {
+			alpha = -INFINITY;
+			beta  =  INFINITY;
+		} else {
+			alpha = max(val - *alpha_delta, -INFINITY);
+			beta  = min(val + *beta_delta, +INFINITY);
+		}
 		while (1) {
-			if (depth < 5) {
-				alpha = -INFINITY;
-				beta  =  INFINITY;
-			} else {
-				alpha = max(val - *delta, -INFINITY);
-				beta  = min(val + *delta, +INFINITY);
-			}
-
 			val = search(su, ss + 2, alpha, beta, depth);
 
 			if (   depth > 1
@@ -539,10 +533,15 @@ int begin_search(SearchUnit* const su)
 			print_pv_line(pos, depth);
 			fprintf(stdout, "\n");
 
-			if (val <= alpha || val >= beta)
-				++delta;
-			else
+			if (val <= alpha) {
+				++alpha_delta;
+				alpha -= (alpha - val) + *alpha_delta;
+			} else if (val >= beta) {
+				++beta_delta;
+				beta += (val - beta) + *beta_delta;
+			} else {
 				break;
+			}
 		}
 
 		if (   depth > 1
