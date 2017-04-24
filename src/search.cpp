@@ -466,8 +466,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		 : FLAG_UPPER;
 
 	tt_store(&tt, val_to_tt(best_val, ss->ply), flag, depth, best_move, pos->state->pos_key);
-	if (   node_type == PV_NODE
-	    && flag == FLAG_EXACT)
+	if (flag == FLAG_EXACT)
 		pvt_store(&pvt, best_move, pos->state->pos_key, depth);
 
 	return best_val;
