@@ -175,7 +175,7 @@ void init_eval_terms()
 static void eval_pawns(Position* const pos, Eval* const ev)
 {
 	int eval[2] = { S(0, 0), S(0, 0) };
-	u64 bb, pawn_bb, atk_bb;
+	u64 bb, pawn_bb;
 	u64* atks_bb;
 	int c, sq;
 	for (c = WHITE; c <= BLACK; ++c) {
@@ -186,11 +186,8 @@ static void eval_pawns(Position* const pos, Eval* const ev)
 			sq  = bitscan(bb);
 			bb &= bb - 1;
 
-			// Get the attacks
-			atk_bb = p_atks_bb[c][sq];
-
 			// Store the attacks
-			atks_bb[PAWN] |= atk_bb;
+			atks_bb[PAWN] |= p_atks_bb[c][sq];
 
 			// Pawn of the same color in front of this pawn => Doubled pawn
 			if (file_forward_mask[c][sq] & pawn_bb)
@@ -216,32 +213,25 @@ static void eval_pawns(Position* const pos, Eval* const ev)
 static void eval_pieces(Position* const pos, Eval* const ev)
 {
 	int sq, c, pt, ksq, mobility_val;
-	u64  curr_bb, c_bb, atk_bb, xrayable_bb,
+	u64  curr_bb, atk_bb, xrayable_bb,
 	     mobility_mask, non_pinned_bb, sq_bb;
 	u64* atks_bb;
+	u64* bb      = pos->bb;
+	u64  full_bb = bb[FULL];
 #ifdef STATS
 	int accumulated = 0;
 #endif
 
-	u64 const p_atks_bb[2] = {
-		ev->atks_bb[WHITE][PAWN],
-		ev->atks_bb[BLACK][PAWN]
-	};
-
 	int  eval[2] = { S(0, 0), S(0, 0) };
-	u64* bb      = pos->bb;
-	u64  full_bb = bb[FULL];
-
 	for (c = WHITE; c <= BLACK; ++c) {
 		atks_bb       =   ev->atks_bb[c];
 		non_pinned_bb =  ~ev->pinned_bb[c];
-		c_bb          =   bb[c];
 		ksq           =   pos->king_sq[c];
-		mobility_mask = ~(ev->pawn_bb[c] | BB(ksq) | p_atks_bb[!c]);
-		xrayable_bb   =   c_bb ^ (BB(ksq) | ev->pawn_bb[c] | ev->pinned_bb[c]);
+		mobility_mask = ~(ev->pawn_bb[c] | BB(ksq) | ev->atks_bb[!c][PAWN]);
+		xrayable_bb   =   full_bb ^ (bb[c] ^ (BB(ksq) | ev->pawn_bb[c] | ev->pinned_bb[c]));
 
 		for (pt = KNIGHT; pt != KING; ++pt) {
-			curr_bb = bb[pt] & c_bb;
+			curr_bb = bb[pt] & bb[c];
 
 			// If there are 2 bishops of the same color => Dual bishops
 			if (pt == BISHOP && popcnt(curr_bb) >= 2)
@@ -254,11 +244,7 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 				curr_bb &= curr_bb - 1;
 
 				// Get attacks for piece xrays for bishop and rook
-				atk_bb = pt == BISHOP
-						? Bmagic(sq, full_bb ^ xrayable_bb)
-						: pt == ROOK
-							? Rmagic(sq, full_bb ^ xrayable_bb)
-							: get_atks(sq, pt, full_bb);
+				atk_bb = get_atks(sq, pt, xrayable_bb);
 
 				// Store the attacks
 				atks_bb[pt]  |= atk_bb;
@@ -275,7 +261,7 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 
 				// Knight or bishop on relative 4th, 5th or 6th rank and not attacked by an enemy pawn
 				if (   (pt == KNIGHT || pt == BISHOP)
-				    && (~p_atks_bb[!c] & sq_bb)
+				    && (~ev->atks_bb[!c][PAWN] & sq_bb)
 				    && (sq_bb & outpost_ranks_mask[c]))
 					eval[c] += outpost[pt & 1];
 
@@ -285,8 +271,8 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 					// Opposite colored pawn in front of the rook => Rook on semi-open file
 					// Otherwise => Rook on open file
 					eval[c] += (file_forward_mask[c][sq] & ev->pawn_bb[!c])
-						? rook_semi_open
-						: rook_open_file;
+						  ? rook_semi_open
+						  : rook_open_file;
 
 					// If rook on relative 7th rank and king on relative 8th rank, bonus
 					if (   rank_of(sq) == rank_lookup[c][RANK_7]
