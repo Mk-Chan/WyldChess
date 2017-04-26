@@ -106,7 +106,7 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 
 	// Mate distance pruning
 	alpha = max((-MATE + ss->ply), alpha);
-	beta  = min((MATE - ss->ply - 1), beta);
+	beta  = min((MATE - ss->ply), beta);
 	if (alpha >= beta)
 		return alpha;
 
@@ -206,7 +206,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 		// Mate distance pruning
 		alpha = max((-MATE + ss->ply), alpha);
-		beta  = min((MATE - ss->ply - 1), beta);
+		beta  = min((MATE - ss->ply), beta);
 		if (alpha >= beta)
 			return alpha;
 	}
@@ -517,13 +517,13 @@ int begin_search(SearchUnit* const su)
 				fprintf(stdout, "depth %u ", depth);
 				fprintf(stdout, "score ");
 				if (abs(val) < MAX_MATE_VAL) {
-					printf("cp %d ", val);
+					fprintf(stdout, "cp %d ", val);
 				} else {
-					printf("mate ");
+					fprintf(stdout, "mate ");
 					if (val < 0)
-						printf("%d ", (-val - MATE) / 2);
+						fprintf(stdout, "%d ", (-val - MATE) / 2);
 					else
-						printf("%d ", (-val + MATE + 1) / 2);
+						fprintf(stdout, "%d ", (-val + MATE + 1) / 2);
 				}
 				fprintf(stdout, "nodes %llu ", ctlr->nodes_searched);
 				fprintf(stdout, "time %llu ", time);
