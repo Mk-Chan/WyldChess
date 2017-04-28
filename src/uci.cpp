@@ -147,7 +147,7 @@ void uci_loop()
 		} else if (!strncmp(input, "go", 2)) {
 
 			transition(&su, WAITING);
-			su.game_over       = 0;
+			su.game_over           = 0;
 			ctlr.time_dependent    = 1;
 			ctlr.moves_per_session = 0;
 			ctlr.moves_left        = 40;
