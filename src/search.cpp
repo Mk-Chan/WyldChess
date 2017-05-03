@@ -64,22 +64,26 @@ static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 	}
 }
 
-static u32 get_next_move(SearchStack* const ss)
+static u32 get_next_move(SearchStack* const ss, int move_num)
 {
-	if (ss->list.end == ss->list.moves)
-		return 0;
 	Movelist* list = &ss->list;
-	u32* order = ss->order_arr;
 	int len = list->end - list->moves;
-	int best_index = 0;
-	for (int i = 1; i < len; ++i) {
+	if (move_num >= len)
+		return 0;
+	u32* order = ss->order_arr;
+	int best_index = move_num;
+	for (int i = best_index + 1; i < len; ++i) {
 		if (order[i] > order[best_index])
 			best_index = i;
 	}
 	u32 best_move = list->moves[best_index];
-	--list->end;
-	list->moves[best_index] = *list->end;
-	order[best_index] = order[len - 1];
+	if (best_index != move_num) {
+		list->moves[best_index] = list->moves[move_num];
+		list->moves[move_num]   = best_move;
+		u32 best_order          = order[best_index];
+		order[best_index]       = order[move_num];
+		order[move_num]         = best_order;
+	}
 	return best_move;
 }
 
@@ -143,8 +147,9 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 #ifdef STATS
 	u32 legal_moves = 0;
 #endif
+	int move_num = 0;
 	u32 move;
-	while ((move = get_next_move(ss))) {
+	while ((move = get_next_move(ss, move_num++))) {
 		if (!legal_move(pos, move))
 			continue;
 #ifdef STATS
@@ -247,14 +252,12 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	// Futility pruning
 	if (    depth < 3
 	    &&  node_type != PV_NODE
-	    &&  ss->early_prune
 	    &&  non_pawn_pieces_count
-	    && !checked) {
-		int val = static_eval - (200 * depth);
-		if (   abs(val) < MAX_MATE_VAL
-		    && val >= beta)
-			return val;
-	}
+	    &&  static_eval < WINNING_SCORE
+	    &&  ss->early_prune
+	    && !checked
+	    &&  static_eval - 200 * depth >= beta)
+		return static_eval;
 
 	// Null move pruning
 	if (    depth >= 4
@@ -313,7 +316,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	Movelist* list = &ss->list;
 	list->end      = list->moves;
 	set_pinned(pos);
-	gen_pseudo_legal_moves(pos, list);
+	gen_legal_moves(pos, list);
 
 	order_moves(pos, ss, tt_move);
 
@@ -322,9 +325,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	    legal_moves = 0;
 	int checking_move, depth_left, val;
 	u32 move;
-	while ((move = get_next_move(ss))) {
-		if (!legal_move(pos, move))
-			continue;
+	while ((move = get_next_move(ss, legal_moves))) {
 		++legal_moves;
 
 		if (  !ss->ply

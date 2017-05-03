@@ -37,6 +37,7 @@
 #define BB(x)              (1ULL << (x))
 #define INFINITY           (30000)
 #define MATE               (29000)
+#define WINNING_SCORE      (8000)
 #define MAX_MATE_VAL       (MATE - MAX_PLY)
 #define MAX_PHASE          (256)
 
