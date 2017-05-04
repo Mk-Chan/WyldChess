@@ -569,6 +569,7 @@ int begin_search(SearchUnit* const su)
 	}
 end_search:
 #ifdef STATS
+	time = curr_time() - ctlr->search_start_time;
 	fprintf(stdout, "nps:                      %lf\n",
 		time ? ((double)ctlr->nodes_searched * 1000 / time) : 0);
 	fprintf(stdout, "iid cutoff rate:          %lf\n",
