@@ -50,8 +50,6 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
     * Killer moves from 2 plies ago
     * Minor promotions
     * Bad captures (negative SEE)
-    * Passed pawn push
-    * Castling
     * Rest
 * Check extension at frontier nodes and SEE >= 0 moves
 * Late move reduction

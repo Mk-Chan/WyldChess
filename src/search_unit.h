@@ -55,6 +55,7 @@ struct SearchUnit
 {
 	Position*       pos;
 	Controller*     ctlr;
+	u32             max_searched_ply;
 	pthread_mutex_t mutex;
 	pthread_cond_t  sleep_cv;
 	int             protocol;

@@ -26,9 +26,9 @@ struct SearchStack
 {
 	int node_type;
 	int early_prune;
-	int ply;
+	u32 ply;
 	u32 killers[2];
-	u32 order_arr[MAX_MOVES_PER_POS];
+	int order_arr[MAX_MOVES_PER_POS];
 	Movelist list;
 };
 

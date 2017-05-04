@@ -18,7 +18,7 @@
 
 #include "search.h"
 
-#define HISTORY_LIM ((1 << 20))
+#define HISTORY_LIM (16000)
 
 int history[8][64];
 
@@ -33,9 +33,9 @@ static void reduce_history()
 static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 {
 	Movelist* list = &ss->list;
-	u32* order_list = ss->order_arr;
+	int* order_list = ss->order_arr;
 	u32* move;
-	u32* order;
+	int* order;
 	for (move = list->moves, order = order_list; move < list->end; ++move, ++order) {
 		if (*move == tt_move) {
 			*order = HASH_MOVE;
@@ -70,7 +70,7 @@ static u32 get_next_move(SearchStack* const ss, int move_num)
 	int len = list->end - list->moves;
 	if (move_num >= len)
 		return 0;
-	u32* order = ss->order_arr;
+	int* order = ss->order_arr;
 	int best_index = move_num;
 	for (int i = best_index + 1; i < len; ++i) {
 		if (order[i] > order[best_index])
@@ -80,7 +80,7 @@ static u32 get_next_move(SearchStack* const ss, int move_num)
 	if (best_index != move_num) {
 		list->moves[best_index] = list->moves[move_num];
 		list->moves[move_num]   = best_move;
-		u32 best_order          = order[best_index];
+		int best_order          = order[best_index];
 		order[best_index]       = order[move_num];
 		order[move_num]         = best_order;
 	}
@@ -196,6 +196,9 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	Controller* const ctlr = su->ctlr;
 	++ctlr->nodes_searched;
 	int old_alpha = alpha;
+
+	if (ss->ply > su->max_searched_ply)
+		su->max_searched_ply = ss->ply;
 
 	if (ss->ply) {
 		if ( !(su->ctlr->nodes_searched & 0x7ff)
@@ -329,11 +332,14 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		++legal_moves;
 
 		if (  !ss->ply
-		    && su->protocol == UCI
-		    && curr_time() - ctlr->search_start_time >= 1000) {
-			char mstr[6];
-			move_str(move, mstr);
-			fprintf(stdout, "info currmovenumber %d currmove %s\n", legal_moves, mstr);
+		    && su->protocol == UCI) {
+			u64 time_passed = curr_time() - ctlr->search_start_time;
+			if (time_passed >= 1000ULL) {
+				char mstr[6];
+				move_str(move, mstr);
+				fprintf(stdout, "info currmovenumber %d currmove %s nps %llu\n",
+					legal_moves, mstr, ctlr->nodes_searched * 1000 / time_passed);
+			}
 		}
 
 		depth_left    = depth - 1;
@@ -405,6 +411,10 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		if (ctlr->is_stopped)
 			return 0;
 
+		int quiet_move =   !cap_type(move)
+				 && move_type(move) != ENPASSANT
+				 && prom_type(move) != QUEEN;
+
 		if (val > best_val) {
 			best_val  = val;
 			best_move = move;
@@ -412,9 +422,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			if (val > alpha) {
 				alpha = val;
 
-				if (  !cap_type(move)
-				    && move_type(move) != ENPASSANT
-				    && prom_type(move) != QUEEN) {
+				if (quiet_move) {
 					int pt = pos->board[from_sq(move)];
 					history[pt][to_sq(move)] += depth * depth;
 					if (history[pt][to_sq(move)] > HISTORY_LIM)
@@ -428,12 +436,21 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 					++pos->stats.beta_cutoffs;
 					pos->stats.iid_cutoffs += iid;
 #endif
-					if (  !cap_type(move)
-					    && ss->killers[0] != move
-					    && move_type(move) != ENPASSANT
-					    && prom_type(move) != QUEEN) {
+					if (   quiet_move
+					    && ss->killers[0] != move) {
 						ss->killers[1] = ss->killers[0];
 						ss->killers[0] = move;
+					}
+
+					for (u32* curr = list->moves + legal_moves - 2; curr >= list->moves; --curr) {
+						if (  !cap_type(*curr)
+						    && move_type(*curr) != ENPASSANT
+						    && prom_type(*curr) != QUEEN) {
+							int pt = pos->board[from_sq(*curr)];
+							history[pt][to_sq(*curr)] -= depth * depth;
+							if (history[pt][to_sq(*curr)] < -HISTORY_LIM)
+								reduce_history();
+						}
 					}
 					break;
 				}
@@ -487,8 +504,9 @@ int begin_search(SearchUnit* const su)
 
 	Position* const pos    = su->pos;
 	Controller* const ctlr = su->ctlr;
-	ss[2].early_prune = 0;
-	ss[2].node_type   = PV_NODE;
+	ss[2].early_prune      = 0;
+	ss[2].node_type        = PV_NODE;
+	su->max_searched_ply   = 0;
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
@@ -508,7 +526,7 @@ int begin_search(SearchUnit* const su)
 
 			if (   depth > 1
 			    && ctlr->is_stopped)
-				break;
+				goto end_search;
 
 			time = curr_time() - ctlr->search_start_time;
 			if (su->protocol == XBOARD) {
@@ -516,6 +534,7 @@ int begin_search(SearchUnit* const su)
 			} else if (su->protocol == UCI) {
 				fprintf(stdout, "info ");
 				fprintf(stdout, "depth %u ", depth);
+				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
 				fprintf(stdout, "score ");
 				if (abs(val) < MAX_MATE_VAL) {
 					fprintf(stdout, "cp %d ", val);
@@ -527,6 +546,8 @@ int begin_search(SearchUnit* const su)
 						fprintf(stdout, "%d ", (-val + MATE + 1) / 2);
 				}
 				fprintf(stdout, "nodes %llu ", ctlr->nodes_searched);
+				if (time > 1000ULL)
+					fprintf(stdout, "nps %llu ", ctlr->nodes_searched * 1000 / time);
 				fprintf(stdout, "time %llu ", time);
 				fprintf(stdout, "pv");
 			}
@@ -544,12 +565,9 @@ int begin_search(SearchUnit* const su)
 			}
 		}
 
-		if (   depth > 1
-		    && ctlr->is_stopped)
-			break;
-
 		best_move = get_pv_move(pos);
 	}
+end_search:
 #ifdef STATS
 	fprintf(stdout, "nps:                      %lf\n",
 		time ? ((double)ctlr->nodes_searched * 1000 / time) : 0);
