@@ -252,44 +252,44 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	int non_pawn_pieces_count = popcnt((pos->bb[pos->stm] & ~(pos->bb[KING] ^ pos->bb[PAWN])));
 
-	// Futility pruning
-	if (    depth < 3
-	    &&  node_type != PV_NODE
+	// Early pruning
+	if (    node_type != PV_NODE
 	    &&  non_pawn_pieces_count
-	    &&  static_eval < WINNING_SCORE
-	    &&  ss->early_prune
 	    && !checked
-	    &&  static_eval - 200 * depth >= beta)
-		return static_eval;
+	    &&  ss->early_prune) {
 
-	// Null move pruning
-	if (    depth >= 4
-	    &&  node_type == CUT_NODE
-	    &&  ss->early_prune
-	    && !checked
-	    &&  static_eval >= beta
-	    &&  non_pawn_pieces_count) {
-#ifdef STATS
-		++pos->stats.null_tries;
-#endif
-		int reduction = 4 + min(3, max(0, (static_eval - beta) / mg_val(piece_val[PAWN])));
-		int depth_left = max(1, depth - reduction);
-		ss[1].node_type   = CUT_NODE;
-		ss[1].early_prune = 0;
-		do_null_move(pos);
-		int val = -search(su, ss + 1, -beta, -beta + 1, depth_left);
-		undo_null_move(pos);
-		if (ctlr->is_stopped)
-			return 0;
-		if (val >= beta) {
-#ifdef STATS
-			++pos->stats.null_cutoffs;
-			++pos->stats.correct_nt_guess;
-#endif
-			if (val >= MAX_MATE_VAL)
-				val = beta;
+		// Futility pruning
+		if (    depth < 3
+		    &&  static_eval < WINNING_SCORE
+		    &&  static_eval - 200 * depth >= beta)
+			return static_eval;
 
-			return val;
+		// Null move pruning
+		if (    depth >= 4
+		    &&  node_type == CUT_NODE
+		    &&  static_eval >= beta) {
+#ifdef STATS
+			++pos->stats.null_tries;
+#endif
+			int reduction = 4 + min(3, max(0, (static_eval - beta) / mg_val(piece_val[PAWN])));
+			int depth_left = max(1, depth - reduction);
+			ss[1].node_type   = CUT_NODE;
+			ss[1].early_prune = 0;
+			do_null_move(pos);
+			int val = -search(su, ss + 1, -beta, -beta + 1, depth_left);
+			undo_null_move(pos);
+			if (ctlr->is_stopped)
+				return 0;
+			if (val >= beta) {
+#ifdef STATS
+				++pos->stats.null_cutoffs;
+				++pos->stats.correct_nt_guess;
+#endif
+				if (val >= MAX_MATE_VAL)
+					val = beta;
+
+				return val;
+			}
 		}
 	}
 
