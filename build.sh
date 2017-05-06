@@ -11,9 +11,9 @@ for T in "${TARGETS[@]}"
 do
 	if [ "$T" = "win64" ]
 	then
-		CC=x86_64-w64-mingw32-gcc
+		CC=x86_64-w64-mingw32-g++
 	else
-		CC=gcc
+		CC=g++
 	fi
 	make clean
 	make CC="$CC" RELEASE=$1 TARGET="$T" $2
