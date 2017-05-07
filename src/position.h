@@ -38,16 +38,6 @@ struct Stats
 	u64 hash_hits;
 	u64 total_nodes;
 };
-
-struct EvalStats
-{
-	int piece_psq_eval[2];
-	int pt_score[2][7];
-	int passed_pawn[2];
-	int king_atks[2];
-};
-
-extern EvalStats es;
 #endif
 
 struct Movelist
@@ -66,16 +56,16 @@ struct State
 	u32  fifty_moves;
 	u32  full_moves;
 	u32  move;
-	int  phase;
-	int  piece_psq_eval[2];
 };
 
 struct Position
 {
-	u64    bb[9];
-	int    stm;
-	int    king_sq[2];
-	int    board[64];
+	u64 bb[9];
+	int stm;
+	int king_sq[2];
+	int board[64];
+	int phase;
+	int piece_psq_eval[2];
 	State* state;
 	State* hist;
 
@@ -111,68 +101,78 @@ extern void gen_check_evasions(Position* pos, Movelist* list);
 extern int evaluate(Position* const pos);
 extern void tune();
 
+inline int king_sq(Position const * const pos, int c)
+{
+	return pos->king_sq[c];
+}
+
 inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
-	u64 from_to       = BB(from) ^ BB(to);
-	pos->bb[FULL]    ^= from_to;
-	pos->bb[c]       ^= from_to;
-	pos->bb[pt]      ^= from_to;
-	pos->board[to]    = pos->board[from];
-	pos->board[from]  = 0;
+	u64 from_to             = BB(from) ^ BB(to);
+	pos->bb[FULL]          ^= from_to;
+	pos->bb[c]             ^= from_to;
+	pos->bb[pt]            ^= from_to;
+	pos->board[to]          = pos->board[from];
+	pos->board[from]        = 0;
+	pos->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
 }
 
 inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 {
-	u64 set         = BB(sq);
-	pos->bb[FULL]  |= set;
-	pos->bb[c]     |= set;
-	pos->bb[pt]    |= set;
-	pos->board[sq]  = pt;
+	u64 set                 = BB(sq);
+	pos->bb[FULL]          |= set;
+	pos->bb[c]             |= set;
+	pos->bb[pt]            |= set;
+	pos->board[sq]          = pt;
+	pos->phase             += phase[pt];
+	pos->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
 }
 
 inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 {
-	u64 clr         = BB(sq);
-	pos->bb[FULL]  ^= clr;
-	pos->bb[c]     ^= clr;
-	pos->bb[pt]    ^= clr;
-	pos->board[sq]  = 0;
+	u64 clr                 = BB(sq);
+	pos->bb[FULL]          ^= clr;
+	pos->bb[c]             ^= clr;
+	pos->bb[pt]            ^= clr;
+	pos->board[sq]          = 0;
+	pos->phase             -= phase[pt];
+	pos->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
 }
 
 inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
-	u64 from_to          = BB(from) ^ BB(to);
-	pos->bb[FULL]       ^= from_to;
-	pos->bb[c]          ^= from_to;
-	pos->bb[pt]         ^= from_to;
-	pos->board[to]       = pos->board[from];
-	pos->board[from]     = 0;
-	pos->state->pos_key ^= psq_keys[c][pt][from] ^ psq_keys[c][pt][to];
-	pos->state->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
+	u64 from_to             = BB(from) ^ BB(to);
+	pos->bb[FULL]          ^= from_to;
+	pos->bb[c]             ^= from_to;
+	pos->bb[pt]            ^= from_to;
+	pos->board[to]          = pos->board[from];
+	pos->board[from]        = 0;
+	pos->state->pos_key    ^= psq_keys[c][pt][from] ^ psq_keys[c][pt][to];
+	pos->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
 }
 
 inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 {
-	u64 set              = BB(sq);
-	pos->bb[FULL]       |= set;
-	pos->bb[c]          |= set;
-	pos->bb[pt]         |= set;
-	pos->board[sq]       = pt;
-	pos->state->pos_key ^= psq_keys[c][pt][sq];
-	pos->state->phase   += phase[pt];
-	pos->state->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
+	u64 set                 = BB(sq);
+	pos->bb[FULL]          |= set;
+	pos->bb[c]             |= set;
+	pos->bb[pt]            |= set;
+	pos->board[sq]          = pt;
+	pos->state->pos_key    ^= psq_keys[c][pt][sq];
+	pos->phase             += phase[pt];
+	pos->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
 }
 
 inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 {
-	u64 clr              = BB(sq);
-	pos->bb[FULL]       ^= clr;
-	pos->bb[c]          ^= clr;
-	pos->bb[pt]         ^= clr;
-	pos->board[sq]       = 0;
-	pos->state->pos_key ^= psq_keys[c][pt][sq];
-	pos->state->phase   -= phase[pt];
-	pos->state->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
+	u64 clr                 = BB(sq);
+	pos->bb[FULL]          ^= clr;
+	pos->bb[c]             ^= clr;
+	pos->bb[pt]            ^= clr;
+	pos->board[sq]          = 0;
+	pos->state->pos_key    ^= psq_keys[c][pt][sq];
+	pos->phase             -= phase[pt];
+	pos->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
 }
 
 inline u64 pawn_push(int from, u32 c)
@@ -237,7 +237,7 @@ inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
 
 inline u64 checkers(Position const * const pos, u32 by_color)
 {
-	const u32 sq = pos->king_sq[!by_color];
+	const u32 sq = king_sq(pos, !by_color);
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
 		| ( pos->bb[PAWN]                     & p_atks_bb[!by_color][sq])
 		| ((pos->bb[ROOK]   | pos->bb[QUEEN]) & Rmagic(sq, pos->bb[FULL]))
@@ -248,7 +248,7 @@ inline u64 checkers(Position const * const pos, u32 by_color)
 
 inline u64 get_pinned(Position* const pos, int to_color)
 {
-	u32 const ksq = pos->king_sq[to_color];
+	u32 const ksq = king_sq(pos, to_color);
 	u32 sq;
 	u64 bb;
 	u64 pinned_bb  = 0ULL;
@@ -308,7 +308,7 @@ inline int legal_move(Position* const pos, u32 move)
 {
 	u32 c    = pos->stm;
 	u32 from = from_sq(move);
-	u32 ksq  = pos->king_sq[c];
+	u32 ksq  = king_sq(pos, c);
 	if (move_type(move) == ENPASSANT) {
 		u64 to_bb  = pos->state->ep_sq_bb;
 		u64 cap_bb = pawn_shift(to_bb, !c);
@@ -332,7 +332,7 @@ inline int gives_check(Position const * const pos, u32 move)
 	    pt   = pos->board[from],
 	    to   = to_sq(move),
 	    c    = pos->stm,
-	    ksq  = pos->king_sq[c ^ 1];
+	    ksq  = king_sq(pos, c ^ 1);
 	u64 occ_tmp_bb,
 	    to_bb        = BB(to),
 	    occupancy_bb = (pos->bb[FULL] ^ BB(from)) | to_bb; // Move the piece

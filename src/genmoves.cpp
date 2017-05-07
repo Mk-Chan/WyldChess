@@ -124,7 +124,7 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 void gen_check_evasions(Position* pos, Movelist* list)
 {
 	int const c   = pos->stm,
-	          ksq = pos->king_sq[c];
+	          ksq = king_sq(pos, c);
 
 	u64 checkers_bb = pos->state->checkers_bb,
 	    evasions_bb = k_atks_bb[ksq] & ~pos->bb[c];
@@ -213,7 +213,7 @@ void gen_captures(Position* pos, Movelist* list)
 			extract_caps(pos, from, get_atks(from, pt, full_bb) & enemy_mask, list);
 		}
 	}
-	from = pos->king_sq[c];
+	from = king_sq(pos, c);
 	extract_caps(pos, from, k_atks_bb[from] & enemy_mask, list);
 }
 
@@ -290,13 +290,13 @@ static void gen_castling(Position* pos, Movelist* list)
 	u64 const full_bb = pos->bb[FULL];
 
 	if (    (castling_poss[c][0] & pos->state->castling_rights)
-	    && !(castle_mask[c][0] & pos->bb[FULL])
+	    && !(castle_mask[c][0] & full_bb)
 	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][0], !c, full_bb))
 	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][1], !c, full_bb)))
 		add_move(move_castle(castling_king_sqs[c][0][0], castling_king_sqs[c][0][1]), list);
 
 	if (    (castling_poss[c][1] & pos->state->castling_rights)
-	    && !(castle_mask[c][1] & pos->bb[FULL])
+	    && !(castle_mask[c][1] & full_bb)
 	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][0], !c, full_bb))
 	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][1], !c, full_bb)))
 		add_move(move_castle(castling_king_sqs[c][1][0], castling_king_sqs[c][1][1]), list);
@@ -332,7 +332,7 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 				extract_quiets(from, get_atks(from, pt, full_bb) & vacancy_mask, list);
 			}
 		}
-		from = pos->king_sq[c];
+		from = king_sq(pos, c);
 		extract_caps(pos, from, k_atks_bb[from] & enemy_mask, list);
 		extract_quiets(from, k_atks_bb[from] & vacancy_mask, list);
 	}
@@ -341,7 +341,7 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 void gen_legal_moves(Position* pos, Movelist* list)
 {
 	gen_pseudo_legal_moves(pos, list);
-	int ksq       = pos->king_sq[pos->stm];
+	int ksq       = king_sq(pos, pos->stm);
 	u64 pinned_bb = pos->state->pinned_bb;
 	u32* move;
 	for (move = list->moves; move < list->end;) {

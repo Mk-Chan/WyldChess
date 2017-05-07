@@ -312,7 +312,7 @@ void xboard_loop()
 
 			transition(&su, WAITING);
 			fprintf(stdout, "evaluation = %d\n", evaluate(&pos));
-			fprintf(stdout, "phase = %d\n", pos.state->phase);
+			fprintf(stdout, "phase = %d\n", pos.phase);
 
 		} else if (!strncmp(input, "undo", 4)) {
 

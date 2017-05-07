@@ -25,9 +25,6 @@
 
 TT tt;
 PVT pvt;
-#ifdef STATS
-EvalStats es;
-#endif
 
 int main()
 {

@@ -186,8 +186,6 @@ static int const is_prom_sq[64] = {
 #define move_prom_cap(from, to, prom, cap) (from | (to << 6) | PROMOTION | prom | (cap << CAP_TYPE_SHIFT))
 #define move(from, to, mt, prom, cap)      (from | (to << 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
 
-#define phased_val(val, phase) ((((mg_val(val) * phase) + (eg_val(val) * (MAX_PHASE - phase))) / MAX_PHASE))
-
 inline int S(int mg, int eg)
 {
 	return (int) (mg + (((unsigned int) eg) << 16));
@@ -214,6 +212,11 @@ inline int mg_val(int val)
 		(unsigned short)((unsigned)(val))
 	};
 	return mg.s;
+}
+
+inline int phased_val(int val, int phase)
+{
+	return ((mg_val(val) * phase) + (eg_val(val) * (MAX_PHASE - phase))) / MAX_PHASE;
 }
 
 #endif

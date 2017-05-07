@@ -174,10 +174,10 @@ void init_eval_terms()
 
 static void eval_pawns(Position* const pos, Eval* const ev)
 {
-	int eval[2] = { S(0, 0), S(0, 0) };
 	u64 bb, pawn_bb;
 	u64* atks_bb;
 	int c, sq;
+	int* eval = ev->eval;
 	for (c = WHITE; c <= BLACK; ++c) {
 		atks_bb = ev->atks_bb[c];
 		pawn_bb = ev->pawn_bb[c];
@@ -201,13 +201,7 @@ static void eval_pawns(Position* const pos, Eval* const ev)
 			if (is_passed_pawn(pos, sq, c))
 				ev->passed_pawn_bb[c] |= BB(sq);
 		}
-#ifdef STATS
-		es.pt_score[c][PAWN] = phased_val(eval[c], pos->state->phase);
-#endif
 	}
-
-	ev->eval[WHITE] += eval[WHITE];
-	ev->eval[BLACK] += eval[BLACK];
 }
 
 static void eval_pieces(Position* const pos, Eval* const ev)
@@ -218,15 +212,12 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 	u64* atks_bb;
 	u64* bb      = pos->bb;
 	u64  full_bb = bb[FULL];
-#ifdef STATS
-	int accumulated = 0;
-#endif
 
-	int  eval[2] = { S(0, 0), S(0, 0) };
+	int* eval = ev->eval;
 	for (c = WHITE; c <= BLACK; ++c) {
 		atks_bb       =   ev->atks_bb[c];
 		non_pinned_bb =  ~ev->pinned_bb[c];
-		ksq           =   pos->king_sq[c];
+		ksq           =   king_sq(pos, c);
 		mobility_mask = ~(ev->pawn_bb[c] | BB(ksq) | ev->atks_bb[!c][PAWN]);
 		xrayable_bb   =   full_bb ^ (bb[c] ^ (BB(ksq) | ev->pawn_bb[c] | ev->pinned_bb[c]));
 
@@ -276,13 +267,9 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 
 					// If rook on relative 7th rank and king on relative 8th rank, bonus
 					if (   rank_of(sq) == rank_lookup[c][RANK_7]
-					    && rank_of(pos->king_sq[!c]) == rank_lookup[c][RANK_8])
+					    && rank_of(king_sq(pos, !c)) == rank_lookup[c][RANK_8])
 						eval[c] += rook_on_7th;
 				}
-#ifdef STATS
-				es.pt_score[c][pt] = phased_val((eval[c] - accumulated), pos->state->phase);
-				accumulated        = eval[c];
-#endif
 			}
 		}
 
@@ -303,15 +290,8 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 			// Update king attack statistics
 			if (atk_bb & ev->king_danger_zone_bb[!c])
 				ev->king_atk_pressure[c] += popcnt(atk_bb & ev->king_danger_zone_bb[!c]) * king_atk_wt[pt];
-#ifdef STATS
-			es.pt_score[c][pt] = phased_val((eval[c] - accumulated), pos->state->phase);
-			accumulated       += eval[c];
-#endif
 		}
 	}
-
-	ev->eval[WHITE] += eval[WHITE];
-	ev->eval[BLACK] += eval[BLACK];
 }
 
 static void eval_king_attacks(Position* const pos, Eval* const ev)
@@ -323,7 +303,7 @@ static void eval_king_attacks(Position* const pos, Eval* const ev)
 		// Find squares around the enemy king, not defended and attacked by our pieces
 		undefended_atkd_bb = ev->king_danger_zone_bb[!c]
 				  & ~ev->atks_bb[!c][ALL]
-				  & (ev->atks_bb[c][ALL] | k_atks_bb[pos->king_sq[c]]);
+				  & (ev->atks_bb[c][ALL] | k_atks_bb[king_sq(pos, c)]);
 
 		/* King attack factors:
 		 *   1. Sum of squares attacked by each piece * their respective weights(pressure)
@@ -337,18 +317,12 @@ static void eval_king_attacks(Position* const pos, Eval* const ev)
 	king_atks[WHITE] = king_atk_table[min(max(king_atks[WHITE], 0), 99)];
 	king_atks[BLACK] = king_atk_table[min(max(king_atks[BLACK], 0), 99)];
 
-#ifdef STATS
-	es.king_atks[WHITE] += phased_val(king_atks[WHITE], pos->state->phase);
-	es.king_atks[BLACK] += phased_val(king_atks[BLACK], pos->state->phase);
-#endif
-
 	ev->eval[WHITE] += S(king_atks[WHITE], (king_atks[WHITE]/2));
 	ev->eval[BLACK] += S(king_atks[BLACK], (king_atks[BLACK]/2));
 }
 
 static void eval_passed_pawns(Position* const pos, Eval* const ev)
 {
-	int eval[2][2] = { { 0, 0 }, { 0, 0 } };
 	u64 passed_pawn_bb, forward_sq_bb;
 	u64 vacancy_mask = ~pos->bb[FULL];
 	int c, sq, relative_rank, type;
@@ -371,14 +345,6 @@ static void eval_passed_pawns(Position* const pos, Eval* const ev)
 			ev->eval[c] += passed_pawn[type][relative_rank];
 		}
 	}
-
-#ifdef STATS
-	es.passed_pawn[WHITE] += phased_val(S(eval[WHITE][0], eval[WHITE][1]), pos->state->phase);
-	es.passed_pawn[BLACK] += phased_val(S(eval[BLACK][0], eval[BLACK][1]), pos->state->phase);
-#endif
-
-	ev->eval[WHITE] += S(eval[WHITE][0], eval[WHITE][1]);
-	ev->eval[BLACK] += S(eval[BLACK][0], eval[BLACK][1]);
 }
 
 int can_win(u64 const * const bb, int c)
@@ -391,21 +357,12 @@ int can_win(u64 const * const bb, int c)
 int evaluate(Position* const pos)
 {
 
-#ifdef STATS
-	for (int c = WHITE; c <= BLACK; ++c) {
-		es.passed_pawn[c] = 0;
-		es.king_atks[c]   = 0;
-		for (int pt = PAWN; pt != KING; ++pt)
-			es.pt_score[c][pt] = 0;
-	}
-#endif
-
 	if (insufficient_material(pos))
 		return 0;
 	Eval ev;
 	int ksq, c, pt;
 	for (c = WHITE; c <= BLACK; ++c) {
-		ksq = pos->king_sq[c];
+		ksq = king_sq(pos, c);
 		ev.pawn_bb[c] = pos->bb[PAWN] & pos->bb[c];
 		ev.passed_pawn_bb[c] = 0ULL;
 		ev.king_atk_pressure[c] = 0;
@@ -417,20 +374,15 @@ int evaluate(Position* const pos)
 	ev.pinned_bb[WHITE] = get_pinned(pos, WHITE);
 	ev.pinned_bb[BLACK] = get_pinned(pos, BLACK);
 
-	ev.eval[WHITE] = pos->state->piece_psq_eval[WHITE];
-	ev.eval[BLACK] = pos->state->piece_psq_eval[BLACK];
-
-#ifdef STATS
-	es.piece_psq_eval[WHITE] = phased_val(pos->state->piece_psq_eval[WHITE], pos->state->phase);
-	es.piece_psq_eval[BLACK] = phased_val(pos->state->piece_psq_eval[BLACK], pos->state->phase);
-#endif
+	ev.eval[WHITE] = pos->piece_psq_eval[WHITE];
+	ev.eval[BLACK] = pos->piece_psq_eval[BLACK];
 
 	eval_pawns(pos, &ev);
 	eval_pieces(pos, &ev);
 	eval_king_attacks(pos, &ev);
 	eval_passed_pawns(pos, &ev);
 
-	int eval = phased_val((ev.eval[WHITE] - ev.eval[BLACK]), pos->state->phase);
+	int eval = phased_val((ev.eval[WHITE] - ev.eval[BLACK]), pos->phase);
 	if (    popcnt(pos->bb[WHITE]) <= 3
 	    && !can_win(pos->bb, WHITE))
 		eval = min(eval, 0);

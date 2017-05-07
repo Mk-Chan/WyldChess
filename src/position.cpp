@@ -72,19 +72,19 @@ void init_pos(Position* pos, State* state_list)
 		pos->board[i] = 0;
 	for (i = 0; i != 9; ++i)
 		pos->bb[i] = 0ULL;
-	pos->stm                          = WHITE;
-	pos->hist                         = state_list;
-	pos->state                        = pos->hist;
-	pos->state->pos_key               = 0ULL;
-	pos->state->pinned_bb             = 0ULL;
-	pos->state->fifty_moves           = 0;
-	pos->state->full_moves            = 0;
-	pos->state->castling_rights       = 0;
-	pos->state->ep_sq_bb              = 0ULL;
-	pos->state->checkers_bb           = 0ULL;
-	pos->state->phase                 = 0;
-	pos->state->piece_psq_eval[WHITE] = 0;
-	pos->state->piece_psq_eval[BLACK] = 0;
+	pos->stm                    = WHITE;
+	pos->hist                   = state_list;
+	pos->state                  = pos->hist;
+	pos->state->pos_key         = 0ULL;
+	pos->state->pinned_bb       = 0ULL;
+	pos->state->fifty_moves     = 0;
+	pos->state->full_moves      = 0;
+	pos->state->castling_rights = 0;
+	pos->state->ep_sq_bb        = 0ULL;
+	pos->state->checkers_bb     = 0ULL;
+	pos->phase                  = 0;
+	pos->piece_psq_eval[WHITE]  = 0;
+	pos->piece_psq_eval[BLACK]  = 0;
 }
 
 int set_pos(Position* pos, std::string fen)
@@ -107,7 +107,7 @@ int set_pos(Position* pos, std::string fen)
 			pt = piece & 7;
 			pc = piece >> 3;
 			put_piece(pos, sq, pt, pc);
-			if(pt == KING)
+			if (pt == KING)
 				pos->king_sq[pc] = sq;
 			++tsq;
 		}

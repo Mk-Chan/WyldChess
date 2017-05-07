@@ -27,8 +27,6 @@ void do_null_move(Position* const pos)
 	pos->stm                   ^= 1;
 	next->move                  = 0;
 	next->full_moves            = curr->full_moves + 1;
-	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
-	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
 	next->fifty_moves           = curr->fifty_moves + 1;
 	next->ep_sq_bb              = 0ULL;
 	next->castling_rights       = curr->castling_rights;
@@ -60,9 +58,9 @@ void undo_move(Position* const pos)
 			u32 const pt = pos->board[to];
 			move_piece_no_key(pos, to, from, pt, c);
 			u32 const captured_pt = cap_type(m);
-			if(captured_pt)
+			if (captured_pt)
 				put_piece_no_key(pos, to, captured_pt, !c);
-			if(pt == KING)
+			if (pt == KING)
 				pos->king_sq[c] = from;
 		}
 		break;
@@ -81,7 +79,6 @@ void undo_move(Position* const pos)
 		{
 			move_piece_no_key(pos, to, from, KING, c);
 			pos->king_sq[c] = from;
-
 			switch(to) {
 			case C1:
 				move_piece_no_key(pos, D1, A1, ROOK, c);
@@ -131,11 +128,8 @@ void do_move(Position* const pos, u32 const m)
 
 	curr->move                  = m;
 	next->full_moves            = curr->full_moves + (pos->stm == BLACK);
-	next->piece_psq_eval[WHITE] = curr->piece_psq_eval[WHITE];
-	next->piece_psq_eval[BLACK] = curr->piece_psq_eval[BLACK];
 	next->fifty_moves           = 0;
 	next->ep_sq_bb              = 0ULL;
-	next->phase                 = curr->phase;
 
 	u32 const from = from_sq(m),
 	          to   = to_sq(m),
