@@ -134,12 +134,12 @@ int set_pos(Position* pos, std::string fen)
 
 	++index;
 	u32 x = 0;
-	while ((c = fen[index++]) != '\0' && c != ' ')
+	while ((c = fen[index++]) != '\n' && c != ' ' && c != '\0')
 		x = x * 10 + (c - '0');
 	pos->state->fifty_moves = x;
 
 	x = 0;
-	while ((c = fen[index++]) != '\0' && c != ' ')
+	while ((c = fen[index++]) != '\n' && c != ' ' && c != '\0')
 		x = x * 10 + (c - '0');
 	pos->state->full_moves = x;
 
