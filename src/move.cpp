@@ -24,13 +24,13 @@ void do_null_move(Position* const pos)
 	State* const curr = pos->state;
 	State* const next = ++pos->state;
 
-	pos->stm                   ^= 1;
-	next->move                  = 0;
-	next->full_moves            = curr->full_moves + 1;
-	next->fifty_moves           = curr->fifty_moves + 1;
-	next->ep_sq_bb              = 0ULL;
-	next->castling_rights       = curr->castling_rights;
-	next->pos_key               = curr->pos_key ^ stm_key;
+	pos->stm              ^= 1;
+	curr->move             = 0;
+	next->full_moves       = curr->full_moves + (pos->stm == BLACK);
+	next->fifty_moves      = curr->fifty_moves + 1;
+	next->ep_sq_bb         = 0ULL;
+	next->castling_rights  = curr->castling_rights;
+	next->pos_key          = curr->pos_key ^ stm_key;
 	if (curr->ep_sq_bb)
 		next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
 }
@@ -126,10 +126,10 @@ void do_move(Position* const pos, u32 const m)
 	State* const curr = pos->state;
 	State* const next = ++pos->state;
 
-	curr->move                  = m;
-	next->full_moves            = curr->full_moves + (pos->stm == BLACK);
-	next->fifty_moves           = 0;
-	next->ep_sq_bb              = 0ULL;
+	curr->move        = m;
+	next->full_moves  = curr->full_moves + (pos->stm == BLACK);
+	next->fifty_moves = 0;
+	next->ep_sq_bb    = 0ULL;
 
 	u32 const from = from_sq(m),
 	          to   = to_sq(m),
