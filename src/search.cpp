@@ -252,29 +252,29 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	int non_pawn_pieces_count = popcnt((pos->bb[pos->stm] & ~(pos->bb[KING] ^ pos->bb[PAWN])));
 
-	// Early pruning
+	// Forward pruning
 	if (    node_type != PV_NODE
 	    &&  non_pawn_pieces_count
 	    && !checked
-	    &&  ss->early_prune) {
+	    &&  ss->forward_prune) {
 
 		// Futility pruning
-		if (    depth < 3
-		    &&  static_eval < WINNING_SCORE
-		    &&  static_eval - 200 * depth >= beta)
+		if (   depth < 3
+		    && static_eval < WINNING_SCORE
+		    && static_eval - 200 * depth >= beta)
 			return static_eval;
 
 		// Null move pruning
-		if (    depth >= 4
-		    &&  node_type == CUT_NODE
-		    &&  static_eval >= beta) {
+		if (   depth >= 4
+		    && node_type == CUT_NODE
+		    && static_eval >= beta) {
 #ifdef STATS
 			++pos->stats.null_tries;
 #endif
-			int reduction = 4 + min(3, max(0, (static_eval - beta) / mg_val(piece_val[PAWN])));
-			int depth_left = max(1, depth - reduction);
-			ss[1].node_type   = CUT_NODE;
-			ss[1].early_prune = 0;
+			int reduction       = 4 + min(3, max(0, (static_eval - beta) / mg_val(piece_val[PAWN])));
+			int depth_left      = max(1, depth - reduction);
+			ss[1].node_type     = ALL_NODE;
+			ss[1].forward_prune = 0;
 			do_null_move(pos);
 			int val = -search(su, ss + 1, -beta, -beta + 1, depth_left);
 			undo_null_move(pos);
@@ -306,11 +306,11 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		++pos->stats.iid_tries;
 #endif
 
-		int reduction   = 2;
-		int ep          = ss->early_prune;
-		ss->early_prune = 0;
+		int reduction     = 2;
+		int ep            = ss->forward_prune;
+		ss->forward_prune = 0;
 		search(su, ss, alpha, beta, depth - reduction);
-		ss->early_prune = ep;
+		ss->forward_prune = ep;
 
 		entry   = tt_probe(&tt, pos->state->pos_key);
 		tt_move = get_move(entry.data);
@@ -385,11 +385,11 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			ss[1].node_type = node_type == PV_NODE  ? PV_NODE
 				        : node_type == CUT_NODE ? ALL_NODE
 					: CUT_NODE;
-			ss[1].early_prune = 1;
+			ss[1].forward_prune = 1;
 			val = -search(su, ss + 1, -beta , -alpha, depth_left);
 		} else if (node_type != PV_NODE) {
-			ss[1].node_type   = CUT_NODE;
-			ss[1].early_prune = 1;
+			ss[1].node_type     = CUT_NODE;
+			ss[1].forward_prune = 1;
 			val = -search(su, ss + 1, -beta, -alpha, depth_left);
 			if (   val > alpha
 			    && depth_left < depth - 1) {
@@ -397,8 +397,8 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
 			}
 		} else {
-			ss[1].node_type   = CUT_NODE;
-			ss[1].early_prune = 1;
+			ss[1].node_type     = CUT_NODE;
+			ss[1].forward_prune = 1;
 			val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
 			if (val > alpha) {
 				ss[1].node_type = PV_NODE;
@@ -504,7 +504,7 @@ int begin_search(SearchUnit* const su)
 
 	Position* const pos    = su->pos;
 	Controller* const ctlr = su->ctlr;
-	ss[2].early_prune      = 0;
+	ss[2].forward_prune    = 0;
 	ss[2].node_type        = PV_NODE;
 	su->max_searched_ply   = 0;
 

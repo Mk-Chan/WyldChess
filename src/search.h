@@ -25,7 +25,7 @@
 struct SearchStack
 {
 	int node_type;
-	int early_prune;
+	int forward_prune;
 	u32 ply;
 	u32 killers[2];
 	int order_arr[MAX_MOVES_PER_POS];
@@ -214,13 +214,13 @@ inline void clear_search(SearchUnit* const su, SearchStack* const ss)
 	u32 i, j;
 	SearchStack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
-		curr              = ss + i;
-		curr->node_type   = ALL_NODE;
-		curr->early_prune = 1;
-		curr->ply         = i;
-		curr->killers[0]  = 0;
-		curr->killers[1]  = 0;
-		curr->list.end    = ss->list.moves;
+		curr                = ss + i;
+		curr->node_type     = ALL_NODE;
+		curr->forward_prune = 1;
+		curr->ply           = i;
+		curr->killers[0]    = 0;
+		curr->killers[1]    = 0;
+		curr->list.end      = ss->list.moves;
 		for (j = 0; j < MAX_MOVES_PER_POS; ++j)
 			curr->order_arr[j] = 0;
 	}
