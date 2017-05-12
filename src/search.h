@@ -199,18 +199,18 @@ inline void clear_search(SearchUnit* const su, SearchStack* const ss)
 	Controller* const ctlr = su->ctlr;
 	ctlr->is_stopped       = 0;
 	ctlr->nodes_searched   = 0ULL;
-#ifdef STATS
+	STATS(
 	Position* const pos           = su->pos;
-	pos->stats.correct_nt_guess   = 0;
-	pos->stats.iid_cutoffs        = 0;
-	pos->stats.iid_tries          = 0;
-	pos->stats.null_cutoffs       = 0;
-	pos->stats.null_tries         = 0;
-	pos->stats.first_beta_cutoffs = 0;
-	pos->stats.beta_cutoffs       = 0;
-	pos->stats.hash_probes        = 0;
-	pos->stats.hash_hits          = 0;
-#endif
+		pos->stats.correct_nt_guess   = 0;
+		pos->stats.iid_cutoffs        = 0;
+		pos->stats.iid_tries          = 0;
+		pos->stats.null_cutoffs       = 0;
+		pos->stats.null_tries         = 0;
+		pos->stats.first_beta_cutoffs = 0;
+		pos->stats.beta_cutoffs       = 0;
+		pos->stats.hash_probes        = 0;
+		pos->stats.hash_hits          = 0;
+	)
 	u32 i, j;
 	SearchStack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {

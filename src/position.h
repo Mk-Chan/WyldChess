@@ -24,21 +24,21 @@
 #include "bitboard.h"
 #include "magicmoves.h"
 
-#ifdef STATS
-struct Stats
-{
-	u64 correct_nt_guess;
-	u64 iid_cutoffs;
-	u64 iid_tries;
-	u64 null_cutoffs;
-	u64 null_tries;
-	u64 first_beta_cutoffs;
-	u64 beta_cutoffs;
-	u64 hash_probes;
-	u64 hash_hits;
-	u64 total_nodes;
-};
-#endif
+STATS(
+	struct Stats
+	{
+		u64 correct_nt_guess;
+		u64 iid_cutoffs;
+		u64 iid_tries;
+		u64 null_cutoffs;
+		u64 null_tries;
+		u64 first_beta_cutoffs;
+		u64 beta_cutoffs;
+		u64 hash_probes;
+		u64 hash_hits;
+		u64 total_nodes;
+	};
+)
 
 struct Movelist
 {
@@ -68,10 +68,7 @@ struct Position
 	int piece_psq_eval[2];
 	State* state;
 	State* hist;
-
-#ifdef STATS
-	Stats  stats;
-#endif
+	STATS(Stats stats;)
 };
 
 extern int piece_val[8];

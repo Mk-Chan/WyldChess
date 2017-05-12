@@ -27,6 +27,12 @@
 
 #undef INFINITY
 
+#ifdef STATS_BUILD
+#define STATS(x) x
+#else
+#define STATS(x)
+#endif
+
 #define ENGINE_NAME (("WyldChess"))
 #define AUTHOR_NAME (("Manik Charan"))
 #define INITIAL_POSITION (("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))

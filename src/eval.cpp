@@ -121,7 +121,7 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
-int king_atk_wt[7]    = { 0, 0, 0, 3, 3, 4, 5 };
+int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
 
 // Pawn structure
 int passed_pawn[3][7] = {
@@ -133,8 +133,8 @@ int passed_pawn[3][7] = {
 	// Square in front of passed pawn is not attacked
 	{ 0, S(5, 5), S(10, 10), S(15, 25), S(40, 60), S(70, 100), S(150, 180) }
 };
-int doubled_pawns  = S(-10, -20);
-int isolated_pawn  = S(-10, -10);
+int doubled_pawns = S(-10, -20);
+int isolated_pawn = S(-10, -10);
 
 // Mobility terms
 int mobility[7]      = { 0, 0, 0, 8, 5, 5, 4 };

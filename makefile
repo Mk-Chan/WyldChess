@@ -44,7 +44,7 @@ bmi:
 	$(MAKE) CFLAGS="$(CFLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
 
 stats:
-	$(MAKE) CFLAGS="$(CFLAGS) -DSTATS -mbmi -mbmi2 -mpopcnt"
+	$(MAKE) CFLAGS="$(CFLAGS) -DSTATS_BUILD -mbmi -mbmi2 -mpopcnt"
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.cpp $(HEADERS)
 	@-mkdir -p $(OBJ_PATH)
