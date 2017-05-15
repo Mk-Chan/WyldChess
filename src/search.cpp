@@ -21,19 +21,33 @@
 #define HISTORY_LIM (16000)
 
 int history[8][64];
+u32 counter_move_table[64][64];
 
-static void reduce_history()
+void init_search()
 {
-	int pt, sq;
+	memset(history, 0, sizeof(int) * 8 * 64);
+	memset(counter_move_table, 0, sizeof(u32) * 64 * 64);
+}
+
+static void reduce_history(int divisor = 256)
+{
+	int pt, sq, c;
 	for (pt = PAWN; pt <= KING; ++pt)
-		for (sq = 0; sq < 64; ++sq)
-			history[pt][sq] /= 256;
+		for (c = WHITE; c <= BLACK; ++c)
+			for (sq = 0; sq < 64; ++sq)
+				history[pt][sq] /= divisor;
 }
 
 static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 {
 	Movelist* list = &ss->list;
 	int* order_list = ss->order_arr;
+	int prev_to, prev_from;
+	if (ss->ply) {
+		int prev_move = (pos->state-1)->move;
+		prev_to       = to_sq(prev_move);
+		prev_from     = from_sq(prev_move);
+	}
 	u32* move;
 	int* order;
 	for (move = list->moves, order = order_list; move < list->end; ++move, ++order) {
@@ -44,22 +58,20 @@ static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 			*order = cap_order(pos, *move);
 		} else {
 			if (*move == ss->killers[0])
-				*order = KILLER + 3;
-
-			else if (*move == ss->killers[1])
-				*order = KILLER + 2;
-
-			else if (*move == (ss - 2)->killers[0])
 				*order = KILLER + 1;
 
-			else if (*move == (ss - 2)->killers[1])
+			else if (*move == ss->killers[1])
 				*order = KILLER;
+
+			else if (    ss->ply
+				 && *move == counter_move_table[prev_from][prev_to])
+				*order = COUNTER;
 
 			else if (prom_type(*move) == QUEEN)
 				*order = QUEEN_PROM;
 
 			else
-				*order = history[pos->board[from_sq(*move)]][to_sq(*move)];
+				*order = QUIET + history[pos->board[from_sq(*move)]][to_sq(*move)];
 		}
 	}
 }
@@ -314,7 +326,9 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	    best_move   = 0,
 	    legal_moves = 0;
 	int checking_move, depth_left, val;
-	u32 move;
+	u32 move, counter_move;
+	if (ss->ply)
+		counter_move = counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
 	while ((move = get_next_move(ss, legal_moves))) {
 		++legal_moves;
 
@@ -352,11 +366,17 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			    && static_eval + 100 * depth_left <= alpha)
 				continue;
 
+			// Prune moves with horrible SEE at low depth(idea from Stockfish)
+			if (   depth < 8
+			    && see(pos, move) < -10 * depth * depth)
+				continue;
+
 			// Late move reduction
 			if (    depth > 2
 			    &&  legal_moves > (node_type == PV_NODE ? 5 : 3)
 			    &&  move != ss->killers[0]
 			    &&  move != ss->killers[1]
+			    &&  move != counter_move
 			    && !checked) {
 				int reduction = 2
 					     + (legal_moves > 10)
@@ -423,10 +443,14 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 						++pos->stats.beta_cutoffs;
 						pos->stats.iid_cutoffs += iid;
 					)
-					if (   quiet_move
-					    && ss->killers[0] != move) {
-						ss->killers[1] = ss->killers[0];
-						ss->killers[0] = move;
+					if (quiet_move) {
+						if (ss->killers[0] != move) {
+							ss->killers[1] = ss->killers[0];
+							ss->killers[0] = move;
+						}
+						int prev_move = (pos->state-1)->move;
+						if (prev_move)
+							counter_move_table[from_sq(prev_move)][to_sq(prev_move)] = move;
 					}
 
 					for (u32* curr = list->moves + legal_moves - 2; curr >= list->moves; --curr) {
@@ -483,16 +507,17 @@ int begin_search(SearchUnit* const su)
 	int val, alpha, beta, depth;
 	int best_move = 0;
 
-	memset(history, 0, sizeof(int) * 8 * 64);
+	init_search();
 
-	SearchStack ss[MAX_PLY + 2];
-	clear_search(su, ss + 2);
+	SearchStack ss[MAX_PLY];
+	clear_search(su, ss);
+
 	pvt_clear(&pvt);
 
 	Position* const pos    = su->pos;
 	Controller* const ctlr = su->ctlr;
-	ss[2].forward_prune    = 0;
-	ss[2].node_type        = PV_NODE;
+	ss->forward_prune      = 0;
+	ss->node_type          = PV_NODE;
 	su->max_searched_ply   = 0;
 
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
@@ -509,7 +534,7 @@ int begin_search(SearchUnit* const su)
 			beta  = min(val + *beta_delta, +INFINITY);
 		}
 		while (1) {
-			val = search(su, ss + 2, alpha, beta, depth);
+			val = search(su, ss, alpha, beta, depth);
 
 			if (   depth > 1
 			    && ctlr->is_stopped)

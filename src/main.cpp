@@ -20,6 +20,7 @@
 #include "search_unit.h"
 #include "magicmoves.h"
 #include "position.h"
+#include "search.h"
 #include "misc.h"
 #include "tt.h"
 
@@ -36,6 +37,7 @@ int main()
 	initmagicmoves();
 	init_lookups();
 	init_eval_terms();
+	init_search();
 	tt_alloc_MB(&tt, 128);
 	pvt_init(&pvt, 0x400);
 

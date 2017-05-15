@@ -22,6 +22,8 @@
 #include "search_unit.h"
 #include "tt.h"
 
+extern void init_search();
+
 struct SearchStack
 {
 	int node_type;
@@ -200,7 +202,7 @@ inline void clear_search(SearchUnit* const su, SearchStack* const ss)
 	ctlr->is_stopped       = 0;
 	ctlr->nodes_searched   = 0ULL;
 	STATS(
-	Position* const pos           = su->pos;
+		Position* const pos           = su->pos;
 		pos->stats.correct_nt_guess   = 0;
 		pos->stats.iid_cutoffs        = 0;
 		pos->stats.iid_tries          = 0;
@@ -224,8 +226,6 @@ inline void clear_search(SearchUnit* const su, SearchStack* const ss)
 		for (j = 0; j < MAX_MOVES_PER_POS; ++j)
 			curr->order_arr[j] = 0;
 	}
-	(ss - 1)->killers[0] = (ss - 1)->killers[1] = 0;
-	(ss - 2)->killers[0] = (ss - 2)->killers[1] = 0;
 }
 
 #endif
