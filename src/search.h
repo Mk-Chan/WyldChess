@@ -108,10 +108,8 @@ inline int cap_order(Position const * const pos, u32 const m)
 	int cap_order;
 	if (see_val >= equal_cap_bound)
 		cap_order = GOOD_CAP;
-	else if (see_val > -equal_cap_bound)
-		cap_order = EQUAL_CAP;
 	else
-		cap_order = BAD_CAP;
+		cap_order = NGOOD_CAP;
 	return cap_order + see_val;
 }
 

@@ -150,8 +150,7 @@ enum MoveOrder {
 	KILLER     = 2800000,
 	COUNTER    = 2750000,
 	QUEEN_PROM = 2700000,
-	EQUAL_CAP  = 2600000,
-	BAD_CAP    = 2550000,
+	NGOOD_CAP  = 2600000,
 	QUIET      = 0
 };
 
