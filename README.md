@@ -44,13 +44,10 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 * Move ordering:
     * Hash move
     * Good captures (positive SEE)
-    * Queen promotions
-    * Equal captures (~0 SEE)
-    * Killer move from current ply
-    * Killer moves from 2 plies ago
-    * Minor promotions
-    * Bad captures (negative SEE)
-    * Rest
+    * Killer moves
+    * Counter moves
+    * Other captures (negative and zero SEE)
+    * History heuristic
 * Check extension at frontier nodes and SEE >= 0 moves
 * Late move reduction
 * Principal variation search

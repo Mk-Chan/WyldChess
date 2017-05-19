@@ -18,7 +18,7 @@
 
 #include "search.h"
 
-#define HISTORY_LIM (16000)
+#define HISTORY_LIM (4000)
 
 int history[8][64];
 u32 counter_move_table[64][64];
@@ -29,7 +29,7 @@ void init_search()
 	memset(counter_move_table, 0, sizeof(u32) * 64 * 64);
 }
 
-static void reduce_history(int divisor = 256)
+static void reduce_history(int divisor = 16)
 {
 	int pt, sq, c;
 	for (pt = PAWN; pt <= KING; ++pt)
@@ -67,11 +67,8 @@ static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 				 && *move == counter_move_table[prev_from][prev_to])
 				*order = COUNTER;
 
-			else if (prom_type(*move) == QUEEN)
-				*order = QUEEN_PROM;
-
 			else
-				*order = QUIET + history[pos->board[from_sq(*move)]][to_sq(*move)];
+				*order = history[pos->board[from_sq(*move)]][to_sq(*move)];
 		}
 	}
 }
@@ -102,13 +99,14 @@ static u32 get_next_move(SearchStack* const ss, int move_num)
 static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int beta)
 {
 	Controller* const ctlr = su->ctlr;
-	++ctlr->nodes_searched;
 
 	if ( !(ctlr->nodes_searched & 0x7ff)
 	    && stopped(su))
 		return 0;
 
 	Position* const pos = su->pos;
+	++ctlr->nodes_searched;
+	STATS(++pos->stats.correct_nt_guess;) // Ignore qsearch node guesses
 
 	if (pos->state->fifty_moves > 99)
 		return 0;
@@ -125,8 +123,6 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 	beta  = min((MATE - ss->ply), beta);
 	if (alpha >= beta)
 		return alpha;
-
-	STATS(++pos->stats.correct_nt_guess;) // Ignore qsearch node guesses
 
 	set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
@@ -507,7 +503,7 @@ int begin_search(SearchUnit* const su)
 	int val, alpha, beta, depth;
 	int best_move = 0;
 
-	init_search();
+	reduce_history();
 
 	SearchStack ss[MAX_PLY];
 	clear_search(su, ss);

@@ -145,15 +145,12 @@ enum PassedPawnType {
 };
 
 enum MoveOrder {
-	HASH_MOVE  = 3000000,
-	GOOD_CAP   = 2900000,
-	KILLER     = 2800000,
-	COUNTER    = 2750000,
-	QUEEN_PROM = 2700000,
-	NGOOD_CAP  = 2600000,
-	QUIET      = 0
+	HASH_MOVE = 3000000,
+	GOOD_CAP  = 2900000,
+	KILLER    = 2800000,
+	COUNTER   = 2700000,
+	NGOOD_CAP = 2600000,
 };
-
 
 inline int max(int a, int b) { return a > b ? a : b; }
 inline int min(int a, int b) { return a < b ? a : b; }
