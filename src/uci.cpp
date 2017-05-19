@@ -144,6 +144,11 @@ void uci_loop()
 					tt_alloc_MB(&tt, strtoul(ptr + 6, &end, 10));
 			}
 
+		} else if (!strncmp(input, "perft", 5)) {
+
+			transition(&su, WAITING);
+			performance_test(&pos, atoi(input + 6));
+
 		} else if (!strncmp(input, "go", 2)) {
 
 			transition(&su, WAITING);

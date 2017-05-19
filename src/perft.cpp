@@ -59,6 +59,6 @@ void performance_test(Position* const pos, u32 max_depth)
 		t1 = curr_time();
 		count = perft(pos, list, depth);
 		t2 = curr_time();
-		fprintf(stdout, "Perft(%2d) = %20llu (%10llu ms)\n", depth, count, (t2 - t1));
+		fprintf(stdout, "info depth %u time %llu nodes %llu\n", depth, (t2 - t1), count);
 	}
 }
