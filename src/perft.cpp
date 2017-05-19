@@ -61,5 +61,5 @@ void performance_test(Position* const pos, u32 max_depth)
 		t2 = curr_time();
 		fprintf(stdout, "info depth %u time %llu nodes %llu\n", depth, (t2 - t1), count);
 	}
-	fprintf(stdout, "done\n");
+	fprintf(stdout, "nodes %llu\n", count);
 }
