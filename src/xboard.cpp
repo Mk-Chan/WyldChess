@@ -164,6 +164,11 @@ void xboard_loop()
 	su.ctlr = &ctlr;
 	su.side = BLACK;
 	ctlr.time_dependent = 1;
+	ctlr.depth = MAX_PLY;
+	ctlr.moves_per_session = 40;
+	ctlr.moves_left = ctlr.moves_per_session;
+	ctlr.time_left = 240000;
+	ctlr.increment = 0;
 	ctlr.analyzing = 0;
 	su.target_state = WAITING;
 	State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
@@ -198,7 +203,7 @@ void xboard_loop()
 			su.game_over = 0;
 			init_pos(&pos, state_list);
 			set_pos(&pos, INITIAL_POSITION);
-			su.side            = BLACK;
+			su.side                = BLACK;
 			ctlr.time_dependent    = 1;
 			ctlr.depth             = MAX_PLY;
 			ctlr.moves_per_session = 40;
@@ -217,7 +222,7 @@ void xboard_loop()
 			transition(&su, WAITING);
 			ctlr.time_dependent = 0;
 			ctlr.analyzing      = 1;
-			su.side         = -1;
+			su.side             = -1;
 			transition(&su, ANALYZING);
 
 		} else if (!strncmp(input, "exit", 4)) {

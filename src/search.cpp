@@ -18,7 +18,8 @@
 
 #include "search.h"
 
-#define HISTORY_LIM (4000)
+#define HISTORY_LIM (8000)
+#define MAX_HISTORY_DEPTH (12)
 
 int history[8][64];
 u32 counter_move_table[64][64];
@@ -425,7 +426,8 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			if (val > alpha) {
 				alpha = val;
 
-				if (quiet_move) {
+				if (   quiet_move
+				    && depth <= MAX_HISTORY_DEPTH) {
 					int pt = pos->board[from_sq(move)];
 					history[pt][to_sq(move)] += depth * depth;
 					if (history[pt][to_sq(move)] > HISTORY_LIM)
@@ -449,14 +451,16 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 							counter_move_table[from_sq(prev_move)][to_sq(prev_move)] = move;
 					}
 
-					for (u32* curr = list->moves + legal_moves - 2; curr >= list->moves; --curr) {
-						if (  !cap_type(*curr)
-						    && move_type(*curr) != ENPASSANT
-						    && prom_type(*curr) != QUEEN) {
-							int pt = pos->board[from_sq(*curr)];
-							history[pt][to_sq(*curr)] -= depth * depth;
-							if (history[pt][to_sq(*curr)] < -HISTORY_LIM)
-								reduce_history();
+					if (depth <= MAX_HISTORY_DEPTH) {
+						for (u32* curr = list->moves + legal_moves - 2; curr >= list->moves; --curr) {
+							if (  !cap_type(*curr)
+							    && move_type(*curr) != ENPASSANT
+							    && prom_type(*curr) != QUEEN) {
+								int pt = pos->board[from_sq(*curr)];
+								history[pt][to_sq(*curr)] -= depth * depth;
+								if (history[pt][to_sq(*curr)] < -HISTORY_LIM)
+									reduce_history();
+							}
 						}
 					}
 					break;
