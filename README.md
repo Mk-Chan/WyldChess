@@ -53,11 +53,10 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 * Principal variation search
 
 ### Files
-* `src`      : A subdirectory containing the source code of the program.
+* `src`      : A subdirectory containing the source code of the program and the makefile.
 * `LICENSE`  : A file containing a copy of the GNU Public License.
 * `README.md`: The file you're currently reading.
 * `build.sh` : The file outlining the automated build process of the release.
-* `makefile` : The file outlining the automated compile process.
 
 ### Binaries
 All binaries are 64-bit
