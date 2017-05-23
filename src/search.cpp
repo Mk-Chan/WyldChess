@@ -17,10 +17,13 @@
  */
 
 #include "search.h"
+#include "syzygy/tbprobe.h"
 
 #define HISTORY_LIM (8000)
 #define MAX_HISTORY_DEPTH (12)
 
+// TODO: Following are unsafe for multithreading
+u64 tb_hits;
 int history[8][64];
 u32 counter_move_table[64][64];
 
@@ -225,6 +228,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	int node_type = ss->node_type;
 
+	// Probe TT
 	STATS(++pos->stats.hash_probes;)
 	TTEntry entry = tt_probe(&tt, pos->state->pos_key);
 	u32 tt_move   = 0;
@@ -241,6 +245,26 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			    || (flag == FLAG_LOWER && val >= beta)
 			    || (flag == FLAG_UPPER && val <= alpha))
 				return val;
+		}
+	}
+
+	// Probe EGTB
+	// No castling allowed
+	// No fifty moves allowed
+	if (    ss->ply
+	    &&  TB_LARGEST > 0
+	    && !pos->state->castling_rights
+	    && !pos->state->fifty_moves
+	    &&  popcnt(pos->bb[FULL]) <= TB_LARGEST) {
+		u64* bb = pos->bb;
+		int ep_sq = pos->state->ep_sq_bb ? bitscan(pos->state->ep_sq_bb) : 0;
+		unsigned int wdl = tb_probe_wdl(bb[WHITE], bb[BLACK], bb[KING], bb[QUEEN], bb[ROOK],
+						bb[BISHOP], bb[KNIGHT], bb[PAWN],
+						ep_sq, pos->stm == WHITE);
+		if (wdl != TB_RESULT_FAILED) {
+			++tb_hits;
+			tt_store(&tt, tb_values[wdl], FLAG_EXACT, min(depth + 6, MAX_PLY - 1), 0, pos->state->pos_key);
+			return tb_values[wdl];
 		}
 	}
 
@@ -513,6 +537,7 @@ int begin_search(SearchUnit* const su)
 	clear_search(su, ss);
 
 	pvt_clear(&pvt);
+	tb_hits = 0ULL;
 
 	Position* const pos    = su->pos;
 	Controller* const ctlr = su->ctlr;
@@ -547,6 +572,7 @@ int begin_search(SearchUnit* const su)
 				fprintf(stdout, "info ");
 				fprintf(stdout, "depth %u ", depth);
 				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
+				fprintf(stdout, "tbhits %llu ", tb_hits);
 				fprintf(stdout, "score ");
 				if (abs(val) < MAX_MATE_VAL) {
 					fprintf(stdout, "cp %d ", val);

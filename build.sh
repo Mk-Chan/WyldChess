@@ -1,30 +1,39 @@
 #!/bin/bash
+
 if [ $# -lt 1 ]
 then
 	echo "Usage: ./build.sh <release-number> [-j<cores>]"
 	exit
 fi
 
+
 TARGETS=( linux win64 )
+
+for T in "${TARGETS[@]}"
+do
+	mkdir -p binaries/WyldChess_v$1/$T
+done
+
+cd src
 
 for T in "${TARGETS[@]}"
 do
 	if [ "$T" = "win64" ]
 	then
-		CC=x86_64-w64-mingw32-g++
+		CXX=x86_64-w64-mingw32-g++
 	else
-		CC=g++
+		CXX=g++
 	fi
 	make clean
-	make CC="$CC" RELEASE=$1 TARGET="$T" $2
+	make CXX="$CXX" RELEASE=$1 TARGET="$T" $2
 	make clean
-	make popcnt CC="$CC" RELEASE=$1 TARGET="$T" $2
+	make popcnt CXX="$CXX" RELEASE=$1 TARGET="$T" $2
 	make clean
-	make bmi CC="$CC" RELEASE=$1 TARGET="$T" $2
+	make bmi CXX="$CXX" RELEASE=$1 TARGET="$T" $2
 done
 
 make clean
-cd binaries/WyldChess_v$1
+cd ../binaries/WyldChess_v$1
 
 BASE=wyldchess
 

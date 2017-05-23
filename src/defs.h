@@ -45,6 +45,8 @@
 #define MATE               (29000)
 #define WINNING_SCORE      (8000)
 #define MAX_MATE_VAL       (MATE - MAX_PLY)
+#define TB_MATE_VAL        (28000)
+#define TB_CURSED_MATE_VAL (1)
 #define MAX_PHASE          (256)
 
 #define MOVE_TYPE_SHIFT (12)
@@ -154,6 +156,8 @@ enum MoveOrder {
 
 inline int max(int a, int b) { return a > b ? a : b; }
 inline int min(int a, int b) { return a < b ? a : b; }
+
+static int const tb_values[5] = { -TB_MATE_VAL, -TB_CURSED_MATE_VAL, 0, TB_CURSED_MATE_VAL, TB_MATE_VAL };
 
 static int const is_prom_sq[64] = {
 	1, 1, 1, 1, 1, 1, 1, 1,

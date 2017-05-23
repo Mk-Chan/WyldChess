@@ -16,6 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "syzygy/tbprobe.h"
 #include "defs.h"
 #include "search_unit.h"
 #include "tt.h"
@@ -25,6 +26,7 @@ static inline void print_options_uci()
 	fprintf(stdout, "id name %s\n", ENGINE_NAME);
 	fprintf(stdout, "id author %s\n", AUTHOR_NAME);
 	fprintf(stdout, "option name Hash type spin default 128 min 1 max 1048576\n");
+	fprintf(stdout, "option name SyzygyPath type string default <empty>\n");
 	fprintf(stdout, "uciok\n");
 }
 
@@ -88,6 +90,7 @@ void uci_loop()
 
 	while (1) {
 		fgets(input, max_len, stdin);
+		input[strlen(input)-1] = '\0';
 		if (!strncmp(input, "isready", 7)) {
 
 			fprintf(stdout, "readyok\n");
@@ -142,6 +145,12 @@ void uci_loop()
 				ptr += 5;
 				if (!strncmp(ptr, "value", 5))
 					tt_alloc_MB(&tt, strtoul(ptr + 6, &end, 10));
+			} else if (!strncmp(ptr, "SyzygyPath", 10)) {
+				ptr += 11;
+				if (!strncmp(ptr, "value", 5)) {
+					tb_init(ptr + 6);
+					fprintf(stdout, "info string Largest tablebase size = %u\n", TB_LARGEST);
+				}
 			}
 
 		} else if (!strncmp(input, "perft", 5)) {

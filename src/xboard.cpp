@@ -18,6 +18,7 @@
 
 #include "defs.h"
 #include "search_unit.h"
+#include "syzygy/tbprobe.h"
 #include "tt.h"
 
 enum Result {
@@ -99,6 +100,7 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature usermove=1\n");
 	fprintf(stdout, "feature memory=1\n");
 	fprintf(stdout, "feature time=1\n");
+	fprintf(stdout, "feature egt=syzygy\n");
 	fprintf(stdout, "feature done=1\n");
 }
 
@@ -181,6 +183,7 @@ void xboard_loop()
 
 	while (1) {
 		fgets(input, max_len, stdin);
+		input[strlen(input)-1] = '\0';
 		if (!strncmp(input, "protover 2", 10)) {
 
 			print_options_xboard();
@@ -196,6 +199,14 @@ void xboard_loop()
 		} else if (!strncmp(input, "memory", 6)) {
 
 			tt_alloc_MB(&tt, strtoul(input + 7, &end, 10));
+
+		} else if (!strncmp(input, "egtpath", 7)) {
+
+			ptr = input + 8;
+			if (!strncmp(ptr, "syzygy", 6)) {
+				ptr += 7;
+				tb_init(ptr);
+			}
 
 		} else if (!strncmp(input, "new", 3)) {
 
