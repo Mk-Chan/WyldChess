@@ -35,16 +35,16 @@ all: $(OBJS) $(SZG_OBJS)
 	$(CXX) $(CXX_FLAGS) $^ -o $(BIN) $(EXT_LIBS)
 
 profiling:
-	$(MAKE) CXXFLAGS="$(CXX_FLAGS) -mbmi -mbmi2 -mpopcnt -g -fno-omit-frame-pointer"
+	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -mbmi -mbmi2 -mpopcnt -g -fno-omit-frame-pointer"
 
 popcnt:
-	$(MAKE) CXXFLAGS="$(CXX_FLAGS) -mpopcnt" EXEC="$(EXEC)_popcnt"
+	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -mpopcnt" EXEC="$(EXEC)_popcnt"
 
 bmi:
-	$(MAKE) CXXFLAGS="$(CXX_FLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
+	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
 
 stats:
-	$(MAKE) CXXFLAGS="$(CXX_FLAGS) -DSTATS_BUILD -mbmi -mbmi2 -mpopcnt"
+	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -DSTATS_BUILD -mbmi -mbmi2 -mpopcnt"
 
 %.o: %.cpp
 	$(CXX) $(CXX_FLAGS) -c $< -o $@

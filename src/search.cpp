@@ -346,7 +346,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	int best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
-	int checking_move, depth_left, val;
+	int checking_move, depth_left, val, passer_move;
 	u32 move, counter_move;
 	if (ss->ply)
 		counter_move = counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
@@ -366,6 +366,8 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 		depth_left    = depth - 1;
 		checking_move = gives_check(pos, move);
+		passer_move   =  is_passed_pawn(pos, from_sq(move), pos->stm)
+			     && (pos->stm == WHITE ? rank_of(to_sq(move)) >= RANK_6 : rank_of(to_sq(move)) <= RANK_3);
 
 		// Check extension
 		if (    checking_move
@@ -398,11 +400,17 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			    &&  move != ss->killers[0]
 			    &&  move != ss->killers[1]
 			    &&  move != counter_move
+			    && !passer_move
 			    && !checked) {
-				int reduction = 2
-					     + (legal_moves > 10)
-					     + (node_type != PV_NODE);
-				depth_left = max(1, depth - reduction);
+				int reduction = 2;
+				int hist_val = history[pos->board[from_sq(move)]][to_sq(move)];
+				reduction += (legal_moves > 10)
+					   + (node_type != PV_NODE)
+					   + (hist_val < -500)
+					   + (hist_val < -3000)
+					   - (hist_val > 500)
+					   - (hist_val > 3000);
+				depth_left = max(1, depth - max(2, reduction));
 			}
 		}
 

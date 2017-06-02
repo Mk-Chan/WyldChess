@@ -195,6 +195,7 @@ void uci_loop()
 				} else if (!strncmp(ptr, "depth", 5)) {
 
 					ctlr.depth = (u32) strtol(ptr + 6, &end, 10);
+					ctlr.time_dependent = 0;
 					ptr = end;
 
 				} else if (!strncmp(ptr, "movetime", 8)) {
