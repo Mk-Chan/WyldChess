@@ -146,7 +146,7 @@ inline int is_repeat(Position* const pos)
 
 static int valid_move(Position* const pos, u32* move)
 {
-	u32 from = from_sq(*move),
+	int from = from_sq(*move),
 	    to   = to_sq(*move),
 	    mt   = move_type(*move),
 	    prom = prom_type(*move);

@@ -115,7 +115,7 @@ void init_masks()
 		forward = c == WHITE ? 1 : -1;
 		for (sq = 0; sq != 64; ++sq) {
 			file_forward_mask[c][sq] = 0ULL;
-			for (i = sq + (forward << 3); i >= 0 && i <= 63; i += forward << 3)
+			for (i = sq + forward * 8; i >= 0 && i <= 63; i += forward * 8)
 				file_forward_mask[c][sq] |= BB(i);
 		}
 	}
