@@ -25,7 +25,7 @@
 #include "tt.h"
 
 TT tt;
-PVT pvt;
+TT pvt;
 
 int main()
 {
@@ -39,7 +39,7 @@ int main()
 	init_eval_terms();
 	init_search();
 	tt_alloc_MB(&tt, 128);
-	pvt_init(&pvt, 0x400);
+	tt_alloc_MB(&pvt, 1);
 
 	char input[100];
 	while (1) {

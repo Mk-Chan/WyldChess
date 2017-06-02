@@ -169,9 +169,9 @@ static int valid_move(Position* const pos, u32* move)
 inline void print_pv_line(Position* const pos, int depth)
 {
 	char mstr[6];
-	PVEntry entry = pvt_probe(&pvt, pos->state->pos_key);
+	TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
 	if (entry.key == pos->state->pos_key) {
-		u32 move = get_move(entry.move);
+		u32 move = get_move(entry.data);
 		if (!valid_move(pos, &move))
 			return;
 		do_move(pos, move);
@@ -185,9 +185,9 @@ inline void print_pv_line(Position* const pos, int depth)
 
 inline u32 get_pv_move(Position* const pos)
 {
-	PVEntry entry = pvt_probe(&pvt, pos->state->pos_key);
+	TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
 	if (entry.key == pos->state->pos_key) {
-		u32 move = get_move(entry.move);
+		u32 move = get_move(entry.data);
 		if (valid_move(pos, &move))
 			return move;
 	}

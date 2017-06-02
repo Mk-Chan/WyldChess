@@ -544,7 +544,7 @@ int begin_search(SearchUnit* const su)
 	SearchStack ss[MAX_PLY];
 	clear_search(su, ss);
 
-	pvt_clear(&pvt);
+	tt_clear(&pvt);
 	tb_hits = 0ULL;
 
 	Position* const pos    = su->pos;

@@ -34,20 +34,6 @@
 #define DEPTH(data) ((int)((data) >> DEPTH_SHIFT) & 0x7f)
 #define SCORE(data) ((int)((data) >> SCORE_SHIFT))
 
-struct PVEntry
-{
-	u64 move;
-	u64 key;
-};
-
-struct PVT
-{
-	PVEntry* table;
-	u32 size;
-};
-
-extern PVT pvt;
-
 struct TTEntry
 {
 	u64 data;
@@ -60,6 +46,7 @@ struct TT
 	u32 size;
 };
 
+extern TT pvt;
 extern TT tt;
 
 inline int val_to_tt(int val, int ply)
@@ -113,37 +100,16 @@ inline TTEntry tt_probe(TT* tt, u64 key)
 	return tt->table[(key < tt->size ? key : key % tt->size)];
 }
 
-inline void pvt_clear(PVT* pvt)
-{
-	memset(pvt->table, 0, sizeof(PVEntry) * pvt->size);
-}
-
-inline void pvt_init(PVT* pvt, u32 size)
-{
-	pvt->table = (PVEntry*) malloc(sizeof(PVEntry) * size);
-	pvt->size  = size;
-	pvt_clear(pvt);
-}
-
-inline void pvt_destroy(PVT* pvt)
-{
-	free(pvt->table);
-}
-
-inline void pvt_store(PVT* pvt, u64 move, u64 key, u64 depth)
+inline void pvt_store(TT* pvt, u64 move, u64 key, u64 depth)
 {
 	u32 index       = key < pvt->size ? key : key % pvt->size;
-	PVEntry* entry  = pvt->table + index;
-	u32 entry_depth = entry->move >> 32;
-	if (entry_depth > depth)
-		return;
-	entry->move     = move | (depth << 32);
-	entry->key      = key;
-}
+	TTEntry* entry  = pvt->table + index;
+	u32 entry_depth = entry->data >> 32;
 
-inline PVEntry pvt_probe(PVT* pvt, u64 key)
-{
-	return pvt->table[(key < pvt->size ? key : key % pvt->size)];
+	if (entry_depth <= depth) {
+		entry->data = move | (depth << 32);
+		entry->key  = key;
+	}
 }
 
 #endif
