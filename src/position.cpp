@@ -75,14 +75,14 @@ void init_pos(Position* pos, State* state_list)
 	pos->stm                    = WHITE;
 	pos->hist                   = state_list;
 	pos->state                  = pos->hist;
-	pos->state->pos_key         = 0ULL;
-	pos->state->pinned_bb       = 0ULL;
-	pos->state->fifty_moves     = 0;
-	pos->state->full_moves      = 0;
-	pos->state->castling_rights = 0;
-	pos->state->ep_sq_bb        = 0ULL;
-	pos->state->checkers_bb     = 0ULL;
 	pos->phase                  = 0;
+	pos->state->pos_key         = 0ULL;
+	pos->state->ep_sq_bb        = 0ULL;
+	pos->state->pinned_bb       = 0ULL;
+	pos->state->full_moves      = 0;
+	pos->state->fifty_moves     = 0;
+	pos->state->checkers_bb     = 0ULL;
+	pos->state->castling_rights = 0;
 	pos->piece_psq_eval[WHITE]  = 0;
 	pos->piece_psq_eval[BLACK]  = 0;
 }

@@ -48,14 +48,14 @@ struct Movelist
 
 struct State
 {
-	u64  pinned_bb;
-	u64  checkers_bb;
-	u64  ep_sq_bb;
-	u64  pos_key;
-	u32  castling_rights;
-	u32  fifty_moves;
-	u32  full_moves;
-	u32  move;
+	u64 pinned_bb;
+	u64 checkers_bb;
+	u64 ep_sq_bb;
+	u64 pos_key;
+	u32 castling_rights;
+	u32 fifty_moves;
+	u32 full_moves;
+	u32 move;
 };
 
 struct Position

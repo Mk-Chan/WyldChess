@@ -251,20 +251,52 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	// Probe EGTB
 	// No castling allowed
 	// No fifty moves allowed
-	if (    ss->ply
-	    &&  TB_LARGEST > 0
+	if (    TB_LARGEST > 0
 	    && !pos->state->castling_rights
 	    && !pos->state->fifty_moves
 	    &&  popcnt(pos->bb[FULL]) <= TB_LARGEST) {
 		u64* bb = pos->bb;
 		int ep_sq = pos->state->ep_sq_bb ? bitscan(pos->state->ep_sq_bb) : 0;
-		unsigned int wdl = tb_probe_wdl(bb[WHITE], bb[BLACK], bb[KING], bb[QUEEN], bb[ROOK],
-						bb[BISHOP], bb[KNIGHT], bb[PAWN],
-						ep_sq, pos->stm == WHITE);
-		if (wdl != TB_RESULT_FAILED) {
-			++tb_hits;
-			tt_store(&tt, tb_values[wdl], FLAG_EXACT, min(depth + 6, MAX_PLY - 1), 0, pos->state->pos_key);
-			return tb_values[wdl];
+		if (ss->ply) {
+			// At interior/leaf node only check the result of the position
+			unsigned int wdl = tb_probe_wdl(bb[WHITE], bb[BLACK], bb[KING], bb[QUEEN], bb[ROOK],
+							bb[BISHOP], bb[KNIGHT], bb[PAWN],
+							ep_sq, pos->stm == WHITE);
+			if (wdl != TB_RESULT_FAILED) {
+				++tb_hits;
+				tt_store(&tt, tb_values[wdl], FLAG_EXACT, min(depth + 6, MAX_PLY - 1), 0, pos->state->pos_key);
+				return tb_values[wdl];
+			}
+		} else {
+			// At root node construct best move and put it into PV-table
+			unsigned int res = tb_probe_root(bb[WHITE], bb[BLACK], bb[KING], bb[QUEEN], bb[ROOK],
+							bb[BISHOP], bb[KNIGHT], bb[PAWN], pos->state->fifty_moves,
+							ep_sq, pos->stm == WHITE, NULL);
+			if (res != TB_RESULT_FAILED) {
+				u32 prom = 0;
+				switch (TB_GET_PROMOTES(res)) {
+				case TB_PROMOTES_QUEEN:
+					prom = TO_QUEEN;
+					break;
+				case TB_PROMOTES_KNIGHT:
+					prom = TO_KNIGHT;
+					break;
+				case TB_PROMOTES_ROOK:
+					prom = TO_ROOK;
+					break;
+				case TB_PROMOTES_BISHOP:
+					prom = TO_BISHOP;
+					break;
+				default:
+					break;
+				}
+				int to   = TB_GET_TO(res);
+				u32 move = prom ? move_prom(TB_GET_FROM(res), to, prom)
+					        : move_normal(TB_GET_FROM(res), to);
+				pvt_store(&pvt, move, pos->state->pos_key, depth);
+				ctlr->is_stopped = 1;
+				return tb_values[TB_GET_WDL(res)];
+			}
 		}
 	}
 
@@ -343,13 +375,15 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	order_moves(pos, ss, tt_move);
 
+	u32 counter_move;
+	if (ss->ply)
+		counter_move = counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
+
 	int best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
 	int checking_move, depth_left, val, passer_move;
-	u32 move, counter_move;
-	if (ss->ply)
-		counter_move = counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
+	u32 move;
 	while ((move = get_next_move(ss, legal_moves))) {
 		++legal_moves;
 
@@ -547,12 +581,11 @@ int begin_search(SearchUnit* const su)
 	tt_clear(&pvt);
 	tb_hits = 0ULL;
 
-	Position* const pos    = su->pos;
-	Controller* const ctlr = su->ctlr;
-	ss->forward_prune      = 0;
-	ss->node_type          = PV_NODE;
-	su->max_searched_ply   = 0;
+	ss->forward_prune    = 0;
+	ss->node_type        = PV_NODE;
+	su->max_searched_ply = 0;
 
+	Controller* const ctlr = su->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
 	static int* alpha_delta;
@@ -597,7 +630,7 @@ int begin_search(SearchUnit* const su)
 				fprintf(stdout, "time %llu ", time);
 				fprintf(stdout, "pv");
 			}
-			print_pv_line(pos, depth);
+			print_pv_line(su->pos, depth);
 			fprintf(stdout, "\n");
 
 			if (val <= alpha) {
@@ -611,10 +644,11 @@ int begin_search(SearchUnit* const su)
 			}
 		}
 
-		best_move = get_pv_move(pos);
+		best_move = get_pv_move(su->pos);
 	}
 end_search:
 	STATS(
+		Position* const pos = su->pos;
 		time = curr_time() - ctlr->search_start_time;
 		fprintf(stdout, "nps:                      %lf\n",
 			time ? ((double)ctlr->nodes_searched * 1000 / time) : 0);

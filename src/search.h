@@ -144,36 +144,12 @@ inline int is_repeat(Position* const pos)
 	return 0;
 }
 
-static int valid_move(Position* const pos, u32* move)
-{
-	int from = from_sq(*move),
-	    to   = to_sq(*move),
-	    mt   = move_type(*move),
-	    prom = prom_type(*move);
-	Movelist list;
-	list.end = list.moves;
-	set_pinned(pos);
-	set_checkers(pos);
-	gen_legal_moves(pos, &list);
-	u32* m;
-	for (m = list.moves; m != list.end; ++m) {
-		if (   from_sq(*m) == from
-		    && to_sq(*m) == to
-		    && move_type(*m) == mt
-		    && prom_type(*m) == prom)
-			return 1;
-	}
-	return 0;
-}
-
 inline void print_pv_line(Position* const pos, int depth)
 {
 	char mstr[6];
 	TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
 	if (entry.key == pos->state->pos_key) {
 		u32 move = get_move(entry.data);
-		if (!valid_move(pos, &move))
-			return;
 		do_move(pos, move);
 		move_str(move, mstr);
 		fprintf(stdout, " %s", mstr);
@@ -186,12 +162,7 @@ inline void print_pv_line(Position* const pos, int depth)
 inline u32 get_pv_move(Position* const pos)
 {
 	TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
-	if (entry.key == pos->state->pos_key) {
-		u32 move = get_move(entry.data);
-		if (valid_move(pos, &move))
-			return move;
-	}
-	return 0;
+	return get_move(entry.data);
 }
 
 inline void clear_search(SearchUnit* const su, SearchStack* const ss)
