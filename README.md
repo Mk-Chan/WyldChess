@@ -60,7 +60,9 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 
 ### Binaries
 All binaries are 64-bit
+
 MacOS release is provided by Michael B
+
 WyldChess 1.5 and beyond now have an Android/Rpi release!
 
 #### WyldChess 1.5 and beyond
