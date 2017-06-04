@@ -62,6 +62,14 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 All binaries are 64-bit
 MacOS release is provided by Michael B
 
+#### WyldChess 1.5 and beyond
+
+There are 3 types of binaries available for Windows and GNU/Linux each:
+
+* `bmi`           : Compiled with the -mbmi -mbmi2 and -mpopcnt options.
+* `popcnt`        : Compiled with the -mpopcnt option.
+* `no extension`  : Basic compile.
+
 #### WyldChess 1.3 and beyond
 
 There are 2 types of binaries available for Windows and GNU/Linux each:
