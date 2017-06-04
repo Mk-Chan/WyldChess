@@ -5,7 +5,7 @@ Get the latest release here: [Latest Release](https://github.com/Mk-Chan/WyldChe
 
 ### Overview
 A free chess engine in C/C++. It does not provide a GUI (Graphical User Interface)
-but can be linked to one that supports either the UCI protocol or CECP (the Xboard/Winboard protocol)
+but can be linked to one that supports either the UCI protocol or CECP (the Xboard/Winboard protocol) such as Winboard/Xboard, Arena or Cutechess
 
 ### Features
 
@@ -61,6 +61,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 ### Binaries
 All binaries are 64-bit
 MacOS release is provided by Michael B
+WyldChess 1.5 and beyond now have an Android/Rpi release!
 
 #### WyldChess 1.5 and beyond
 
