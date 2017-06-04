@@ -29,10 +29,6 @@
 
 #include "tbprobe.h"
 
-#ifdef __GNUC__
-#include <x86intrin.h>
-#endif
-
 #define WHITE_KING              (TB_WPAWN + 5)
 #define WHITE_QUEEN             (TB_WPAWN + 4)
 #define WHITE_ROOK              (TB_WPAWN + 3)
@@ -68,23 +64,8 @@
 #define BEST_NONE               0xFFFF
 #define SCORE_ILLEGAL           0x7FFF
 
-#ifndef TB_NO_HW_POP_COUNT
-#ifdef TB_CUSTOM_POP_COUNT
-#define popcount(x) TB_CUSTOM_POP_COUNT(x)
-#else
-#include <popcntintrin.h>
-#define popcount(x)             _mm_popcnt_u64((x))
-#endif
-#else
-static inline unsigned popcount(uint64_t x)
-{
-    x = x - ((x >> 1) & 0x5555555555555555ull);
-    x = (x & 0x3333333333333333ull) + ((x >> 2) & 0x3333333333333333ull);
-    x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0full;
-    return (x * 0x0101010101010101ull) >> 56;
-}
-#endif
-
+#define popcount(x)             (popcnt(__builtin_popcountll(x)))
+#define lsb(b)                  (__builtin_ctzll(b))
 #define poplsb(x)               ((x) & ((x) - 1))
 
 #define make_move(promote, from, to)                                    \
@@ -124,16 +105,6 @@ unsigned TB_LARGEST = 0;
 #define rank(s)                 ((s) >> 3)
 #define file(s)                 ((s) & 0x07)
 #define board(s)                ((uint64_t)1 << (s))
-#ifdef TB_CUSTOM_LSB
-#define lsb(b) TB_CUSTOM_LSB(b)
-#else
-static inline unsigned lsb(uint64_t b)
-{
-    size_t idx;
-    __asm__("bsfq %1, %0": "=r"(idx): "rm"(b));
-    return idx;
-}
-#endif
 #define square(r, f)            (8 * (r) + (f))
 
 #ifdef TB_KING_ATTACKS
