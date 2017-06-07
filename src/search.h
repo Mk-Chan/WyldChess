@@ -101,8 +101,11 @@ inline int cap_order(Position const * const pos, u32 const m)
 	int capper_pt = pos->board[from_sq(m)];
 	if (move_type(m) == PROMOTION)
 		cap_val += mg_val(piece_val[prom_type(m)]);
-	if (cap_val - mg_val(piece_val[capper_pt]) > equal_cap_bound)
+	int cap_diff = cap_val - mg_val(piece_val[capper_pt]);
+	if (cap_diff > equal_cap_bound)
 		return GOOD_CAP + cap_val - capper_pt;
+	else if (cap_diff > -equal_cap_bound)
+		return GOOD_CAP + capper_pt;
 
 	int see_val = see(pos, m);
 	int cap_order;
