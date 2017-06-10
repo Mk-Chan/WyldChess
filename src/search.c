@@ -46,7 +46,7 @@ static void order_moves(struct Position* const pos, struct SearchStack* const ss
 {
 	struct Movelist* list = &ss->list;
 	int* order_list = ss->order_arr;
-	int prev_to, prev_from;
+	int prev_to = -1, prev_from = -1;
 	if (ss->ply) {
 		int prev_move = (pos->state-1)->move;
 		prev_to       = to_sq(prev_move);
@@ -130,7 +130,7 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 
 	set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
-	int eval;
+	int eval = 0;
 
 	if (!checked) {
 		eval = evaluate(pos);
@@ -302,7 +302,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 
 	set_checkers(pos);
 	int checked = pos->state->checkers_bb > 0ULL;
-	int static_eval;
+	int static_eval = 0;
 	if (node_type != PV_NODE)
 		static_eval = evaluate(pos);
 
@@ -375,7 +375,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 
 	order_moves(pos, ss, tt_move);
 
-	u32 counter_move;
+	u32 counter_move = 0;
 	if (ss->ply)
 		counter_move = counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
 

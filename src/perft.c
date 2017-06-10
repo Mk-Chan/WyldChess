@@ -53,7 +53,7 @@ void performance_test(struct Position* const pos, u32 max_depth)
 {
 	struct Movelist list[MAX_PLY];
 	u32 depth;
-	u64 count;
+	u64 count = 0;
 	u64 t1, t2;
 	for (depth = 1; depth <= max_depth; ++depth) {
 		t1 = curr_time();
