@@ -183,14 +183,14 @@ static int const is_prom_sq[64] = {
 #define bitscan(bb) (__builtin_ctzll(bb))
 
 #define get_move(data)                     (((data) & 0x1fffff))
-#define move_normal(from, to)              (from | (to << 6) | NORMAL)
-#define move_cap(from, to, cap)            (from | (to << 6) | NORMAL | (cap << CAP_TYPE_SHIFT))
-#define move_double_push(from, to)         (from | (to << 6) | DOUBLE_PUSH)
-#define move_castle(from, to)              (from | (to << 6) | CASTLE)
-#define move_ep(from, to)                  (from | (to << 6) | ENPASSANT)
-#define move_prom(from, to, prom)          (from | (to << 6) | PROMOTION | prom)
-#define move_prom_cap(from, to, prom, cap) (from | (to << 6) | PROMOTION | prom | (cap << CAP_TYPE_SHIFT))
-#define move(from, to, mt, prom, cap)      (from | (to << 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
+#define move_normal(from, to)              ((from) | ((to)<< 6) | NORMAL)
+#define move_cap(from, to, cap)            ((from) | ((to)<< 6) | NORMAL | (cap << CAP_TYPE_SHIFT))
+#define move_double_push(from, to)         ((from) | ((to)<< 6) | DOUBLE_PUSH)
+#define move_castle(from, to)              ((from) | ((to)<< 6) | CASTLE)
+#define move_ep(from, to)                  ((from) | ((to)<< 6) | ENPASSANT)
+#define move_prom(from, to, prom)          ((from) | ((to)<< 6) | PROMOTION | prom)
+#define move_prom_cap(from, to, prom, cap) ((from) | ((to)<< 6) | PROMOTION | prom | (cap << CAP_TYPE_SHIFT))
+#define move(from, to, mt, prom, cap)      ((from) | ((to)<< 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
 
 #define S(mg, eg) ((int) (mg + (((unsigned int) eg) << 16)))
 

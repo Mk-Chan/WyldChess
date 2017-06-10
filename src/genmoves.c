@@ -155,44 +155,73 @@ void gen_check_evasions(struct Position* pos, struct Movelist* list)
 
 static void gen_pawn_captures(struct Position* pos, struct Movelist* list)
 {
-	u64 cap_candidates;
-	int from, to, cap_pt;
-	int const c            = pos->stm;
-	u64 pawns_bb           = pos->bb[PAWN] & pos->bb[c],
-	    prom_candidates_bb = pawns_bb & (c == WHITE ? rank_mask[RANK_7] : rank_mask[RANK_2]);
-	pawns_bb              ^= prom_candidates_bb;
+	int from;
+	u64 pawns_bb = pos->bb[PAWN] & pos->bb[pos->stm];
 	if (pos->state->ep_sq_bb) {
 		int const ep_sq   = bitscan(pos->state->ep_sq_bb);
-		u64       ep_poss = pawns_bb & p_atks_bb[!c][ep_sq];
+		u64       ep_poss = pawns_bb & p_atks_bb[!pos->stm][ep_sq];
 		while (ep_poss) {
 			from     = bitscan(ep_poss);
 			ep_poss &= ep_poss - 1;
 			add_move(move_ep(from, ep_sq), list);
 		}
 	}
-	while (prom_candidates_bb) {
-		from                = bitscan(prom_candidates_bb);
-		prom_candidates_bb &= prom_candidates_bb - 1;
-		cap_candidates      = p_atks_bb[c][from] & pos->bb[!c];
-		while (cap_candidates) {
-			to              = bitscan(cap_candidates);
-			cap_pt          = pos->board[to];
-			cap_candidates &= cap_candidates - 1;
-			add_move(move_prom_cap(from, to, TO_QUEEN, cap_pt), list);
-			add_move(move_prom_cap(from, to, TO_KNIGHT, cap_pt), list);
-			add_move(move_prom_cap(from, to, TO_ROOK, cap_pt), list);
-			add_move(move_prom_cap(from, to, TO_BISHOP, cap_pt), list);
-		}
+
+	int caps1_fwd, caps2_fwd;
+	u64 caps1_bb, caps2_bb, prom_caps1_bb, prom_caps2_bb;
+	if (pos->stm == WHITE) {
+		caps1_bb      = ((pawns_bb & ~file_mask[FILE_A]) << 7) & pos->bb[BLACK];
+		prom_caps1_bb = caps1_bb & rank_mask[RANK_8];
+		caps1_bb     ^= prom_caps1_bb;
+
+		caps2_bb      = ((pawns_bb & ~file_mask[FILE_H]) << 9) & pos->bb[BLACK];
+		prom_caps2_bb = caps2_bb & rank_mask[RANK_8];
+		caps2_bb     ^= prom_caps2_bb;
+
+		caps1_fwd = 7;
+		caps2_fwd = 9;
+	} else {
+		caps1_bb      = ((pawns_bb & ~file_mask[FILE_H]) >> 7) & pos->bb[WHITE];
+		prom_caps1_bb = caps1_bb & rank_mask[RANK_1];
+		caps1_bb     ^= prom_caps1_bb;
+
+		caps2_bb      = ((pawns_bb & ~file_mask[FILE_A]) >> 9) & pos->bb[WHITE];
+		prom_caps2_bb = caps2_bb & rank_mask[RANK_1];
+		caps2_bb     ^= prom_caps2_bb;
+
+		caps1_fwd = -7;
+		caps2_fwd = -9;
 	}
-	while (pawns_bb) {
-		from           = bitscan(pawns_bb);
-		pawns_bb      &= pawns_bb - 1;
-		cap_candidates = p_atks_bb[c][from] & pos->bb[!c];
-		while (cap_candidates) {
-			to              = bitscan(cap_candidates);
-			cap_candidates &= cap_candidates - 1;
-			add_move(move_cap(from, to, pos->board[to]), list);
-		}
+
+	int to;
+	while (caps1_bb) {
+		to = bitscan(caps1_bb);
+		caps1_bb &= caps1_bb - 1;
+		add_move(move_cap(to - caps1_fwd, to, pos->board[to]), list);
+	}
+	while (caps2_bb) {
+		to = bitscan(caps2_bb);
+		caps2_bb &= caps2_bb - 1;
+		add_move(move_cap(to - caps2_fwd, to, pos->board[to]), list);
+	}
+	int cap_pt;
+	while (prom_caps1_bb) {
+		to = bitscan(prom_caps1_bb);
+		prom_caps1_bb &= prom_caps1_bb - 1;
+		cap_pt = pos->board[to];
+		add_move(move_prom_cap(to - caps1_fwd, to, TO_QUEEN, cap_pt), list);
+		add_move(move_prom_cap(to - caps1_fwd, to, TO_KNIGHT, cap_pt), list);
+		add_move(move_prom_cap(to - caps1_fwd, to, TO_ROOK, cap_pt), list);
+		add_move(move_prom_cap(to - caps1_fwd, to, TO_BISHOP, cap_pt), list);
+	}
+	while (prom_caps2_bb) {
+		to = bitscan(prom_caps2_bb);
+		prom_caps2_bb &= prom_caps2_bb - 1;
+		cap_pt = pos->board[to];
+		add_move(move_prom_cap(to - caps2_fwd, to, TO_QUEEN, cap_pt), list);
+		add_move(move_prom_cap(to - caps2_fwd, to, TO_KNIGHT, cap_pt), list);
+		add_move(move_prom_cap(to - caps2_fwd, to, TO_ROOK, cap_pt), list);
+		add_move(move_prom_cap(to - caps2_fwd, to, TO_BISHOP, cap_pt), list);
 	}
 }
 
@@ -219,51 +248,50 @@ void gen_captures(struct Position* pos, struct Movelist* list)
 
 static void gen_quiet_proms(struct Position* pos, struct Movelist* list)
 {
-	int from, to;
-	int const c = pos->stm;
-	u64 prom_candidates_bb = pos->bb[PAWN] & pos->bb[c];
-	if (c == WHITE) {
-		prom_candidates_bb &= rank_mask[RANK_7];
-		prom_candidates_bb  = ((prom_candidates_bb << 8) & ~pos->bb[FULL]) >> 8;
+	int to, forward;
+	u64 prom_candidates_bb;
+	if (pos->stm == WHITE) {
+		prom_candidates_bb = ((pos->bb[PAWN] & pos->bb[WHITE] & rank_mask[RANK_7]) << 8) & ~pos->bb[FULL];
+		forward = 8;
 	} else {
-		prom_candidates_bb &= rank_mask[RANK_2];
-		prom_candidates_bb  = ((prom_candidates_bb >> 8) & ~pos->bb[FULL]) << 8;
+		prom_candidates_bb = ((pos->bb[PAWN] & pos->bb[BLACK] & rank_mask[RANK_2]) >> 8) & ~pos->bb[FULL];
+		forward = -8;
 	}
 	while (prom_candidates_bb) {
-		from = bitscan(prom_candidates_bb);
+		to = bitscan(prom_candidates_bb);
 		prom_candidates_bb &= prom_candidates_bb - 1;
-		to   = pawn_push(from, c);
-		add_move(move_prom(from, to, TO_QUEEN), list);
-		add_move(move_prom(from, to, TO_KNIGHT), list);
-		add_move(move_prom(from, to, TO_ROOK), list);
-		add_move(move_prom(from, to, TO_BISHOP), list);
+		add_move(move_prom(to - forward, to, TO_QUEEN), list);
+		add_move(move_prom(to - forward, to, TO_KNIGHT), list);
+		add_move(move_prom(to - forward, to, TO_ROOK), list);
+		add_move(move_prom(to - forward, to, TO_BISHOP), list);
 	}
 }
 
 static void gen_pawn_quiets(struct Position* pos, struct Movelist* list)
 {
 	gen_quiet_proms(pos, list);
-	u64 single_push, from;
-	int const c            = pos->stm;
 	u64 const vacancy_mask = ~pos->bb[FULL];
-	u64       pawns_bb     = pos->bb[PAWN] & pos->bb[c];
-	pawns_bb              &= ~(c == WHITE ? rank_mask[RANK_7] : rank_mask[RANK_2]);
-	while (pawns_bb) {
-		from        = pawns_bb & -pawns_bb;
-		pawns_bb   &= pawns_bb - 1;
-		single_push = pawn_shift(from, c);
-		if (single_push & vacancy_mask) {
-			add_move(move_normal(bitscan(from), bitscan(single_push)), list);
-			if (c == WHITE && (from & rank_mask[RANK_2])) {
-				u64 const double_push = single_push << 8;
-				if (double_push & vacancy_mask)
-					add_move(move_double_push(bitscan(from), bitscan(double_push)), list);
-			} else if (c == BLACK && (from & rank_mask[RANK_7])) {
-				u64 const double_push = single_push >> 8;
-				if (double_push & vacancy_mask)
-					add_move(move_double_push(bitscan(from), bitscan(double_push)), list);
-			}
-		}
+
+	int to, forward;
+	u64 single_pushes_bb, double_pushes_bb;
+	if (pos->stm == WHITE) {
+		single_pushes_bb = ((pos->bb[PAWN] & pos->bb[WHITE] & ~rank_mask[RANK_7]) << 8) & vacancy_mask;
+		double_pushes_bb = ((single_pushes_bb & rank_mask[RANK_3]) << 8) & vacancy_mask;
+		forward = 8;
+	} else {
+		single_pushes_bb = ((pos->bb[PAWN] & pos->bb[BLACK] & ~rank_mask[RANK_2]) >> 8) & vacancy_mask;
+		double_pushes_bb = ((single_pushes_bb & rank_mask[RANK_6]) >> 8) & vacancy_mask;
+		forward = -8;
+	}
+	while (single_pushes_bb) {
+		to = bitscan(single_pushes_bb);
+		single_pushes_bb &= single_pushes_bb - 1;
+		add_move(move_normal(to - forward, to), list);
+	}
+	while (double_pushes_bb) {
+		to = bitscan(double_pushes_bb);
+		double_pushes_bb &= double_pushes_bb - 1;
+		add_move(move_double_push(to - forward*2, to), list);
 	}
 }
 
