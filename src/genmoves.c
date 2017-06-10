@@ -20,13 +20,13 @@
 #include "position.h"
 #include "magicmoves.h"
 
-inline void add_move(u32 m, Movelist* list)
+static inline void add_move(u32 m, struct Movelist* list)
 {
 	*list->end = m;
 	++list->end;
 }
 
-static void extract_quiets(int from, u64 atks_bb, Movelist* list)
+static void extract_quiets(int from, u64 atks_bb, struct Movelist* list)
 {
 	while (atks_bb) {
 		add_move(move_normal(from, bitscan(atks_bb)), list);
@@ -34,7 +34,7 @@ static void extract_quiets(int from, u64 atks_bb, Movelist* list)
 	}
 }
 
-static void extract_caps(Position* const pos, int from, u64 atks_bb, Movelist* list)
+static void extract_caps(struct Position* const pos, int from, u64 atks_bb, struct Movelist* list)
 {
 	int to;
 	while (atks_bb) {
@@ -44,7 +44,7 @@ static void extract_caps(Position* const pos, int from, u64 atks_bb, Movelist* l
 	}
 }
 
-static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list)
+static void gen_check_blocks(struct Position* pos, u64 blocking_poss_bb, struct Movelist* list)
 {
 	u64 blockers_poss_bb, pawn_block_poss_bb;
 	int blocking_sq, blocker;
@@ -81,7 +81,7 @@ static void gen_check_blocks(Position* pos, u64 blocking_poss_bb, Movelist* list
 	}
 }
 
-static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
+static void gen_checker_caps(struct Position* pos, u64 checkers_bb, struct Movelist* list)
 {
 	u64 atkers_bb;
 	int checker, atker, checker_pt;
@@ -121,7 +121,7 @@ static void gen_checker_caps(Position* pos, u64 checkers_bb, Movelist* list)
 	}
 }
 
-void gen_check_evasions(Position* pos, Movelist* list)
+void gen_check_evasions(struct Position* pos, struct Movelist* list)
 {
 	int const c   = pos->stm,
 	          ksq = king_sq(pos, c);
@@ -153,7 +153,7 @@ void gen_check_evasions(Position* pos, Movelist* list)
 		gen_check_blocks(pos, blocking_poss_bb, list);
 }
 
-static void gen_pawn_captures(Position* pos, Movelist* list)
+static void gen_pawn_captures(struct Position* pos, struct Movelist* list)
 {
 	u64 cap_candidates;
 	int from, to, cap_pt;
@@ -196,7 +196,7 @@ static void gen_pawn_captures(Position* pos, Movelist* list)
 	}
 }
 
-void gen_captures(Position* pos, Movelist* list)
+void gen_captures(struct Position* pos, struct Movelist* list)
 {
 	int from, pt;
 	int const c          = pos->stm;
@@ -217,7 +217,7 @@ void gen_captures(Position* pos, Movelist* list)
 	extract_caps(pos, from, k_atks_bb[from] & enemy_mask, list);
 }
 
-static void gen_quiet_proms(Position* pos, Movelist* list)
+static void gen_quiet_proms(struct Position* pos, struct Movelist* list)
 {
 	int from, to;
 	int const c = pos->stm;
@@ -240,7 +240,7 @@ static void gen_quiet_proms(Position* pos, Movelist* list)
 	}
 }
 
-static void gen_pawn_quiets(Position* pos, Movelist* list)
+static void gen_pawn_quiets(struct Position* pos, struct Movelist* list)
 {
 	gen_quiet_proms(pos, list);
 	u64 single_push, from;
@@ -267,7 +267,7 @@ static void gen_pawn_quiets(Position* pos, Movelist* list)
 	}
 }
 
-static void gen_castling(Position* pos, Movelist* list)
+static void gen_castling(struct Position* pos, struct Movelist* list)
 {
 	static int const castling_poss[2][2] = {
 		{ WKC, WQC },
@@ -302,13 +302,13 @@ static void gen_castling(Position* pos, Movelist* list)
 		add_move(move_castle(castling_king_sqs[c][1][0], castling_king_sqs[c][1][1]), list);
 }
 
-void gen_quiesce_moves(Position* pos, Movelist* list)
+void gen_quiesce_moves(struct Position* pos, struct Movelist* list)
 {
 	gen_captures(pos, list);
 	gen_quiet_proms(pos, list);
 }
 
-void gen_pseudo_legal_moves(Position* pos, Movelist* list)
+void gen_pseudo_legal_moves(struct Position* pos, struct Movelist* list)
 {
 	if (pos->state->checkers_bb) {
 		gen_check_evasions(pos, list);
@@ -338,7 +338,7 @@ void gen_pseudo_legal_moves(Position* pos, Movelist* list)
 	}
 }
 
-void gen_legal_moves(Position* pos, Movelist* list)
+void gen_legal_moves(struct Position* pos, struct Movelist* list)
 {
 	gen_pseudo_legal_moves(pos, list);
 	int ksq       = king_sq(pos, pos->stm);

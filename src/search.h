@@ -31,12 +31,12 @@ struct SearchStack
 	u32 ply;
 	u32 killers[2];
 	int order_arr[MAX_MOVES_PER_POS];
-	Movelist list;
+	struct Movelist list;
 };
 
 static int equal_cap_bound = 50;
 
-static int min_attacker(Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {
+static int min_attacker(struct Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {
 	u64 tmp;
 	int pt = PAWN - 1;
 	do {
@@ -55,7 +55,7 @@ static int min_attacker(Position const * const pos, int to, u64 const c_atkers_b
 }
 
 // Idea taken from Stockfish 6
-static int see(Position const * const pos, u32 move)
+static int see(struct Position const * const pos, u32 move)
 {
 	if (move_type(move) == CASTLE)
 		return 0;
@@ -95,7 +95,7 @@ static int see(Position const * const pos, u32 move)
 	return swap_list[0];
 }
 
-inline int cap_order(Position const * const pos, u32 const m)
+static inline int cap_order(struct Position const * const pos, u32 const m)
 {
 	int cap_val   = mg_val(piece_val[pos->board[to_sq(m)]]);
 	int capper_pt = pos->board[from_sq(m)];
@@ -116,7 +116,7 @@ inline int cap_order(Position const * const pos, u32 const m)
 	return cap_order + see_val;
 }
 
-inline int stopped(SearchUnit* const su)
+static inline int stopped(struct SearchUnit* const su)
 {
 	if (su->ctlr->is_stopped)
 		return 1;
@@ -134,11 +134,11 @@ inline int stopped(SearchUnit* const su)
 	return 0;
 }
 
-inline int is_repeat(Position* const pos)
+static inline int is_repeat(struct Position* const pos)
 {
-	u64 curr_pos_key = pos->state->pos_key;
-	State* ptr       = pos->state - 2;
-	State* end       = ptr - pos->state->fifty_moves;
+	u64 curr_pos_key  = pos->state->pos_key;
+	struct State* ptr = pos->state - 2;
+	struct State* end = ptr - pos->state->fifty_moves;
 	if (end < pos->hist)
 		end = pos->hist;
 	for (; ptr >= end; ptr -= 2)
@@ -147,10 +147,10 @@ inline int is_repeat(Position* const pos)
 	return 0;
 }
 
-inline void print_pv_line(Position* const pos, int depth)
+static inline void print_pv_line(struct Position* const pos, int depth)
 {
 	char mstr[6];
-	TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
+	struct TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
 	if (entry.key == pos->state->pos_key) {
 		u32 move = get_move(entry.data);
 		do_move(pos, move);
@@ -162,19 +162,19 @@ inline void print_pv_line(Position* const pos, int depth)
 	}
 }
 
-inline u32 get_pv_move(Position* const pos)
+static inline u32 get_pv_move(struct Position* const pos)
 {
-	TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
+	struct TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
 	return get_move(entry.data);
 }
 
-inline void clear_search(SearchUnit* const su, SearchStack* const ss)
+static inline void clear_search(struct SearchUnit* const su, struct SearchStack* const ss)
 {
-	Controller* const ctlr = su->ctlr;
-	ctlr->is_stopped       = 0;
-	ctlr->nodes_searched   = 0ULL;
+	struct Controller* const ctlr = su->ctlr;
+	ctlr->is_stopped     = 0;
+	ctlr->nodes_searched = 0ULL;
 	STATS(
-		Position* const pos           = su->pos;
+		struct Position* const pos    = su->pos;
 		pos->stats.correct_nt_guess   = 0;
 		pos->stats.iid_cutoffs        = 0;
 		pos->stats.iid_tries          = 0;
@@ -186,7 +186,7 @@ inline void clear_search(SearchUnit* const su, SearchStack* const ss)
 		pos->stats.hash_hits          = 0;
 	)
 	u32 i, j;
-	SearchStack* curr;
+	struct SearchStack* curr;
 	for (i = 0; i != MAX_PLY; ++i) {
 		curr                = ss + i;
 		curr->node_type     = ALL_NODE;

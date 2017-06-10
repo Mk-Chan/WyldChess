@@ -27,11 +27,11 @@ enum Result {
 	CHECKMATE
 };
 
-static int three_fold_repetition(Position* const pos)
+static int three_fold_repetition(struct Position* const pos)
 {
-	State* curr = pos->state;
-	State* ptr  = curr - 2;
-	State* end  = curr - curr->fifty_moves;
+	struct State* curr = pos->state;
+	struct State* ptr  = curr - 2;
+	struct State* end  = curr - curr->fifty_moves;
 	if (end < pos->hist)
 		end = pos->hist;
 	u32 repeats = 0;
@@ -41,9 +41,9 @@ static int three_fold_repetition(Position* const pos)
 	return repeats >= 2;
 }
 
-static int check_stale_and_mate(Position* const pos)
+static int check_stale_and_mate(struct Position* const pos)
 {
-	static Movelist list;
+	struct Movelist list;
 	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
@@ -57,7 +57,7 @@ static int check_stale_and_mate(Position* const pos)
 	return pos->state->checkers_bb ? CHECKMATE : DRAW;
 }
 
-static int check_result(Position* const pos)
+static int check_result(struct Position* const pos)
 {
 	if (pos->state->fifty_moves > 99) {
 		fprintf(stdout, "1/2-1/2 {Fifty move rule}\n");
@@ -108,8 +108,8 @@ void* su_loop_xboard(void* args)
 {
 	char mstr[6];
 	u32 move;
-	SearchUnit* su = (SearchUnit*) args;
-	Position* pos  = su->pos;
+	struct SearchUnit* su = (struct SearchUnit*) args;
+	struct Position* pos  = su->pos;
 	while (1) {
 		switch (su->target_state) {
 		case WAITING:
@@ -155,10 +155,9 @@ void xboard_loop()
 	char* end;
 	u32   move;
 
-	Position pos;
-	Controller ctlr;
-	ctlr.depth = MAX_PLY;
-	SearchUnit su;
+	struct Position pos;
+	struct Controller ctlr;
+	struct SearchUnit su;
 	su.protocol = XBOARD;
 	pthread_mutex_init(&su.mutex, NULL);
 	pthread_cond_init(&su.sleep_cv, NULL);
@@ -173,7 +172,7 @@ void xboard_loop()
 	ctlr.increment = 0;
 	ctlr.analyzing = 0;
 	su.target_state = WAITING;
-	State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
+	struct State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
 	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
 

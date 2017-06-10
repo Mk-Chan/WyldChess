@@ -172,7 +172,7 @@ void init_eval_terms()
 	}
 }
 
-static void eval_pawns(Position* const pos, Eval* const ev)
+static void eval_pawns(struct Position* const pos, struct Eval* const ev)
 {
 	u64 bb, pawn_bb;
 	u64* atks_bb;
@@ -204,7 +204,7 @@ static void eval_pawns(Position* const pos, Eval* const ev)
 	}
 }
 
-static void eval_pieces(Position* const pos, Eval* const ev)
+static void eval_pieces(struct Position* const pos, struct Eval* const ev)
 {
 	int sq, c, pt, ksq, mobility_val;
 	u64  curr_bb, atk_bb, xrayable_bb,
@@ -294,7 +294,7 @@ static void eval_pieces(Position* const pos, Eval* const ev)
 	}
 }
 
-static void eval_king_attacks(Position* const pos, Eval* const ev)
+static void eval_king_attacks(struct Position* const pos, struct Eval* const ev)
 {
 	int king_atks[2] = { 0, 0 };
 	u64 undefended_atkd_bb;
@@ -321,7 +321,7 @@ static void eval_king_attacks(Position* const pos, Eval* const ev)
 	ev->eval[BLACK] += S(king_atks[BLACK], (king_atks[BLACK]/2));
 }
 
-static void eval_passed_pawns(Position* const pos, Eval* const ev)
+static void eval_passed_pawns(struct Position* const pos, struct Eval* const ev)
 {
 	u64 passed_pawn_bb, forward_sq_bb;
 	u64 vacancy_mask = ~pos->bb[FULL];
@@ -354,11 +354,11 @@ int can_win(u64 const * const bb, int c)
 		|| ((bb[BISHOP] & bb[c]) && (bb[KNIGHT] & bb[c]));
 }
 
-int evaluate(Position* const pos)
+int evaluate(struct Position* const pos)
 {
 	if (insufficient_material(pos))
 		return 0;
-	Eval ev;
+	struct Eval ev;
 	int ksq, c, pt;
 	for (c = WHITE; c <= BLACK; ++c) {
 		ksq = king_sq(pos, c);

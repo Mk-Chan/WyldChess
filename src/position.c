@@ -52,20 +52,18 @@ static inline u32 get_cr_from_char(char c)
 	}
 }
 
-Position get_position_copy(Position const * const pos)
+void get_position_copy(struct Position const * const pos, struct Position* const copy_pos)
 {
-	Position copy_pos;
-	memcpy(copy_pos.board, pos->board, sizeof(pos->board));
-	memcpy(copy_pos.bb, pos->bb, sizeof(pos->bb));
-	copy_pos.king_sq[WHITE] = pos->king_sq[WHITE];
-	copy_pos.king_sq[BLACK] = pos->king_sq[BLACK];
-	copy_pos.stm = pos->stm;
-	copy_pos.state = &copy_pos.hist[pos->state - pos->hist];
-	memcpy(copy_pos.state, pos->state, sizeof(State));
-	return copy_pos;
+	memcpy(copy_pos->board, pos->board, sizeof(pos->board));
+	memcpy(copy_pos->bb, pos->bb, sizeof(pos->bb));
+	copy_pos->king_sq[WHITE] = pos->king_sq[WHITE];
+	copy_pos->king_sq[BLACK] = pos->king_sq[BLACK];
+	copy_pos->stm = pos->stm;
+	copy_pos->state = &copy_pos->hist[pos->state - pos->hist];
+	memcpy(copy_pos->state, pos->state, sizeof(struct State));
 }
 
-void init_pos(Position* pos, State* state_list)
+void init_pos(struct Position* pos, struct State* state_list)
 {
 	u32 i;
 	for (i = 0; i != 64; ++i)
@@ -87,7 +85,7 @@ void init_pos(Position* pos, State* state_list)
 	pos->piece_psq_eval[BLACK]  = 0;
 }
 
-int set_pos(Position* pos, std::string fen)
+int set_pos(struct Position* pos, char* fen)
 {
 	u32 piece, pt, sq, pc,
 	    tsq   = 0,
@@ -178,7 +176,7 @@ static inline char get_char_from_piece(u32 piece, int c)
 	return x;
 }
 
-void print_board(Position* pos)
+void print_board(struct Position* pos)
 {
 	printf("Board:\n");
 	int i, piece;

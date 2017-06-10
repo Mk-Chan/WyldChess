@@ -53,25 +53,25 @@ struct Controller
 
 struct SearchUnit
 {
-	Position*       pos;
-	Controller*     ctlr;
-	u32             max_searched_ply;
-	pthread_mutex_t mutex;
-	pthread_cond_t  sleep_cv;
-	int             protocol;
-	int             side;
-	int             game_over;
-	int volatile    target_state;
-	int volatile    curr_state;
+	struct Position*   pos;
+	struct Controller* ctlr;
+	u32                max_searched_ply;
+	pthread_mutex_t    mutex;
+	pthread_cond_t     sleep_cv;
+	int                protocol;
+	int                side;
+	int                game_over;
+	int volatile       target_state;
+	int volatile       curr_state;
 };
 
-inline void sync(SearchUnit const * const su)
+static inline void sync(struct SearchUnit const * const su)
 {
 	while (su->curr_state != su->target_state)
 		continue;
 }
 
-inline void transition(SearchUnit* const su, int target_state)
+static inline void transition(struct SearchUnit* const su, int target_state)
 {
 	if (su->curr_state == WAITING) {
 		pthread_mutex_lock(&su->mutex);
@@ -85,9 +85,9 @@ inline void transition(SearchUnit* const su, int target_state)
 	sync(su);
 }
 
-inline void start_thinking(SearchUnit* const su)
+static inline void start_thinking(struct SearchUnit* const su)
 {
-	Controller* const ctlr  = su->ctlr;
+	struct Controller* const ctlr  = su->ctlr;
 	ctlr->search_start_time = curr_time();
 	if (ctlr->time_dependent) {
 		ctlr->time_left += (ctlr->moves_left - 1) * ctlr->increment;
@@ -103,7 +103,7 @@ inline void start_thinking(SearchUnit* const su)
 	}
 }
 
-extern int begin_search(SearchUnit* const su);
+extern int begin_search(struct SearchUnit* const su);
 extern void xboard_loop();
 extern void uci_loop();
 

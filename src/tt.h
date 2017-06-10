@@ -42,14 +42,14 @@ struct TTEntry
 
 struct TT
 {
-	TTEntry* table;
+	struct TTEntry* table;
 	u32 size;
 };
 
-extern TT pvt;
-extern TT tt;
+extern struct TT pvt;
+extern struct TT tt;
 
-inline int val_to_tt(int val, int ply)
+static inline int val_to_tt(int val, int ply)
 {
 	if (val >= MAX_MATE_VAL)
 		val += ply;
@@ -58,7 +58,7 @@ inline int val_to_tt(int val, int ply)
 	return val;
 }
 
-inline int val_from_tt(int val, int ply)
+static inline int val_from_tt(int val, int ply)
 {
 	if (val >= MAX_MATE_VAL)
 		val -= ply;
@@ -67,43 +67,43 @@ inline int val_from_tt(int val, int ply)
 	return val;
 }
 
-inline void tt_clear(TT* tt)
+static inline void tt_clear(struct TT* tt)
 {
-	memset(tt->table, 0, sizeof(TTEntry) * tt->size);
+	memset(tt->table, 0, sizeof(struct TTEntry) * tt->size);
 }
 
-inline void tt_alloc_MB(TT* tt, u32 size)
+static inline void tt_alloc_MB(struct TT* tt, u32 size)
 {
 	size     *= 0x10000;
-	tt->table = (TTEntry*) realloc(tt->table, sizeof(TTEntry) * size);
+	tt->table = (struct TTEntry*) realloc(tt->table, sizeof(struct TTEntry) * size);
 	tt->size  = size;
 	tt_clear(tt);
 }
 
-inline void tt_destroy(TT* tt)
+static inline void tt_destroy(struct TT* tt)
 {
 	free(tt->table);
 }
 
 // Maybe change to a 4-slot bucket scheme
-inline void tt_store(TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
+static inline void tt_store(struct TT* tt, u64 score, u64 flag, u64 depth, u64 move, u64 key)
 {
-	u32 index      = key < tt->size ? key : key % tt->size;
-	TTEntry* entry = tt->table + index;
-	entry->data    = move | flag | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
-	entry->key     = key ^ entry->data;
+	u32 index = key < tt->size ? key : key % tt->size;
+	struct TTEntry* entry = tt->table + index;
+	entry->data = move | flag | (depth << DEPTH_SHIFT) | (score << SCORE_SHIFT);
+	entry->key  = key ^ entry->data;
 }
 
 // Return a value instead of reference for thread safety
-inline TTEntry tt_probe(TT* tt, u64 key)
+static inline struct TTEntry tt_probe(struct TT* tt, u64 key)
 {
 	return tt->table[(key < tt->size ? key : key % tt->size)];
 }
 
-inline void pvt_store(TT* pvt, u64 move, u64 key, u64 depth)
+static inline void pvt_store(struct TT* pvt, u64 move, u64 key, u64 depth)
 {
-	u32 index       = key < pvt->size ? key : key % pvt->size;
-	TTEntry* entry  = pvt->table + index;
+	u32 index = key < pvt->size ? key : key % pvt->size;
+	struct TTEntry* entry = pvt->table + index;
 	u32 entry_depth = entry->data >> 32;
 
 	if (entry_depth <= depth) {

@@ -66,9 +66,9 @@ struct Position
 	int board[64];
 	int phase;
 	int piece_psq_eval[2];
-	State* state;
-	State* hist;
-	STATS(Stats stats;)
+	struct State* state;
+	struct State* hist;
+	STATS(struct Stats stats;)
 };
 
 extern int piece_val[8];
@@ -76,34 +76,35 @@ extern int psqt[2][8][64];
 extern int phase[8];
 
 extern void init_eval_terms();
-extern void print_board(Position* pos);
+extern void print_board(struct Position* pos);
 
-extern void performance_test(Position* const pos, u32 max_depth);
+extern void performance_test(struct Position* const pos, u32 max_depth);
 
-extern void init_pos(Position* pos, State* state);
-extern int set_pos(Position* pos, std::string fen);
-extern Position get_position_copy(Position const * const pos);
+extern void init_pos(struct Position* pos, struct State* state);
+extern int set_pos(struct Position* pos, char* fen);
+extern void get_position_copy(struct Position const * const pos, struct Position* const copy_pos);
 
-extern void do_null_move(Position* const pos);
-extern void undo_null_move(Position* const pos);
-extern void undo_move(Position* const pos);
-extern void do_move(Position* const pos, u32 const m);
 
-extern void gen_pseudo_legal_moves(Position* pos, Movelist* list);
-extern void gen_captures(Position* pos, Movelist* list);
-extern void gen_quiesce_moves(Position* pos, Movelist* list);
-extern void gen_legal_moves(Position* pos, Movelist* list);
-extern void gen_check_evasions(Position* pos, Movelist* list);
+extern void do_null_move(struct Position* const pos);
+extern void undo_null_move(struct Position* const pos);
+extern void undo_move(struct Position* const pos);
+extern void do_move(struct Position* const pos, u32 const m);
 
-extern int evaluate(Position* const pos);
+extern void gen_pseudo_legal_moves(struct Position* pos, struct Movelist* list);
+extern void gen_captures(struct Position* pos, struct Movelist* list);
+extern void gen_quiesce_moves(struct Position* pos, struct Movelist* list);
+extern void gen_legal_moves(struct Position* pos, struct Movelist* list);
+extern void gen_check_evasions(struct Position* pos, struct Movelist* list);
+
+extern int evaluate(struct Position* const pos);
 extern void tune();
 
-inline int king_sq(Position const * const pos, int c)
+static inline int king_sq(struct Position const * const pos, int c)
 {
 	return pos->king_sq[c];
 }
 
-inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
+static inline void move_piece_no_key(struct Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
 	u64 from_to             = BB(from) ^ BB(to);
 	pos->bb[FULL]          ^= from_to;
@@ -114,7 +115,7 @@ inline void move_piece_no_key(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 	pos->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
 }
 
-inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
+static inline void put_piece_no_key(struct Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 set                 = BB(sq);
 	pos->bb[FULL]          |= set;
@@ -125,7 +126,7 @@ inline void put_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
 }
 
-inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
+static inline void remove_piece_no_key(struct Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 clr                 = BB(sq);
 	pos->bb[FULL]          ^= clr;
@@ -136,7 +137,7 @@ inline void remove_piece_no_key(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
 }
 
-inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
+static inline void move_piece(struct Position* pos, u32 from, u32 to, u32 pt, u32 c)
 {
 	u64 from_to             = BB(from) ^ BB(to);
 	pos->bb[FULL]          ^= from_to;
@@ -148,7 +149,7 @@ inline void move_piece(Position* pos, u32 from, u32 to, u32 pt, u32 c)
 	pos->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
 }
 
-inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
+static inline void put_piece(struct Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 set                 = BB(sq);
 	pos->bb[FULL]          |= set;
@@ -160,7 +161,7 @@ inline void put_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
 }
 
-inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
+static inline void remove_piece(struct Position* pos, u32 sq, u32 pt, u32 c)
 {
 	u64 clr                 = BB(sq);
 	pos->bb[FULL]          ^= clr;
@@ -172,22 +173,22 @@ inline void remove_piece(Position* pos, u32 sq, u32 pt, u32 c)
 	pos->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
 }
 
-inline u64 pawn_push(int from, u32 c)
+static inline u64 pawn_push(int from, u32 c)
 {
 	return (c == WHITE ? from + 8 : from - 8);
 }
 
-inline u64 pawn_shift(u64 bb, u32 c)
+static inline u64 pawn_shift(u64 bb, u32 c)
 {
 	return (c == WHITE ? bb << 8 : bb >> 8);
 }
 
-inline u64 pawn_double_shift(u64 bb, u32 c)
+static inline u64 pawn_double_shift(u64 bb, u32 c)
 {
 	return (c == WHITE ? bb << 16 : bb >> 16);
 }
 
-inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
+static inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 {
 	switch (pt) {
 	case KNIGHT: return n_atks_bb[sq];
@@ -199,7 +200,7 @@ inline u64 get_atks(u32 sq, u32 pt, u64 occupancy)
 	}
 }
 
-inline u64 get_all_atks(u32 sq, u32 pt, u32 c, u64 occupancy)
+static inline u64 get_all_atks(u32 sq, u32 pt, u32 c, u64 occupancy)
 {
 	switch (pt) {
 	case PAWN:   return p_atks_bb[c][sq];
@@ -212,7 +213,7 @@ inline u64 get_all_atks(u32 sq, u32 pt, u32 c, u64 occupancy)
 	}
 }
 
-inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
+static inline u64 atkers_to_sq(struct Position const * const pos, u32 sq, u32 by_color, u64 occupancy)
 {
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
 		| ( pos->bb[PAWN]                     & p_atks_bb[!by_color][sq])
@@ -222,7 +223,7 @@ inline u64 atkers_to_sq(Position const * const pos, u32 sq, u32 by_color, u64 oc
 		& pos->bb[by_color];
 }
 
-inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
+static inline u64 all_atkers_to_sq(struct Position const * const pos, u32 sq, u64 occupancy)
 {
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
 		| ( pos->bb[PAWN]                     & pos->bb[WHITE] & p_atks_bb[BLACK][sq])
@@ -232,7 +233,7 @@ inline u64 all_atkers_to_sq(Position const * const pos, u32 sq, u64 occupancy)
 		| ( pos->bb[KING]                     & k_atks_bb[sq]));
 }
 
-inline u64 checkers(Position const * const pos, u32 by_color)
+static inline u64 checkers(struct Position const * const pos, u32 by_color)
 {
 	const u32 sq = king_sq(pos, !by_color);
 	return (  ( pos->bb[KNIGHT]                   & n_atks_bb[sq])
@@ -243,7 +244,7 @@ inline u64 checkers(Position const * const pos, u32 by_color)
 		& pos->bb[by_color];
 }
 
-inline u64 get_pinned(Position* const pos, int to_color)
+static inline u64 get_pinned(struct Position* const pos, int to_color)
 {
 	u32 const ksq = king_sq(pos, to_color);
 	u32 sq;
@@ -265,17 +266,17 @@ inline u64 get_pinned(Position* const pos, int to_color)
 	return pinned_bb;
 }
 
-inline void set_pinned(Position* const pos)
+static inline void set_pinned(struct Position* const pos)
 {
 	pos->state->pinned_bb = get_pinned(pos, pos->stm);
 }
 
-inline void set_checkers(Position* pos)
+static inline void set_checkers(struct Position* pos)
 {
 	pos->state->checkers_bb = checkers(pos, !pos->stm);
 }
 
-inline int insufficient_material(Position* const pos)
+static inline int insufficient_material(struct Position* const pos)
 {
 	if (popcnt(pos->bb[FULL]) > 4)
 		return 0;
@@ -301,7 +302,7 @@ inline int insufficient_material(Position* const pos)
 }
 
 // Idea from Stockfish
-inline int legal_move(Position* const pos, u32 move)
+static inline int legal_move(struct Position* const pos, u32 move)
 {
 	u32 c    = pos->stm;
 	u32 from = from_sq(move);
@@ -323,7 +324,7 @@ inline int legal_move(Position* const pos, u32 move)
 }
 
 // Idea taken from Stockfish
-inline int gives_check(Position const * const pos, u32 move)
+static inline int gives_check(struct Position const * const pos, u32 move)
 {
 	int from = from_sq(move),
 	    pt   = pos->board[from],
@@ -378,7 +379,7 @@ inline int gives_check(Position const * const pos, u32 move)
 	}
 }
 
-inline void move_str(u32 move, char str[6])
+static inline void move_str(u32 move, char str[6])
 {
 	u32 from = from_sq(move),
 	    to   = to_sq(move);
@@ -409,13 +410,13 @@ inline void move_str(u32 move, char str[6])
 	str[5] = '\0';
 }
 
-inline u32 parse_move(Position* pos, char* str)
+static inline u32 parse_move(struct Position* pos, char* str)
 {
 	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
 	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
 	char prom = str[4];
 	int pr_t;
-	Movelist list;
+	struct Movelist list;
 	list.end = list.moves;
 	set_pinned(pos);
 	set_checkers(pos);
@@ -443,7 +444,7 @@ inline u32 parse_move(Position* pos, char* str)
 	return 0;
 }
 
-inline int is_passed_pawn(Position* const pos, int sq, int c)
+static inline int is_passed_pawn(struct Position* const pos, int sq, int c)
 {
 	return (    (pos->board[sq] == PAWN)
 		&& !(passed_pawn_mask[c][sq] & pos->bb[PAWN] & pos->bb[!c])

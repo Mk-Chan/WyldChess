@@ -33,18 +33,18 @@ void init_search()
 	memset(counter_move_table, 0, sizeof(u32) * 64 * 64);
 }
 
-static void reduce_history(int divisor = 16)
+static void reduce_history()
 {
 	int pt, sq, c;
 	for (pt = PAWN; pt <= KING; ++pt)
 		for (c = WHITE; c <= BLACK; ++c)
 			for (sq = 0; sq < 64; ++sq)
-				history[pt][sq] /= divisor;
+				history[pt][sq] /= 16;
 }
 
-static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
+static void order_moves(struct Position* const pos, struct SearchStack* const ss, u32 tt_move)
 {
-	Movelist* list = &ss->list;
+	struct Movelist* list = &ss->list;
 	int* order_list = ss->order_arr;
 	int prev_to, prev_from;
 	if (ss->ply) {
@@ -77,9 +77,9 @@ static void order_moves(Position* const pos, SearchStack* const ss, u32 tt_move)
 	}
 }
 
-static u32 get_next_move(SearchStack* const ss, int move_num)
+static u32 get_next_move(struct SearchStack* const ss, int move_num)
 {
-	Movelist* list = &ss->list;
+	struct Movelist* list = &ss->list;
 	int len = list->end - list->moves;
 	if (move_num >= len)
 		return 0;
@@ -100,15 +100,15 @@ static u32 get_next_move(SearchStack* const ss, int move_num)
 	return best_move;
 }
 
-static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int beta)
+static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta)
 {
-	Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = su->ctlr;
 
 	if ( !(ctlr->nodes_searched & 0x7ff)
 	    && stopped(su))
 		return 0;
 
-	Position* const pos = su->pos;
+	struct Position* const pos = su->pos;
 	++ctlr->nodes_searched;
 	STATS(++pos->stats.correct_nt_guess;) // Ignore qsearch node guesses
 
@@ -140,8 +140,8 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 			alpha = eval;
 	}
 
-	Movelist* list = &ss->list;
-	list->end      = list->moves;
+	struct Movelist* list = &ss->list;
+	list->end = list->moves;
 	set_pinned(pos);
 	if (checked) {
 		gen_check_evasions(pos, list);
@@ -194,13 +194,13 @@ static int qsearch(SearchUnit* const su, SearchStack* const ss, int alpha, int b
 	return alpha;
 }
 
-static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int beta, int depth)
+static int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth)
 {
 	if (depth <= 0)
 		return qsearch(su, ss, alpha, beta);
 
-	Position* const pos    = su->pos;
-	Controller* const ctlr = su->ctlr;
+	struct Position* const pos = su->pos;
+	struct Controller* const ctlr = su->ctlr;
 	++ctlr->nodes_searched;
 	int old_alpha = alpha;
 
@@ -230,7 +230,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 	// Probe TT
 	STATS(++pos->stats.hash_probes;)
-	TTEntry entry = tt_probe(&tt, pos->state->pos_key);
+	struct TTEntry entry = tt_probe(&tt, pos->state->pos_key);
 	u32 tt_move   = 0;
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
 		STATS(++pos->stats.hash_hits;)
@@ -368,8 +368,8 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 		tt_move = get_move(entry.data);
 	}
 
-	Movelist* list = &ss->list;
-	list->end      = list->moves;
+	struct Movelist* list = &ss->list;
+	list->end = list->moves;
 	set_pinned(pos);
 	gen_legal_moves(pos, list);
 
@@ -568,7 +568,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	return best_val;
 }
 
-int begin_search(SearchUnit* const su)
+int begin_search(struct SearchUnit* const su)
 {
 	u64 time;
 	int val, alpha, beta, depth;
@@ -576,7 +576,7 @@ int begin_search(SearchUnit* const su)
 
 	reduce_history();
 
-	SearchStack ss[MAX_PLY];
+	struct SearchStack ss[MAX_PLY];
 	clear_search(su, ss);
 
 	tt_clear(&pvt);
@@ -586,7 +586,7 @@ int begin_search(SearchUnit* const su)
 	ss->node_type        = PV_NODE;
 	su->max_searched_ply = 0;
 
-	Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = su->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
 	static int* alpha_delta;
@@ -647,9 +647,9 @@ int begin_search(SearchUnit* const su)
 
 		best_move = get_pv_move(su->pos);
 	}
-end_search:
+end_search:;
 	STATS(
-		Position* const pos = su->pos;
+		struct Position* const pos = su->pos;
 		time = curr_time() - ctlr->search_start_time;
 		fprintf(stdout, "nps:                      %lf\n",
 			time ? ((double)ctlr->nodes_searched * 1000 / time) : 0);

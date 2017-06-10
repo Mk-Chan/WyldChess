@@ -21,8 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <cstring>
-#include <string>
+#include <string.h>
 #include <math.h>
 
 #undef INFINITY
@@ -154,8 +153,8 @@ enum MoveOrder {
 	NGOOD_CAP = 2600000,
 };
 
-inline int max(int a, int b) { return a > b ? a : b; }
-inline int min(int a, int b) { return a < b ? a : b; }
+static inline int max(int a, int b) { return a > b ? a : b; }
+static inline int min(int a, int b) { return a < b ? a : b; }
 
 static int const tb_values[5] = { -TB_MATE_VAL, -TB_CURSED_MATE_VAL, 0, TB_CURSED_MATE_VAL, TB_MATE_VAL };
 
@@ -193,13 +192,10 @@ static int const is_prom_sq[64] = {
 #define move_prom_cap(from, to, prom, cap) (from | (to << 6) | PROMOTION | prom | (cap << CAP_TYPE_SHIFT))
 #define move(from, to, mt, prom, cap)      (from | (to << 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
 
-inline int S(int mg, int eg)
-{
-	return (int) (mg + (((unsigned int) eg) << 16));
-}
+#define S(mg, eg) ((int) (mg + (((unsigned int) eg) << 16)))
 
 // Taken from stockfish to clean out my old narrowing solution
-inline int eg_val(int val)
+static inline int eg_val(int val)
 {
 	union {
 		unsigned short u;
@@ -210,7 +206,7 @@ inline int eg_val(int val)
 	return eg.s;
 }
 
-inline int mg_val(int val)
+static inline int mg_val(int val)
 {
 	union {
 		unsigned short u;
@@ -221,7 +217,7 @@ inline int mg_val(int val)
 	return mg.s;
 }
 
-inline int phased_val(int val, int phase)
+static inline int phased_val(int val, int phase)
 {
 	return ((mg_val(val) * phase) + (eg_val(val) * (MAX_PHASE - phase))) / MAX_PHASE;
 }

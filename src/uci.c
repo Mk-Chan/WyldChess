@@ -34,7 +34,7 @@ void* su_loop_uci(void* args)
 {
 	char mstr[6];
 	u32 move;
-	SearchUnit* su = (SearchUnit*) args;
+	struct SearchUnit* su = (struct SearchUnit*) args;
 	while (1) {
 		switch(su->target_state) {
 		case WAITING:
@@ -70,18 +70,18 @@ void uci_loop()
 
 	print_options_uci();
 
-	Position pos;
-	Controller ctlr;
-	ctlr.depth = MAX_PLY;
-	SearchUnit su;
+	struct Position pos;
+	struct Controller ctlr;
+	struct SearchUnit su;
 	su.protocol = UCI;
 	pthread_mutex_init(&su.mutex, NULL);
 	pthread_cond_init(&su.sleep_cv, NULL);
 	su.pos  = &pos;
 	su.ctlr = &ctlr;
+	su.ctlr->depth = MAX_PLY;
 	su.ctlr->time_dependent = 1;
 	su.target_state = WAITING;
-	State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
+	struct State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
 	init_pos(&pos, state_list);
 	set_pos(&pos, INITIAL_POSITION);
 	pthread_t su_thread;

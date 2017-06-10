@@ -19,10 +19,10 @@
 #include "defs.h"
 #include "position.h"
 
-void do_null_move(Position* const pos)
+void do_null_move(struct Position* const pos)
 {
-	State* const curr = pos->state;
-	State* const next = ++pos->state;
+	struct State* const curr = pos->state;
+	struct State* const next = ++pos->state;
 
 	pos->stm              ^= 1;
 	curr->move             = 0;
@@ -35,13 +35,13 @@ void do_null_move(Position* const pos)
 		next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
 }
 
-void undo_null_move(Position* const pos)
+void undo_null_move(struct Position* const pos)
 {
 	--pos->state;
 	pos->stm ^= 1;
 }
 
-void undo_move(Position* const pos)
+void undo_move(struct Position* const pos)
 {
 	--pos->state;
 
@@ -110,7 +110,7 @@ void undo_move(Position* const pos)
 	}
 }
 
-void do_move(Position* const pos, u32 const m)
+void do_move(struct Position* const pos, u32 const m)
 {
 	static u32 const castle_perms[64] = {
 		13, 15, 15, 15, 12, 15, 15, 14,
@@ -123,8 +123,8 @@ void do_move(Position* const pos, u32 const m)
 		 7, 15, 15, 15, 3,  15, 15, 11
 	};
 
-	State* const curr = pos->state;
-	State* const next = ++pos->state;
+	struct State* const curr = pos->state;
+	struct State* const next = ++pos->state;
 
 	curr->move        = m;
 	next->full_moves  = curr->full_moves + (pos->stm == BLACK);

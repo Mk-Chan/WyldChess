@@ -1,16 +1,16 @@
-CXX = g++
-CXX_FLAGS = -std=c++11 -Wall -O3 -flto -pipe
+CC = gcc
+CC_FLAGS = -std=c11 -Wall -O3 -flto -pipe
 EXT_LIBS = -lm -pthread
 
 SZG_PATH = syzygy
 SZG_FILES = tbprobe.c
 
-CXX_FILES = bitboard.cpp eval.cpp genmoves.cpp magicmoves.cpp main.cpp \
-	  move.cpp mt19937-64.cpp perft.cpp position.cpp search.cpp    \
-	  uci.cpp xboard.cpp misc.cpp
+CC_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c \
+	  move.c mt19937-64.c perft.c position.c search.c   \
+	  uci.c xboard.c misc.c
 
 SZG_OBJS = $(addprefix $(SZG_PATH)/, $(SZG_FILES:.c=.o))
-OBJS = $(CXX_FILES:.cpp=.o)
+OBJS = $(CC_FILES:.c=.o)
 
 EXEC_PATH = .
 EXEC = wyldchess
@@ -19,7 +19,7 @@ ifdef RELEASE
 
 EXEC := $(EXEC)$(RELEASE)
 ifeq ("$(TARGET)", "win64")
-	CXX_FLAGS += -static
+	CC_FLAGS += -static
 	EXEC_PATH = ../binaries/WyldChess_v$(RELEASE)/$(TARGET)
 else ifeq ("$(TARGET)", "linux")
 	EXEC_PATH = ../binaries/WyldChess_v$(RELEASE)/$(TARGET)
@@ -32,25 +32,25 @@ endif
 BIN = $(EXEC_PATH)/$(EXEC)
 
 all: $(OBJS) $(SZG_OBJS)
-	$(CXX) $(CXX_FLAGS) $^ -o $(BIN) $(EXT_LIBS)
+	$(CC) $(CC_FLAGS) $^ -o $(BIN) $(EXT_LIBS)
 
 profiling:
-	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -mbmi -mbmi2 -mpopcnt -g -fno-omit-frame-pointer"
+	$(MAKE) CC_FLAGS="$(CC_FLAGS) -mbmi -mbmi2 -mpopcnt -g -fno-omit-frame-pointer"
 
 popcnt:
-	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -mpopcnt" EXEC="$(EXEC)_popcnt"
+	$(MAKE) CC_FLAGS="$(CC_FLAGS) -mpopcnt" EXEC="$(EXEC)_popcnt"
 
 bmi:
-	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
+	$(MAKE) CC_FLAGS="$(CC_FLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
 
 stats:
-	$(MAKE) CXX_FLAGS="$(CXX_FLAGS) -DSTATS_BUILD -mbmi -mbmi2 -mpopcnt"
+	$(MAKE) CC_FLAGS="$(CC_FLAGS) -DSTATS_BUILD -mbmi -mbmi2 -mpopcnt"
 
-%.o: %.cpp
-	$(CXX) $(CXX_FLAGS) -c $< -o $@
+%.o: %.c
+	$(CC) $(CC_FLAGS) -c $< -o $@
 
 $(SZG_PATH)/%.o: $(SZG_PATH)/%.c
-	$(CXX) $(CXX_FLAGS) -c $< -o $@
+	$(CC) $(CC_FLAGS) -c $< -o $@
 
 clean:
 	-rm -f $(SZG_OBJS)

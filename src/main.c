@@ -24,8 +24,8 @@
 #include "misc.h"
 #include "tt.h"
 
-TT tt;
-TT pvt;
+struct TT tt;
+struct TT pvt;
 
 int main()
 {

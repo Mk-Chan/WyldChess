@@ -21,7 +21,7 @@
 #include "position.h"
 #include "misc.h"
 
-static u64 perft(Position* const pos, Movelist* list, u32 depth)
+static u64 perft(struct Position* const pos, struct Movelist* list, u32 depth)
 {
 	list->end = list->moves;
 	set_pinned(pos);
@@ -49,9 +49,9 @@ static u64 perft(Position* const pos, Movelist* list, u32 depth)
 	return count;
 }
 
-void performance_test(Position* const pos, u32 max_depth)
+void performance_test(struct Position* const pos, u32 max_depth)
 {
-	Movelist list[MAX_PLY];
+	struct Movelist list[MAX_PLY];
 	u32 depth;
 	u64 count;
 	u64 t1, t2;
