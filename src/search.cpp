@@ -382,7 +382,7 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 	int best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
-	int checking_move, depth_left, val, passer_move;
+	int checking_move, depth_left, val;
 	u32 move;
 	while ((move = get_next_move(ss, legal_moves))) {
 		++legal_moves;
@@ -400,8 +400,6 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 
 		depth_left    = depth - 1;
 		checking_move = gives_check(pos, move);
-		passer_move   =  is_passed_pawn(pos, from_sq(move), pos->stm)
-			     && (pos->stm == WHITE ? rank_of(to_sq(move)) >= RANK_6 : rank_of(to_sq(move)) <= RANK_3);
 
 		// Check extension
 		if (    checking_move
@@ -427,6 +425,9 @@ static int search(SearchUnit* const su, SearchStack* const ss, int alpha, int be
 			if (   depth < 8
 			    && see(pos, move) < -10 * depth * depth)
 				continue;
+
+			int passer_move = is_passed_pawn(pos, from_sq(move), pos->stm)
+				  && (pos->stm == WHITE ? rank_of(to_sq(move)) >= RANK_6 : rank_of(to_sq(move)) <= RANK_3);
 
 			// Late move reduction
 			if (    depth > 2

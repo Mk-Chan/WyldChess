@@ -133,7 +133,7 @@ int passed_pawn[3][7] = {
 	// Square in front of passed pawn is not attacked
 	{ 0, S(5, 5), S(10, 10), S(15, 25), S(40, 60), S(70, 100), S(150, 180) }
 };
-int doubled_pawns = S(-10, -20);
+int doubled_pawns = S(-10, -10);
 int isolated_pawn = S(-10, -10);
 
 // Mobility terms
@@ -194,7 +194,7 @@ static void eval_pawns(Position* const pos, Eval* const ev)
 				eval[c] += doubled_pawns;
 
 			// No pawn of same color in adjacent files and not doubled => Isolated pawn
-			else if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
+			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
 				eval[c] += isolated_pawn;
 
 			// Store passed pawn position for later
