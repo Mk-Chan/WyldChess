@@ -44,7 +44,10 @@ bmi:
 	$(MAKE) CC_FLAGS="$(CC_FLAGS) -mbmi -mbmi2 -mpopcnt" EXEC="$(EXEC)_bmi"
 
 stats:
-	$(MAKE) CC_FLAGS="$(CC_FLAGS) -DSTATS_BUILD -mbmi -mbmi2 -mpopcnt"
+	$(MAKE) CC_FLAGS="$(CC_FLAGS) -DSTATS_BUILD"
+
+debug:
+	$(MAKE) CC_FLAGS="$(CC_FLAGS) -g -fno-omit-frame-pointer"
 
 %.o: %.c
 	$(CC) $(CC_FLAGS) -c $< -o $@

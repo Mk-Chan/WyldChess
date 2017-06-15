@@ -75,6 +75,7 @@ static inline void tt_clear(struct TT* tt)
 static inline void tt_alloc_MB(struct TT* tt, u32 size)
 {
 	size     *= 0x10000;
+	size      = max(size, 1);
 	tt->table = (struct TTEntry*) realloc(tt->table, sizeof(struct TTEntry) * size);
 	tt->size  = size;
 	tt_clear(tt);

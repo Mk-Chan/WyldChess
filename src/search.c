@@ -231,7 +231,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	// Probe TT
 	STATS(++pos->stats.hash_probes;)
 	struct TTEntry entry = tt_probe(&tt, pos->state->pos_key);
-	u32 tt_move   = 0;
+	u32 tt_move = 0;
 	if ((entry.key ^ entry.data) == pos->state->pos_key) {
 		STATS(++pos->stats.hash_hits;)
 		tt_move = get_move(entry.data);
@@ -586,6 +586,8 @@ int begin_search(struct SearchUnit* const su)
 	ss->node_type        = PV_NODE;
 	su->max_searched_ply = 0;
 
+	u64 old_node_counts[2];
+
 	struct Controller* const ctlr = su->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
@@ -615,6 +617,8 @@ int begin_search(struct SearchUnit* const su)
 				fprintf(stdout, "depth %u ", depth);
 				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
 				fprintf(stdout, "tbhits %llu ", tb_hits);
+				if (depth > 2)
+					fprintf(stdout, "ebf %lf ", sqrt((double)ctlr->nodes_searched / old_node_counts[1]));
 				fprintf(stdout, "score ");
 				if (abs(val) < MAX_MATE_VAL) {
 					fprintf(stdout, "cp %d ", val);
@@ -633,6 +637,10 @@ int begin_search(struct SearchUnit* const su)
 			}
 			print_pv_line(su->pos, depth);
 			fprintf(stdout, "\n");
+
+			if (depth > 1)
+				old_node_counts[1] = old_node_counts[0];
+			old_node_counts[0] = ctlr->nodes_searched;
 
 			if (val <= alpha) {
 				++alpha_delta;
