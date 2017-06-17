@@ -38,6 +38,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 * Pruning losing captures (negative SEE) in quiescence search if not in check
 * Mate distance pruning
 * Transposition table
+* Syzygy EGTB (Adapted from the [Fathom tool](https://github.com/basil00/Fathom))
 * Futility pruning
 * Null move pruning
 * Internal iterative deepening
