@@ -33,7 +33,7 @@ unsigned long long curr_time()
 {
 	static struct timeval curr;
 	gettimeofday(&curr, 0);
-	return (curr.tv_sec * 1000 + (curr.tv_usec / 1000.0));
+	return ((curr.tv_sec - start_time.tv_sec) * 1000 + ((curr.tv_usec - start_time.tv_usec) / 1000.0));
 }
 
 u64 get_rand()
