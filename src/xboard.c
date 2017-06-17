@@ -243,14 +243,12 @@ void xboard_loop()
 		} else if (!strncmp(input, "setboard", 8)) {
 
 			transition(&su, WAITING);
-			su.side = -1;
 			init_pos(&pos, state_list);
 			set_pos(&pos, input + 9);
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
-			su.side = pos.stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
 
