@@ -243,22 +243,22 @@ void xboard_loop()
 		} else if (!strncmp(input, "setboard", 8)) {
 
 			transition(&su, WAITING);
-			su.side = -1;
 			init_pos(&pos, state_list);
 			set_pos(&pos, input + 9);
 			if (ctlr.moves_per_session) {
 				ctlr.moves_left = ctlr.moves_per_session
 					- ((pos.state->full_moves - 1) % ctlr.moves_per_session);
 			}
-			su.side = pos.stm == WHITE ? BLACK : WHITE;
 
 		} else if (!strncmp(input, "time", 4)) {
 
+			transition(&su, WAITING);
 			ctlr.time_dependent = 1;
 			ctlr.time_left = 10 * atoi(input + 5);
 
 		} else if (!strncmp(input, "level", 5)) {
 
+			transition(&su, WAITING);
 			ctlr.time_dependent = 1;
 			ptr = input + 6;
 			ctlr.moves_per_session = strtol(ptr, &end, 10);
@@ -283,6 +283,7 @@ void xboard_loop()
 		} else if (!strncmp(input, "st", 2)) {
 
 			// Seconds per move
+			transition(&su, WAITING);
 			ctlr.time_dependent    = 1;
 			ctlr.time_left         = 1000 * atoi(input + 3);
 			ctlr.moves_per_session = 1;
@@ -291,6 +292,7 @@ void xboard_loop()
 
 		} else if (!strncmp(input, "sd", 2)) {
 
+			transition(&su, WAITING);
 			ctlr.depth = atoi(input + 3);
 
 		} else if (!strncmp(input, "force", 5)) {
