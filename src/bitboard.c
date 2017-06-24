@@ -39,6 +39,8 @@ u64 adjacent_sqs_mask[64];
 u64 color_sq_mask[2];
 u64 adjacent_forward_mask[2][64];
 u64 outpost_ranks_mask[2];
+u64 king_shelter_close_mask[2][64];
+u64 king_shelter_far_mask[2][64];
 
 int distance[64][64];
 int sq_color[64];
@@ -217,11 +219,23 @@ void init_intervening_sqs()
 	}
 }
 
+void init_king_masks()
+{
+	int c, sq;
+	for (c = WHITE; c <= BLACK; ++c) {
+		for (sq = 0; sq != 64; ++sq) {
+			king_shelter_close_mask[c][sq] = k_atks_bb[sq] & (adjacent_sqs_mask[sq] | passed_pawn_mask[c][sq]);
+			king_shelter_far_mask[c][sq] = (c == WHITE ? (k_atks_bb[sq] ^ adjacent_sqs_mask[sq]) << 8 : (k_atks_bb[sq] ^ adjacent_sqs_mask[sq]) >> 8) & passed_pawn_mask[c][sq];
+		}
+	}
+}
+
 void init_lookups()
 {
 	init_atks();
 	init_intervening_sqs();
 	init_masks();
+	init_king_masks();
 	int c, r;
 	for (c = WHITE; c <= BLACK; ++c)
 		for (r = RANK_1; r <= RANK_8; ++r)

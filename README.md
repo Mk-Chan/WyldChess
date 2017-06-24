@@ -16,6 +16,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
 * King attack:
 	* Glaurung 1.2 attack table
 	* Queen next to king
+	* King shelter
 
 * Pawn structure:
 	* Passed pawns

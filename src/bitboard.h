@@ -38,6 +38,8 @@ extern u64 adjacent_sqs_mask[64];
 extern u64 color_sq_mask[2];
 extern u64 adjacent_forward_mask[2][64];
 extern u64 outpost_ranks_mask[2];
+extern u64 king_shelter_close_mask[2][64];
+extern u64 king_shelter_far_mask[2][64];
 
 extern int distance[64][64];
 extern int sq_color[64];
