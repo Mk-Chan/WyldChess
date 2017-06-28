@@ -33,7 +33,7 @@ static inline void print_options_uci()
 	fprintf(stdout, "id name %s\n", ENGINE_NAME);
 	fprintf(stdout, "id author %s\n", AUTHOR_NAME);
 	fprintf(stdout, "option name SyzygyPath type string default <empty>\n");
-	fprintf(stdout, "option name HashSize type spin default 128 min 1 max 1048576\n");
+	fprintf(stdout, "option name Hash type spin default 128 min 1 max 1048576\n");
 	struct SpinOption* curr = spin_options;
 	struct SpinOption* end  = spin_options + arr_len(spin_options);
 	for (; curr != end; ++curr)
@@ -152,8 +152,8 @@ void uci_loop()
 		} else if (!strncmp(input, "setoption name", 14)) {
 
 			ptr = input + 15;
-			if (!strncmp(ptr, "HashSize", 8)) {
-				ptr += 9;
+			if (!strncmp(ptr, "Hash", 4)) {
+				ptr += 5;
 				if (!strncmp(ptr, "value", 5))
 					tt_alloc_MB(&tt, strtoul(ptr + 6, &end, 10));
 			} else if (!strncmp(ptr, "SyzygyPath", 10)) {
