@@ -24,6 +24,8 @@
 #include <string.h>
 #include <math.h>
 
+#define arr_len(arr) (sizeof((arr)) / sizeof((arr)[0]))
+
 #undef INFINITY
 
 #ifdef STATS_BUILD

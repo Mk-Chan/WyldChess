@@ -20,13 +20,24 @@
 #include "defs.h"
 #include "search_unit.h"
 #include "tt.h"
+#include "options.h"
+
+static inline void print_spin_option(struct SpinOption* option)
+{
+	fprintf(stdout, "option name %s type spin default %d min %d max %d\n",
+			option->name, option->curr_val, option->min_val, option->max_val);
+}
 
 static inline void print_options_uci()
 {
 	fprintf(stdout, "id name %s\n", ENGINE_NAME);
 	fprintf(stdout, "id author %s\n", AUTHOR_NAME);
-	fprintf(stdout, "option name Hash type spin default 128 min 1 max 1048576\n");
 	fprintf(stdout, "option name SyzygyPath type string default <empty>\n");
+	fprintf(stdout, "option name HashSize type spin default 128 min 1 max 1048576\n");
+	struct SpinOption* curr = spin_options;
+	struct SpinOption* end  = spin_options + arr_len(spin_options);
+	for (; curr != end; ++curr)
+		print_spin_option(curr);
 	fprintf(stdout, "uciok\n");
 }
 
@@ -141,8 +152,8 @@ void uci_loop()
 		} else if (!strncmp(input, "setoption name", 14)) {
 
 			ptr = input + 15;
-			if (!strncmp(ptr, "Hash", 4)) {
-				ptr += 5;
+			if (!strncmp(ptr, "HashSize", 8)) {
+				ptr += 9;
 				if (!strncmp(ptr, "value", 5))
 					tt_alloc_MB(&tt, strtoul(ptr + 6, &end, 10));
 			} else if (!strncmp(ptr, "SyzygyPath", 10)) {
@@ -151,6 +162,22 @@ void uci_loop()
 					tb_init(ptr + 6);
 					fprintf(stdout, "info string Largest tablebase size = %u\n", TB_LARGEST);
 				}
+			} else {
+				struct SpinOption* curr = spin_options;
+				struct SpinOption* option_end = spin_options + arr_len(spin_options);
+				for (; curr != option_end; ++curr) {
+					int len = strlen(curr->name);
+					if (!strncmp(ptr, curr->name, len)) {
+						ptr += len + 1;
+						if (!strncmp(ptr, "value", 5)) {
+							int value = strtoul(ptr + 6, &end, 10);
+							if (   value <= curr->max_val
+							    && value >= curr->min_val)
+								curr->curr_val = value;
+						}
+					}
+				}
+
 			}
 
 		} else if (!strncmp(input, "perft", 5)) {

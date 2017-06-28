@@ -23,6 +23,7 @@
 #include "defs.h"
 #include "position.h"
 #include "misc.h"
+#include "options.h"
 
 enum Protocols {
 	XBOARD,
@@ -93,7 +94,7 @@ static inline void start_thinking(struct SearchUnit* const su)
 		ctlr->time_left += (ctlr->moves_left - 1) * ctlr->increment;
 		ctlr->search_end_time = ctlr->search_start_time
 			             + (ctlr->time_left / ctlr->moves_left)
-				     -  10;
+				     -  spin_options[MOVE_OVERHEAD].curr_val;
 	}
 	transition(su, THINKING);
 	if (ctlr->moves_per_session) {

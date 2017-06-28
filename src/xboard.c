@@ -20,6 +20,7 @@
 #include "search_unit.h"
 #include "syzygy/tbprobe.h"
 #include "tt.h"
+#include "options.h"
 
 enum Result {
 	NO_RESULT,
@@ -87,6 +88,12 @@ static int check_result(struct Position* const pos)
 	return result;
 }
 
+static inline void print_spin_option(struct SpinOption* option)
+{
+	fprintf(stdout, "feature option=\"%s -spin %d %d %d\"\n",
+			option->name, option->curr_val, option->min_val, option->max_val);
+}
+
 static inline void print_options_xboard()
 {
 	fprintf(stdout, "feature done=0\n");
@@ -101,6 +108,10 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature memory=1\n");
 	fprintf(stdout, "feature time=1\n");
 	fprintf(stdout, "feature egt=syzygy\n");
+	struct SpinOption* curr = spin_options;
+	struct SpinOption* end  = spin_options + arr_len(spin_options);
+	for (; curr != end; ++curr)
+		print_spin_option(curr);
 	fprintf(stdout, "feature done=1\n");
 }
 
@@ -339,6 +350,24 @@ void xboard_loop()
 			su.side = -1;
 			if (ctlr.analyzing)
 				transition(&su, ANALYZING);
+
+		} else if (!strncmp(input, "option", 6)) {
+
+			ptr = input + 7;
+			struct SpinOption* curr = spin_options;
+			struct SpinOption* option_end = spin_options + arr_len(spin_options);
+			for (; curr != option_end; ++curr) {
+				int len = strlen(curr->name);
+				if (!strncmp(ptr, curr->name, len)) {
+					ptr += len;
+					if (*ptr == '=') {
+						int value = strtol(ptr + 1, &end, 10);
+						if (   value <= curr->max_val
+						    && value >= curr->min_val)
+							curr->curr_val = value;
+					}
+				}
+			}
 
 		} else {
 
