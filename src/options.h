@@ -33,7 +33,7 @@ enum OPTIONS
 };
 
 static struct SpinOption spin_options[] = {
-	{ "MoveOverhead", 10, 1, 5000 }
+	{ "MoveOverhead", 30, 1, 5000 }
 };
 
 #endif
