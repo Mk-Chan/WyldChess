@@ -1,6 +1,6 @@
 /*
  * WyldChess, a free UCI/Xboard compatible chess engine
- * Copyright (C) 2016  Manik Charan
+ * Copyright (C) 2016-2017 Manik Charan
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
