@@ -20,16 +20,16 @@ for T in "${TARGETS[@]}"
 do
 	if [ "$T" = "win64" ]
 	then
-		CXX=x86_64-w64-mingw32-g++
+		CC=x86_64-w64-mingw32-gcc
 	else
-		CXX=g++
+		CC=gcc
 	fi
 	make clean
-	make CXX="$CXX" RELEASE=$1 TARGET="$T" $2
+	make CC="$CC" RELEASE=$1 TARGET="$T" $2
 	make clean
-	make popcnt CXX="$CXX" RELEASE=$1 TARGET="$T" $2
+	make popcnt CC="$CC" RELEASE=$1 TARGET="$T" $2
 	make clean
-	make bmi CXX="$CXX" RELEASE=$1 TARGET="$T" $2
+	make bmi CC="$CC" RELEASE=$1 TARGET="$T" $2
 done
 
 make clean
