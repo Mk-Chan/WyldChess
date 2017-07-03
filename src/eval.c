@@ -122,8 +122,6 @@ int king_atk_table[100] = { // Taken from CPW(Glaurung 1.2)
 	650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
 int king_atk_wt[7] = { 0, 0, 0, 3, 3, 4, 5 };
-int king_shelter_close = S(20, 10);
-int king_shelter_far = S(10, 5);
 
 // Pawn structure
 int passed_pawn[3][7] = {
@@ -296,14 +294,6 @@ static void eval_pieces(struct Position* const pos, struct Eval* const ev)
 	}
 }
 
-static void eval_king_shelter(struct Position* const pos, struct Eval* const ev)
-{
-	ev->eval[WHITE] += popcnt(ev->pawn_bb[WHITE] & king_shelter_close_mask[WHITE][pos->king_sq[WHITE]]) * king_shelter_close
-		         + popcnt(ev->pawn_bb[WHITE] & king_shelter_far_mask[WHITE][pos->king_sq[WHITE]]) * king_shelter_far;
-	ev->eval[BLACK] += popcnt(ev->pawn_bb[BLACK] & king_shelter_close_mask[BLACK][pos->king_sq[BLACK]]) * king_shelter_close
-		         + popcnt(ev->pawn_bb[BLACK] & king_shelter_far_mask[BLACK][pos->king_sq[BLACK]]) * king_shelter_far;
-}
-
 static void eval_king_attacks(struct Position* const pos, struct Eval* const ev)
 {
 	int king_atks[2] = { 0, 0 };
@@ -389,7 +379,6 @@ int evaluate(struct Position* const pos)
 	eval_pawns(pos, &ev);
 	eval_pieces(pos, &ev);
 	eval_king_attacks(pos, &ev);
-	eval_king_shelter(pos, &ev);
 	eval_passed_pawns(pos, &ev);
 
 	int eval = phased_val((ev.eval[WHITE] - ev.eval[BLACK]), pos->phase);
