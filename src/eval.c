@@ -393,6 +393,21 @@ int evaluate(struct Position* const pos)
 	eval_passed_pawns(pos, &ev);
 
 	int eval = phased_val((ev.eval[WHITE] - ev.eval[BLACK]), pos->phase);
+
+	// Eval reductions
+	int piece_count = popcnt(pos->bb[FULL]);
+
+	if (    piece_count == 5
+	    && (pos->bb[KNIGHT] | pos->bb[BISHOP])
+	    && (pos->bb[WHITE] & pos->bb[ROOK])
+	    && (pos->bb[BLACK] & pos->bb[ROOK]))
+		eval /= 16;
+
+	if (    piece_count == 4
+	    && (pos->bb[ROOK] && (pos->bb[KNIGHT] | pos->bb[BISHOP]))
+	    &&  popcnt(pos->bb[WHITE] == 2))
+		eval /= 16;
+
 	if (    popcnt(pos->bb[WHITE]) <= 3
 	    && !can_win(pos->bb, WHITE))
 		eval = min(eval, 0);
