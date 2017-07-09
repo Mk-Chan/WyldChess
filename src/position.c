@@ -63,7 +63,7 @@ void get_position_copy(struct Position const * const pos, struct Position* const
 	memcpy(copy_pos->state, pos->state, sizeof(struct State));
 }
 
-void init_pos(struct Position* pos, struct State* state_list)
+void init_pos(struct Position* pos)
 {
 	u32 i;
 	for (i = 0; i != 64; ++i)
@@ -71,7 +71,6 @@ void init_pos(struct Position* pos, struct State* state_list)
 	for (i = 0; i != 9; ++i)
 		pos->bb[i] = 0ULL;
 	pos->stm                    = WHITE;
-	pos->hist                   = state_list;
 	pos->state                  = pos->hist;
 	pos->phase                  = 0;
 	pos->state->pos_key         = 0ULL;

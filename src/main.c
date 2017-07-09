@@ -37,7 +37,6 @@ int main()
 	initmagicmoves();
 	init_lookups();
 	init_eval_terms();
-	init_search();
 	tt_alloc_MB(&tt, 128);
 	tt_alloc_MB(&pvt, 1);
 

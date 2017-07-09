@@ -22,27 +22,22 @@
 #define HISTORY_LIM (8000)
 #define MAX_HISTORY_DEPTH (12)
 
-// TODO: Following are unsafe for multithreading
-u64 tb_hits;
-int history[8][64];
-u32 counter_move_table[64][64];
-
-void init_search()
+void init_search(struct SearchLocals* const sl)
 {
-	memset(history, 0, sizeof(int) * 8 * 64);
-	memset(counter_move_table, 0, sizeof(u32) * 64 * 64);
+	memset(sl->history, 0, sizeof(int) * 8 * 64);
+	memset(sl->counter_move_table, 0, sizeof(u32) * 64 * 64);
 }
 
-static void reduce_history()
+static void reduce_history(struct SearchLocals* const sl)
 {
 	int pt, sq, c;
 	for (pt = PAWN; pt <= KING; ++pt)
 		for (c = WHITE; c <= BLACK; ++c)
 			for (sq = 0; sq < 64; ++sq)
-				history[pt][sq] /= 16;
+				sl->history[pt][sq] /= 16;
 }
 
-static void order_moves(struct Position* const pos, struct SearchStack* const ss, u32 tt_move)
+static void order_moves(struct Position* const pos, struct SearchStack* const ss, struct SearchLocals* const sl, u32 tt_move)
 {
 	struct Movelist* list = &ss->list;
 	int* order_list = ss->order_arr;
@@ -68,11 +63,11 @@ static void order_moves(struct Position* const pos, struct SearchStack* const ss
 				*order = KILLER;
 
 			else if (    ss->ply
-				 && *move == counter_move_table[prev_from][prev_to])
+				 && *move == sl->counter_move_table[prev_from][prev_to])
 				*order = COUNTER;
 
 			else
-				*order = history[pos->board[from_sq(*move)]][to_sq(*move)];
+				*order = sl->history[pos->board[from_sq(*move)]][to_sq(*move)];
 		}
 	}
 }
@@ -100,7 +95,7 @@ static u32 get_next_move(struct SearchStack* const ss, int move_num)
 	return best_move;
 }
 
-static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta)
+static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, struct SearchLocals* const sl, int alpha, int beta)
 {
 	struct Controller* const ctlr = su->ctlr;
 
@@ -151,7 +146,7 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 		gen_quiesce_moves(pos, list);
 	}
 
-	order_moves(pos, ss, 0);
+	order_moves(pos, ss, sl, 0);
 
 	int val;
 	STATS(u32 legal_moves = 0;)
@@ -175,7 +170,7 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 		}
 
 		do_move(pos, move);
-		val = -qsearch(su, ss + 1, -beta, -alpha);
+		val = -qsearch(su, ss + 1, sl, -beta, -alpha);
 		undo_move(pos);
 		if (ctlr->is_stopped)
 			return 0;
@@ -194,10 +189,10 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 	return alpha;
 }
 
-static int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth)
+static int search(struct SearchUnit* const su, struct SearchStack* const ss, struct SearchLocals* const sl, int alpha, int beta, int depth)
 {
 	if (depth <= 0)
-		return qsearch(su, ss, alpha, beta);
+		return qsearch(su, ss, sl, alpha, beta);
 
 	struct Position* const pos = su->pos;
 	struct Controller* const ctlr = su->ctlr;
@@ -263,7 +258,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 							bb[BISHOP], bb[KNIGHT], bb[PAWN],
 							ep_sq, pos->stm == WHITE);
 			if (wdl != TB_RESULT_FAILED) {
-				++tb_hits;
+				++sl->tb_hits;
 				tt_store(&tt, tb_values[wdl], FLAG_EXACT, min(depth + 6, MAX_PLY - 1), 0, pos->state->pos_key);
 				return tb_values[wdl];
 			}
@@ -330,7 +325,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 			ss[1].node_type     = ALL_NODE;
 			ss[1].forward_prune = 0;
 			do_null_move(pos);
-			int val = -search(su, ss + 1, -beta, -beta + 1, depth_left);
+			int val = -search(su, ss + 1, sl, -beta, -beta + 1, depth_left);
 			undo_null_move(pos);
 			if (ctlr->is_stopped)
 				return 0;
@@ -361,7 +356,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 		int reduction     = 2;
 		int ep            = ss->forward_prune;
 		ss->forward_prune = 0;
-		search(su, ss, alpha, beta, depth - reduction);
+		search(su, ss, sl, alpha, beta, depth - reduction);
 		ss->forward_prune = ep;
 
 		entry   = tt_probe(&tt, pos->state->pos_key);
@@ -373,11 +368,11 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	set_pinned(pos);
 	gen_legal_moves(pos, list);
 
-	order_moves(pos, ss, tt_move);
+	order_moves(pos, ss, sl, tt_move);
 
 	u32 counter_move = 0;
 	if (ss->ply)
-		counter_move = counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
+		counter_move = sl->counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
 
 	int best_val    = -INFINITY,
 	    best_move   = 0,
@@ -438,7 +433,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 			    && !passer_move
 			    && !checked) {
 				int reduction = 2;
-				int hist_val = history[pos->board[from_sq(move)]][to_sq(move)];
+				int hist_val = sl->history[pos->board[from_sq(move)]][to_sq(move)];
 				reduction += (legal_moves > 10)
 					   + (node_type != PV_NODE)
 					   + (hist_val < -500)
@@ -457,23 +452,23 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 				        : node_type == CUT_NODE ? ALL_NODE
 					: CUT_NODE;
 			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -beta , -alpha, depth_left);
+			val = -search(su, ss + 1, sl, -beta , -alpha, depth_left);
 		} else if (node_type != PV_NODE) {
 			ss[1].node_type     = CUT_NODE;
 			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -beta, -alpha, depth_left);
+			val = -search(su, ss + 1, sl, -beta, -alpha, depth_left);
 			if (   val > alpha
 			    && depth_left < depth - 1) {
 				ss[1].node_type = ALL_NODE;
-				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
+				val = -search(su, ss + 1, sl, -beta, -alpha, depth - 1);
 			}
 		} else {
 			ss[1].node_type     = CUT_NODE;
 			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
+			val = -search(su, ss + 1, sl, -alpha - 1, -alpha, depth_left);
 			if (val > alpha) {
 				ss[1].node_type = PV_NODE;
-				val = -search(su, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
+				val = -search(su, ss + 1, sl, -beta, -alpha, max(depth - 1, depth_left));
 			}
 		}
 
@@ -496,9 +491,9 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 				if (   quiet_move
 				    && depth <= MAX_HISTORY_DEPTH) {
 					int pt = pos->board[from_sq(move)];
-					history[pt][to_sq(move)] += depth * depth;
-					if (history[pt][to_sq(move)] > HISTORY_LIM)
-						reduce_history();
+					sl->history[pt][to_sq(move)] += depth * depth;
+					if (sl->history[pt][to_sq(move)] > HISTORY_LIM)
+						reduce_history(sl);
 				}
 
 				if (val >= beta) {
@@ -515,7 +510,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 						}
 						int prev_move = (pos->state-1)->move;
 						if (prev_move)
-							counter_move_table[from_sq(prev_move)][to_sq(prev_move)] = move;
+							sl->counter_move_table[from_sq(prev_move)][to_sq(prev_move)] = move;
 					}
 
 					if (depth <= MAX_HISTORY_DEPTH) {
@@ -524,9 +519,9 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 							    && move_type(*curr) != ENPASSANT
 							    && prom_type(*curr) != QUEEN) {
 								int pt = pos->board[from_sq(*curr)];
-								history[pt][to_sq(*curr)] -= depth * depth;
-								if (history[pt][to_sq(*curr)] < -HISTORY_LIM)
-									reduce_history();
+								sl->history[pt][to_sq(*curr)] -= depth * depth;
+								if (sl->history[pt][to_sq(*curr)] < -HISTORY_LIM)
+									reduce_history(sl);
 							}
 						}
 					}
@@ -574,13 +569,15 @@ int begin_search(struct SearchUnit* const su)
 	int val, alpha, beta, depth;
 	int best_move = 0;
 
-	reduce_history();
+	struct SearchLocals* const sl = su->sl;
+
+	reduce_history(sl);
 
 	struct SearchStack ss[MAX_PLY];
 	clear_search(su, ss);
 
 	tt_clear(&pvt);
-	tb_hits = 0ULL;
+	sl->tb_hits = 0ULL;
 
 	ss->forward_prune    = 0;
 	ss->node_type        = PV_NODE;
@@ -603,7 +600,7 @@ int begin_search(struct SearchUnit* const su)
 			beta  = min(val + *beta_delta, +INFINITY);
 		}
 		while (1) {
-			val = search(su, ss, alpha, beta, depth);
+			val = search(su, ss, sl, alpha, beta, depth);
 
 			if (   depth > 1
 			    && ctlr->is_stopped)
@@ -616,7 +613,7 @@ int begin_search(struct SearchUnit* const su)
 				fprintf(stdout, "info ");
 				fprintf(stdout, "depth %u ", depth);
 				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
-				fprintf(stdout, "tbhits %llu ", tb_hits);
+				fprintf(stdout, "tbhits %llu ", sl->tb_hits);
 				if (depth > 2)
 					fprintf(stdout, "ebf %lf ", sqrt((double)ctlr->nodes_searched / old_node_counts[1]));
 				fprintf(stdout, "score ");

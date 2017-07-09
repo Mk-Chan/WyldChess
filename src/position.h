@@ -67,7 +67,7 @@ struct Position
 	int phase;
 	int piece_psq_eval[2];
 	struct State* state;
-	struct State* hist;
+	struct State hist[MAX_MOVES_PER_GAME + MAX_PLY];
 	STATS(struct Stats stats;)
 };
 
@@ -80,7 +80,7 @@ extern void print_board(struct Position* pos);
 
 extern void performance_test(struct Position* const pos, u32 max_depth);
 
-extern void init_pos(struct Position* pos, struct State* state);
+extern void init_pos(struct Position* pos);
 extern int set_pos(struct Position* pos, char* fen);
 extern void get_position_copy(struct Position const * const pos, struct Position* const copy_pos);
 

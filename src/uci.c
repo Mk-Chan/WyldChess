@@ -21,6 +21,7 @@
 #include "search_unit.h"
 #include "tt.h"
 #include "options.h"
+#include "search.h"
 
 static inline void print_spin_option(struct SpinOption* option)
 {
@@ -81,20 +82,10 @@ void uci_loop()
 
 	print_options_uci();
 
-	struct Position pos;
-	struct Controller ctlr;
-	struct SearchUnit su;
+	struct SearchUnit su    = get_search_unit();
+	struct Position* pos    = su.pos;
+	struct Controller* ctlr = su.ctlr;
 	su.protocol = UCI;
-	pthread_mutex_init(&su.mutex, NULL);
-	pthread_cond_init(&su.sleep_cv, NULL);
-	su.pos  = &pos;
-	su.ctlr = &ctlr;
-	su.ctlr->depth = MAX_PLY;
-	su.ctlr->time_dependent = 1;
-	su.target_state = WAITING;
-	struct State state_list[MAX_MOVES_PER_GAME + MAX_PLY];
-	init_pos(&pos, state_list);
-	set_pos(&pos, INITIAL_POSITION);
 	pthread_t su_thread;
 	pthread_create(&su_thread, NULL, su_loop_uci, (void*) &su);
 	pthread_detach(su_thread);
@@ -106,38 +97,43 @@ void uci_loop()
 
 			fprintf(stdout, "readyok\n");
 
+		} else if (!strncmp(input, "ucinewgame", 10)) {
+
+			init_search(su.sl);
+			tt_clear(&tt);
+			tt_clear(&pvt);
+
 		} else if (!strncmp(input, "position", 8)) {
 
 			transition(&su, WAITING);
 			ptr = input + 9;
-			su.game_over = 0;
-			init_pos(&pos, state_list);
+			init_pos(pos);
 			if (!strncmp(ptr, "startpos", 8)) {
 				ptr += 9;
-				set_pos(&pos, INITIAL_POSITION);
+				set_pos(pos, INITIAL_POSITION);
 			} else if (!strncmp(ptr, "fen", 3)) {
 				ptr += 4;
-				ptr += set_pos(&pos, ptr);
+				ptr += set_pos(pos, ptr);
 			}
 			if (  *(ptr - 1) != '\0'
 			    && !strncmp(ptr, "moves", 5)) {
 				while ((ptr = strstr(ptr, " "))) {
 					++ptr;
-					move = parse_move(&pos, ptr);
-					if (!legal_move(&pos, move)) {
+					move = parse_move(pos, ptr);
+					if (!legal_move(pos, move)) {
 						char mstr[6];
 						move_str(move, mstr);
 						fprintf(stdout, "Illegal move: %s\n", mstr);
 						break;
 					}
-					do_move(&pos, move);
+					do_move(pos, move);
 				}
 			}
 
 		} else if (!strncmp(input, "print", 5)) {
 
 			transition(&su, WAITING);
-			print_board(&pos);
+			print_board(pos);
 
 		} else if (!strncmp(input, "stop", 4)) {
 
@@ -183,57 +179,57 @@ void uci_loop()
 		} else if (!strncmp(input, "perft", 5)) {
 
 			transition(&su, WAITING);
-			performance_test(&pos, atoi(input + 6));
+			performance_test(pos, atoi(input + 6));
 
 		} else if (!strncmp(input, "go", 2)) {
 
 			transition(&su, WAITING);
-			su.game_over           = 0;
-			ctlr.time_dependent    = 1;
-			ctlr.moves_per_session = 0;
-			ctlr.moves_left        = 40;
-			ctlr.depth             = MAX_PLY;
-			ctlr.increment         = 0;
-			ctlr.time_left         = 240000;
+			ctlr->time_dependent    = 1;
+			ctlr->depth             = MAX_PLY;
+			ctlr->moves_per_session = 40;
+			ctlr->moves_left        = ctlr->moves_per_session;
+			ctlr->time_left         = 240000;
+			ctlr->increment         = 0;
+
 			ptr = input;
 			while ((ptr = strstr(ptr, " "))) {
 				++ptr;
-				if ((    pos.stm == WHITE
+				if ((    pos->stm == WHITE
 				     && !strncmp(ptr, "wtime", 5))
-				    || ( pos.stm == BLACK
+				    || ( pos->stm == BLACK
 				     && !strncmp(ptr, "btime", 5))) {
 
-					ctlr.time_left = strtoull(ptr + 6, &end, 10);
+					ctlr->time_left = strtoull(ptr + 6, &end, 10);
 					ptr = end;
 
 				} else if (!strncmp(ptr, "movestogo", 9)) {
 
-					ctlr.moves_left = strtoull(ptr + 10, &end, 10);
+					ctlr->moves_left = strtoull(ptr + 10, &end, 10);
 					ptr = end;
 
-				} else if ((    pos.stm == WHITE
+				} else if ((    pos->stm == WHITE
 				            && !strncmp(ptr, "winc", 4))
-				           || ( pos.stm == BLACK
+				           || ( pos->stm == BLACK
 				            && !strncmp(ptr, "binc", 4))) {
 
-					ctlr.increment = strtoull(ptr + 5, &end, 10);
+					ctlr->increment = strtoull(ptr + 5, &end, 10);
 					ptr = end;
 
 				} else if (!strncmp(ptr, "depth", 5)) {
 
-					ctlr.depth = (u32) strtol(ptr + 6, &end, 10);
-					ctlr.time_dependent = 0;
+					ctlr->depth = (u32) strtol(ptr + 6, &end, 10);
+					ctlr->time_dependent = 0;
 					ptr = end;
 
 				} else if (!strncmp(ptr, "movetime", 8)) {
 
-					ctlr.time_left  = strtoull(ptr + 9, &end, 10);
-					ctlr.moves_left = 1;
+					ctlr->time_left  = strtoull(ptr + 9, &end, 10);
+					ctlr->moves_left = 1;
 					ptr = end;
 
 				} else if (!strncmp(ptr, "infinite", 8)) {
 
-					ctlr.time_dependent = 0;
+					ctlr->time_dependent = 0;
 
 				}
 			}

@@ -22,8 +22,6 @@
 #include "search_unit.h"
 #include "tt.h"
 
-extern void init_search();
-
 struct SearchStack
 {
 	int node_type;

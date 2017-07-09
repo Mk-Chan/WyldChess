@@ -52,19 +52,51 @@ struct Controller
 	u64 nodes_searched;
 };
 
+struct SearchLocals
+{
+	u64 tb_hits;
+	int history[8][64];
+	u32 counter_move_table[64][64];
+};
+
 struct SearchUnit
 {
-	struct Position*   pos;
-	struct Controller* ctlr;
-	u32                max_searched_ply;
-	pthread_mutex_t    mutex;
-	pthread_cond_t     sleep_cv;
-	int                protocol;
-	int                side;
-	int                game_over;
-	int volatile       target_state;
-	int volatile       curr_state;
+	struct Position*     pos;
+	struct Controller*   ctlr;
+	struct SearchLocals* sl;
+	u32                  max_searched_ply;
+	pthread_mutex_t      mutex;
+	pthread_cond_t       sleep_cv;
+	int                  protocol;
+	int                  side;
+	int                  game_over;
+	int volatile         target_state;
+	int volatile         curr_state;
 };
+
+extern void init_search(struct SearchLocals* const sl);
+extern int begin_search(struct SearchUnit* const su);
+extern void xboard_loop();
+extern void uci_loop();
+
+static inline struct SearchUnit get_search_unit()
+{
+	struct Position pos;
+	struct Controller ctlr;
+	struct SearchLocals sl;
+	struct SearchUnit su;
+	pthread_mutex_init(&su.mutex, NULL);
+	pthread_cond_init(&su.sleep_cv, NULL);
+	su.pos  = &pos;
+	su.ctlr = &ctlr;
+	su.sl   = &sl;
+	su.ctlr->depth = MAX_PLY;
+	su.target_state = WAITING;
+	init_search(su.sl);
+	init_pos(&pos);
+	set_pos(&pos, INITIAL_POSITION);
+	return su;
+}
 
 static inline void sync(struct SearchUnit const * const su)
 {
@@ -103,9 +135,5 @@ static inline void start_thinking(struct SearchUnit* const su)
 			ctlr->moves_left = ctlr->moves_per_session;
 	}
 }
-
-extern int begin_search(struct SearchUnit* const su);
-extern void xboard_loop();
-extern void uci_loop();
 
 #endif
