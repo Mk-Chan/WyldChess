@@ -97,13 +97,13 @@ static u32 get_next_move(struct SearchStack* const ss, int move_num)
 
 static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, struct SearchLocals* const sl, int alpha, int beta)
 {
-	struct Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = &su->ctlr;
 
 	if ( !(ctlr->nodes_searched & 0x7ff)
 	    && stopped(su))
 		return 0;
 
-	struct Position* const pos = su->pos;
+	struct Position* const pos = &su->pos;
 	++ctlr->nodes_searched;
 	STATS(++pos->stats.correct_nt_guess;) // Ignore qsearch node guesses
 
@@ -194,8 +194,8 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, str
 	if (depth <= 0)
 		return qsearch(su, ss, sl, alpha, beta);
 
-	struct Position* const pos = su->pos;
-	struct Controller* const ctlr = su->ctlr;
+	struct Position* const pos = &su->pos;
+	struct Controller* const ctlr = &su->ctlr;
 	++ctlr->nodes_searched;
 	int old_alpha = alpha;
 
@@ -203,7 +203,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, str
 		su->max_searched_ply = ss->ply;
 
 	if (ss->ply) {
-		if ( !(su->ctlr->nodes_searched & 0x7ff)
+		if ( !(su->ctlr.nodes_searched & 0x7ff)
 		    && stopped(su))
 			return 0;
 
@@ -569,7 +569,7 @@ int begin_search(struct SearchUnit* const su)
 	int val, alpha, beta, depth;
 	int best_move = 0;
 
-	struct SearchLocals* const sl = su->sl;
+	struct SearchLocals* const sl = &su->sl;
 
 	reduce_history(sl);
 
@@ -585,7 +585,7 @@ int begin_search(struct SearchUnit* const su)
 
 	u64 old_node_counts[2];
 
-	struct Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = &su->ctlr;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
 	static int* alpha_delta;
@@ -632,7 +632,7 @@ int begin_search(struct SearchUnit* const su)
 				fprintf(stdout, "time %llu ", time);
 				fprintf(stdout, "pv");
 			}
-			print_pv_line(su->pos, depth);
+			print_pv_line(&su->pos, depth);
 			fprintf(stdout, "\n");
 
 			if (depth > 1)
@@ -650,7 +650,7 @@ int begin_search(struct SearchUnit* const su)
 			}
 		}
 
-		best_move = get_pv_move(su->pos);
+		best_move = get_pv_move(&su->pos);
 	}
 end_search:;
 	STATS(

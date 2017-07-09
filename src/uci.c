@@ -82,9 +82,10 @@ void uci_loop()
 
 	print_options_uci();
 
-	struct SearchUnit su    = get_search_unit();
-	struct Position* pos    = su.pos;
-	struct Controller* ctlr = su.ctlr;
+	struct SearchUnit su;
+	init_search_unit(&su);
+	struct Position* pos    = &su.pos;
+	struct Controller* ctlr = &su.ctlr;
 	su.protocol = UCI;
 	pthread_t su_thread;
 	pthread_create(&su_thread, NULL, su_loop_uci, (void*) &su);
@@ -99,7 +100,7 @@ void uci_loop()
 
 		} else if (!strncmp(input, "ucinewgame", 10)) {
 
-			init_search(su.sl);
+			init_search(&su.sl);
 			tt_clear(&tt);
 			tt_clear(&pvt);
 

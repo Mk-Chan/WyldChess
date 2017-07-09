@@ -116,16 +116,16 @@ static inline int cap_order(struct Position const * const pos, u32 const m)
 
 static inline int stopped(struct SearchUnit* const su)
 {
-	if (su->ctlr->is_stopped)
+	if (su->ctlr.is_stopped)
 		return 1;
 	if (   su->target_state != THINKING
 	    && su->target_state != ANALYZING) {
-		su->ctlr->is_stopped = 1;
+		su->ctlr.is_stopped = 1;
 		return 1;
 	}
-	if (   su->ctlr->time_dependent
-	    && curr_time() >= su->ctlr->search_end_time) {
-		su->ctlr->is_stopped = 1;
+	if (   su->ctlr.time_dependent
+	    && curr_time() >= su->ctlr.search_end_time) {
+		su->ctlr.is_stopped = 1;
 		return 1;
 	}
 
@@ -168,7 +168,7 @@ static inline u32 get_pv_move(struct Position* const pos)
 
 static inline void clear_search(struct SearchUnit* const su, struct SearchStack* const ss)
 {
-	struct Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = &su->ctlr;
 	ctlr->is_stopped     = 0;
 	ctlr->nodes_searched = 0ULL;
 	STATS(

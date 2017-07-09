@@ -54,11 +54,14 @@ static inline u32 get_cr_from_char(char c)
 
 void get_position_copy(struct Position const * const pos, struct Position* const copy_pos)
 {
-	memcpy(copy_pos->board, pos->board, sizeof(pos->board));
-	memcpy(copy_pos->bb, pos->bb, sizeof(pos->bb));
+	memcpy(copy_pos->bb, pos->bb, sizeof(u64) * 9);
+	copy_pos->stm = pos->stm;
 	copy_pos->king_sq[WHITE] = pos->king_sq[WHITE];
 	copy_pos->king_sq[BLACK] = pos->king_sq[BLACK];
-	copy_pos->stm = pos->stm;
+	memcpy(copy_pos->board, pos->board, sizeof(int) * 64);
+	copy_pos->phase = pos->phase;
+	copy_pos->piece_psq_eval[WHITE] = pos->piece_psq_eval[WHITE];
+	copy_pos->piece_psq_eval[BLACK] = pos->piece_psq_eval[BLACK];
 	copy_pos->state = &copy_pos->hist[pos->state - pos->hist];
 	memcpy(copy_pos->state, pos->state, sizeof(struct State));
 }
