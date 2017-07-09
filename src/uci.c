@@ -83,9 +83,10 @@ void uci_loop()
 	print_options_uci();
 
 	struct SearchUnit su;
-	init_search_unit(&su);
+	struct Controller controller;
+	init_search_unit(&su, &controller);
 	struct Position* pos    = &su.pos;
-	struct Controller* ctlr = &su.ctlr;
+	struct Controller* ctlr = su.ctlr;
 	su.protocol = UCI;
 	pthread_t su_thread;
 	pthread_create(&su_thread, NULL, su_loop_uci, (void*) &su);

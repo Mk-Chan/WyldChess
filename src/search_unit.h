@@ -62,7 +62,7 @@ struct SearchLocals
 struct SearchUnit
 {
 	struct Position      pos;
-	struct Controller    ctlr;
+	struct Controller*   ctlr;
 	struct SearchLocals  sl;
 	u32                  max_searched_ply;
 	pthread_mutex_t      mutex;
@@ -79,11 +79,12 @@ extern int begin_search(struct SearchUnit* const su);
 extern void xboard_loop();
 extern void uci_loop();
 
-static inline void init_search_unit(struct SearchUnit* const su)
+static inline void init_search_unit(struct SearchUnit* const su, struct Controller* ctlr)
 {
 	pthread_mutex_init(&su->mutex, NULL);
 	pthread_cond_init(&su->sleep_cv, NULL);
-	su->ctlr.depth   = MAX_PLY;
+	su->ctlr = ctlr;
+	su->ctlr->depth  = MAX_PLY;
 	su->target_state = WAITING;
 	init_search(&su->sl);
 	init_pos(&su->pos);
@@ -101,7 +102,8 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 	get_search_locals_copy(&su->sl, &copy_su->sl);
 	pthread_mutex_init(&copy_su->mutex, NULL);
 	pthread_cond_init(&copy_su->sleep_cv, NULL);
-	copy_su->ctlr.depth       = MAX_PLY;
+	copy_su->ctlr             = su->ctlr;
+	copy_su->ctlr->depth      = MAX_PLY;
 	copy_su->target_state     = WAITING;
 	copy_su->protocol         = su->protocol;
 	copy_su->max_searched_ply = 0;
@@ -131,7 +133,7 @@ static inline void transition(struct SearchUnit* const su, int target_state)
 
 static inline void start_thinking(struct SearchUnit* const su)
 {
-	struct Controller* const ctlr  = &su->ctlr;
+	struct Controller* const ctlr  = su->ctlr;
 	ctlr->search_start_time = curr_time();
 	if (ctlr->time_dependent) {
 		ctlr->time_left += (ctlr->moves_left - 1) * ctlr->increment;

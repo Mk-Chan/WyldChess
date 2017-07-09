@@ -147,7 +147,7 @@ void* su_loop_xboard(void* args)
 
 		case ANALYZING:
 			su->curr_state = ANALYZING;
-			su->ctlr.search_start_time = curr_time();
+			su->ctlr->search_start_time = curr_time();
 			begin_search(su);
 			su->target_state = WAITING;
 			break;
@@ -168,9 +168,10 @@ void xboard_loop()
 	u32   move;
 
 	struct SearchUnit su;
-	init_search_unit(&su);
+	struct Controller controller;
+	init_search_unit(&su, &controller);
 	struct Position* pos    = &su.pos;
-	struct Controller* ctlr = &su.ctlr;
+	struct Controller* ctlr = su.ctlr;
 
 	su.protocol = XBOARD;
 	pthread_t su_thread;
