@@ -22,16 +22,6 @@
 #include "search_unit.h"
 #include "tt.h"
 
-struct SearchStack
-{
-	int node_type;
-	int forward_prune;
-	u32 ply;
-	u32 killers[2];
-	int order_arr[MAX_MOVES_PER_POS];
-	struct Movelist list;
-};
-
 static int equal_cap_bound = 50;
 
 static int min_attacker(struct Position const * const pos, int to, u64 const c_atkers_bb, u64* const occupied_bb, u64* const atkers_bb) {

@@ -42,6 +42,16 @@ enum SearchUnitType {
 	HELPER
 };
 
+struct SearchStack
+{
+	int node_type;
+	int forward_prune;
+	u32 ply;
+	u32 killers[2];
+	int order_arr[MAX_MOVES_PER_POS];
+	struct Movelist list;
+};
+
 struct Controller
 {
 	int is_stopped;
@@ -80,6 +90,20 @@ struct SearchUnit
 	int volatile         target_state;
 	int volatile         curr_state;
 };
+
+struct SearchParams
+{
+	struct SearchUnit* su;
+	struct SearchStack* ss;
+	int alpha;
+	int beta;
+	int depth;
+};
+
+extern pthread_t* search_threads;
+extern struct SearchUnit* search_units;
+extern struct SearchStack (*search_stacks)[MAX_PLY];
+extern struct SearchParams* search_params;
 
 extern void init_search(struct SearchLocals* const sl);
 extern int begin_search(struct SearchUnit* const su);

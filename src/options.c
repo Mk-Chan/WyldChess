@@ -1,6 +1,3 @@
-#ifndef OPTIONS_H
-#define OPTIONS_H
-
 /*
  * WyldChess, a free UCI/Xboard compatible chess engine
  * Copyright (C) 2016-2017 Manik Charan
@@ -19,23 +16,26 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct SpinOption
-{
-	char name[50];
-	int curr_val;
-	int min_val;
-	int max_val;
-	void (*handler)(void);
+#include "defs.h"
+#include "options.h"
+#include "search_unit.h"
+
+struct SpinOption spin_options[NUM_OPTIONS] = {
+	{ "MoveOverhead", 30, 1, 5000, NULL },
+	{ "Threads", 1, 1, 64, &handle_threads }
 };
 
-enum OPTIONS
+pthread_t* search_threads;
+struct SearchUnit* search_units;
+struct SearchStack (*search_stacks)[MAX_PLY];
+struct SearchParams* search_params;
+
+
+void handle_threads()
 {
-	MOVE_OVERHEAD,
-	THREADS,
-	NUM_OPTIONS
-};
-
-extern struct SpinOption spin_options[NUM_OPTIONS];
-extern void handle_threads();
-
-#endif
+	int num = spin_options[THREADS].curr_val - 1;
+	search_threads = realloc(search_threads, sizeof(pthread_t) * num);
+	search_units   = realloc(search_units, sizeof(struct SearchUnit) * num);
+	search_params  = realloc(search_params, sizeof(struct SearchParams) * num);
+	search_stacks  = realloc(search_stacks, sizeof(struct SearchStack[MAX_PLY]) * num);
+}

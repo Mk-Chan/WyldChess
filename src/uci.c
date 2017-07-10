@@ -170,8 +170,11 @@ void uci_loop()
 						if (!strncmp(ptr, "value", 5)) {
 							int value = strtoul(ptr + 6, &end, 10);
 							if (   value <= curr->max_val
-							    && value >= curr->min_val)
+							    && value >= curr->min_val) {
 								curr->curr_val = value;
+								if (curr->handler)
+									curr->handler();
+							}
 						}
 					}
 				}

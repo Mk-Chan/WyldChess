@@ -7,7 +7,7 @@ SZG_FILES = tbprobe.c
 
 CC_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c \
 	  move.c mt19937-64.c perft.c position.c search.c   \
-	  uci.c xboard.c misc.c
+	  uci.c xboard.c misc.c options.c
 
 SZG_OBJS = $(addprefix $(SZG_PATH)/, $(SZG_FILES:.c=.o))
 OBJS = $(CC_FILES:.c=.o)

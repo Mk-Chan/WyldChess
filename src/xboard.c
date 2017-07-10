@@ -351,8 +351,11 @@ void xboard_loop()
 					if (*ptr == '=') {
 						int value = strtol(ptr + 1, &end, 10);
 						if (   value <= curr->max_val
-						    && value >= curr->min_val)
+						    && value >= curr->min_val) {
 							curr->curr_val = value;
+							if (curr->handler)
+								curr->handler();
+						}
 					}
 				}
 			}
