@@ -606,8 +606,13 @@ int begin_search(struct SearchUnit* const su)
 
 	u64 old_node_counts[2];
 
-	int num_threads = spin_options[THREADS].curr_val - 1;
+	struct Controller* const ctlr = su->ctlr;
+	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
+	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
+	static int* alpha_delta;
+	static int* beta_delta;
 
+	int num_threads = spin_options[THREADS].curr_val - 1;
 	struct SearchUnit* su_tmp;
 	struct SearchStack (*ss_tmp)[MAX_PLY];
 	struct SearchParams* sp_tmp;
@@ -622,13 +627,7 @@ int begin_search(struct SearchUnit* const su)
 		sp_tmp->su = su_tmp;
 		sp_tmp->ss = *ss_tmp;
 	}
-	abort_search = 0;
 
-	struct Controller* const ctlr = su->ctlr;
-	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
-	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
-	static int* alpha_delta;
-	static int* beta_delta;
 	for (depth = 1; depth <= max_depth; ++depth) {
 		alpha_delta = beta_delta = deltas;
 		if (depth < 5) {
