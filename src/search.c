@@ -97,14 +97,16 @@ static u32 get_next_move(struct SearchStack* const ss, int move_num)
 
 static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, struct SearchLocals* const sl, int alpha, int beta)
 {
-	struct Controller* const ctlr = su->ctlr;
+	su->counter += (su->type == MAIN);
 
-	if ( !(ctlr->nodes_searched & 0x7ff)
-	    && stopped(su))
+	if (     su->type == MAIN
+	    && !(su->counter & 0x7ff)
+	    &&   stopped(su))
 		return 0;
 
 	struct Position* const pos = &su->pos;
-	++ctlr->nodes_searched;
+	struct Controller* const ctlr = su->ctlr;
+	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
 	STATS(++pos->stats.correct_nt_guess;) // Ignore qsearch node guesses
 
 	if (pos->state->fifty_moves > 99)
@@ -196,15 +198,17 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, str
 
 	struct Position* const pos = &su->pos;
 	struct Controller* const ctlr = su->ctlr;
-	++ctlr->nodes_searched;
+	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
 	int old_alpha = alpha;
+	su->counter += (su->type == MAIN);
 
 	if (ss->ply > su->max_searched_ply)
 		su->max_searched_ply = ss->ply;
 
 	if (ss->ply) {
-		if ( !(su->ctlr->nodes_searched & 0x7ff)
-		    && stopped(su))
+		if (     su->type == MAIN
+		    && !(su->counter & 0x7ff)
+		    &&   stopped(su))
 			return 0;
 
 		if (   pos->state->fifty_moves > 99
@@ -383,6 +387,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, str
 		++legal_moves;
 
 		if (  !ss->ply
+		    && su->type == MAIN
 		    && su->protocol == UCI) {
 			u64 time_passed = curr_time() - ctlr->search_start_time;
 			if (time_passed >= 1000ULL) {
@@ -557,10 +562,27 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, str
 		 : FLAG_UPPER;
 
 	tt_store(&tt, val_to_tt(best_val, ss->ply), flag, depth, best_move, pos->state->pos_key);
-	if (flag == FLAG_EXACT)
+	if (flag == FLAG_EXACT && su->type == MAIN)
 		pvt_store(&pvt, best_move, pos->state->pos_key, depth);
 
 	return best_val;
+}
+
+struct SearchParams
+{
+	struct SearchUnit* su;
+	struct SearchStack* ss;
+	struct SearchLocals* sl;
+	int alpha;
+	int beta;
+	int depth;
+};
+
+void* parallel_search(void* arg)
+{
+	struct SearchParams* params = (struct SearchParams*) arg;
+	search(params->su, params->ss, params->sl, params->alpha, params->beta, params->depth);
+	pthread_exit(0);
 }
 
 int begin_search(struct SearchUnit* const su)

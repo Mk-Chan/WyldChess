@@ -37,6 +37,11 @@ enum States {
 	QUITTING
 };
 
+enum SearchUnitType {
+	MAIN,
+	HELPER
+};
+
 struct Controller
 {
 	int is_stopped;
@@ -67,9 +72,11 @@ struct SearchUnit
 	u32                  max_searched_ply;
 	pthread_mutex_t      mutex;
 	pthread_cond_t       sleep_cv;
+	int                  type;
 	int                  protocol;
 	int                  side;
 	int                  game_over;
+	int                  counter;
 	int volatile         target_state;
 	int volatile         curr_state;
 };
@@ -83,6 +90,7 @@ static inline void init_search_unit(struct SearchUnit* const su, struct Controll
 {
 	pthread_mutex_init(&su->mutex, NULL);
 	pthread_cond_init(&su->sleep_cv, NULL);
+	su->type = MAIN;
 	su->ctlr = ctlr;
 	su->ctlr->depth  = MAX_PLY;
 	su->target_state = WAITING;
@@ -102,6 +110,7 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 	get_search_locals_copy(&su->sl, &copy_su->sl);
 	pthread_mutex_init(&copy_su->mutex, NULL);
 	pthread_cond_init(&copy_su->sleep_cv, NULL);
+	copy_su->type             = su->type;
 	copy_su->ctlr             = su->ctlr;
 	copy_su->ctlr->depth      = MAX_PLY;
 	copy_su->target_state     = WAITING;
