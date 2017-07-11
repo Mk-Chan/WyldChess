@@ -138,6 +138,7 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 	copy_su->ctlr             = su->ctlr;
 	copy_su->ctlr->depth      = MAX_PLY;
 	copy_su->target_state     = WAITING;
+	copy_su->counter          = 0;
 	copy_su->protocol         = su->protocol;
 	copy_su->max_searched_ply = 0;
 	copy_su->side             = su->side;
