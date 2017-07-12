@@ -135,25 +135,20 @@ static inline int is_repeat(struct Position* const pos)
 	return 0;
 }
 
-static inline void print_pv_line(struct Position* const pos, int depth)
+static inline void print_pv_line(struct SearchStack* const ss)
 {
 	char mstr[6];
-	struct TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
-	if (entry.key == pos->state->pos_key) {
-		u32 move = get_move(entry.data);
-		do_move(pos, move);
-		move_str(move, mstr);
+	u32* curr = ss->pv;
+	u32* end  = ss->pv + ss->pv_depth;
+	for (; curr != end; ++curr) {
+		move_str(*curr, mstr);
 		fprintf(stdout, " %s", mstr);
-		if (depth > 1)
-			print_pv_line(pos, depth - 1);
-		undo_move(pos);
 	}
 }
 
-static inline u32 get_pv_move(struct Position* const pos)
+static inline u32 get_pv_move(struct SearchStack const * const ss)
 {
-	struct TTEntry entry = tt_probe(&pvt, pos->state->pos_key);
-	return get_move(entry.data);
+	return *ss->pv;
 }
 
 static inline void clear_search(struct SearchUnit* const su, struct SearchStack* const ss)

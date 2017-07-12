@@ -103,7 +103,6 @@ void uci_loop()
 
 			init_search(&su.sl);
 			tt_clear(&tt);
-			tt_clear(&pvt);
 
 		} else if (!strncmp(input, "position", 8)) {
 

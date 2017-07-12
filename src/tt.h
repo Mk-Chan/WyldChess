@@ -46,7 +46,6 @@ struct TT
 	u32 size;
 };
 
-extern struct TT pvt;
 extern struct TT tt;
 
 static inline int val_to_tt(int val, int ply)
@@ -99,18 +98,6 @@ static inline void tt_store(struct TT* tt, u64 score, u64 flag, u64 depth, u64 m
 static inline struct TTEntry tt_probe(struct TT* tt, u64 key)
 {
 	return tt->table[(key < tt->size ? key : key % tt->size)];
-}
-
-static inline void pvt_store(struct TT* pvt, u64 move, u64 key, u64 depth)
-{
-	u32 index = key < pvt->size ? key : key % pvt->size;
-	struct TTEntry* entry = pvt->table + index;
-	u32 entry_depth = entry->data >> 32;
-
-	if (entry_depth <= depth) {
-		entry->data = move | (depth << 32);
-		entry->key  = key;
-	}
 }
 
 #endif

@@ -50,6 +50,8 @@ struct SearchStack
 	u32 killers[2];
 	int order_arr[MAX_MOVES_PER_POS];
 	struct Movelist list;
+	int pv_depth;
+	u32 pv[MAX_PLY];
 };
 
 struct Controller
@@ -98,6 +100,7 @@ struct SearchParams
 	int alpha;
 	int beta;
 	int depth;
+	int result;
 };
 
 extern pthread_t* search_threads;

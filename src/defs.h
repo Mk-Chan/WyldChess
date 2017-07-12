@@ -49,6 +49,7 @@
 #define TB_MATE_VAL        (28000)
 #define TB_CURSED_MATE_VAL (1)
 #define MAX_PHASE          (256)
+#define INVALID            (INFINITY+1)
 
 #define MOVE_TYPE_SHIFT (12)
 #define PROM_TYPE_SHIFT (15)

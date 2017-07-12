@@ -25,7 +25,6 @@
 #include "tt.h"
 
 struct TT tt;
-struct TT pvt;
 
 int main()
 {
@@ -38,7 +37,6 @@ int main()
 	init_lookups();
 	init_eval_terms();
 	tt_alloc_MB(&tt, 128);
-	tt_alloc_MB(&pvt, 1);
 
 	char input[100];
 	while (1) {
