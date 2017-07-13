@@ -36,6 +36,9 @@ STATS(
 		u64 beta_cutoffs;
 		u64 hash_probes;
 		u64 hash_hits;
+		u64 cut_nodes;
+		u64 all_nodes;
+		u64 pv_nodes;
 		u64 total_nodes;
 	};
 )

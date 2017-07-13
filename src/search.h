@@ -158,7 +158,7 @@ static inline void clear_search(struct SearchUnit* const su, struct SearchStack*
 	ctlr->nodes_searched = 0ULL;
 	su->counter          = 0;
 	STATS(
-		struct Position* const pos    = su->pos;
+		struct Position* const pos    = &su->pos;
 		pos->stats.correct_nt_guess   = 0;
 		pos->stats.iid_cutoffs        = 0;
 		pos->stats.iid_tries          = 0;
@@ -168,6 +168,10 @@ static inline void clear_search(struct SearchUnit* const su, struct SearchStack*
 		pos->stats.beta_cutoffs       = 0;
 		pos->stats.hash_probes        = 0;
 		pos->stats.hash_hits          = 0;
+		pos->stats.all_nodes          = 0ULL;
+		pos->stats.pv_nodes           = 0ULL;
+		pos->stats.cut_nodes          = 0ULL;
+		pos->stats.total_nodes        = 0ULL;
 	)
 	u32 i, j;
 	struct SearchStack* curr;

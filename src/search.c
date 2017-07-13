@@ -112,7 +112,6 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 	struct Controller* const ctlr = su->ctlr;
 	struct SearchLocals* const sl = &su->sl;
 	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
-	STATS(++pos->stats.correct_nt_guess;) // Ignore qsearch node guesses
 
 	if (pos->state->fifty_moves > 99)
 		return 0;
@@ -349,6 +348,8 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 				STATS(
 					++pos->stats.null_cutoffs;
 					++pos->stats.correct_nt_guess;
+					++pos->stats.cut_nodes;
+					++pos->stats.total_nodes;
 				)
 				if (val >= MAX_MATE_VAL)
 					val = beta;
@@ -553,12 +554,17 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	}
 
 	STATS(
-		if (best_val >= beta)
+		if (best_val >= beta) {
 			pos->stats.correct_nt_guess += (node_type == CUT_NODE);
-		else if (best_val > old_alpha)
+			++pos->stats.cut_nodes;
+		} else if (best_val > old_alpha) {
 			pos->stats.correct_nt_guess += (node_type == PV_NODE);
-		else
+			++pos->stats.pv_nodes;
+		} else {
 			pos->stats.correct_nt_guess += (node_type == ALL_NODE);
+			++pos->stats.all_nodes;
+		}
+		++pos->stats.total_nodes;
 	)
 
 	if (  !ss->ply
@@ -593,6 +599,31 @@ void* parallel_search(void* arg)
 	if (!abort_search)
 		params->result = val;
 	return NULL;
+}
+
+void print_stats(int thread_num, struct Position const * const pos)
+{
+	STATS(
+		struct Stats const * const stats = &pos->stats;
+		fprintf(stdout, "thread number %d\n", thread_num);
+		fprintf(stdout, "iid cutoff rate:          %lf\n",
+			((double)stats->iid_cutoffs) / stats->iid_tries);
+		fprintf(stdout, "null cutoff rate:         %lf\n",
+			((double)stats->null_cutoffs) / stats->null_tries);
+		fprintf(stdout, "hash hit rate:            %lf\n",
+			((double)stats->hash_hits) / stats->hash_probes);
+		fprintf(stdout, "pv nodes:                 %lf\n",
+			((double)stats->pv_nodes) / stats->total_nodes);
+		fprintf(stdout, "all nodes:                %lf\n",
+			((double)stats->all_nodes) / stats->total_nodes);
+		fprintf(stdout, "cut nodes:                %lf\n",
+			((double)stats->cut_nodes) / stats->total_nodes);
+		fprintf(stdout, "ordering at cut nodes:    %lf\n",
+			((double)stats->first_beta_cutoffs) / stats->beta_cutoffs);
+		fprintf(stdout, "correct node predictions: %lf\n",
+			((double)stats->correct_nt_guess) / stats->total_nodes);
+		fprintf(stdout, "\n");
+	)
 }
 
 int begin_search(struct SearchUnit* const su)
@@ -714,23 +745,11 @@ int begin_search(struct SearchUnit* const su)
 
 		best_move = get_pv_move(ss);
 	}
-end_search:;
-	STATS(
-		struct Position* const pos = su->pos;
-		time = curr_time() - ctlr->search_start_time;
-		fprintf(stdout, "nps:                      %lf\n",
-			time ? ((double)ctlr->nodes_searched * 1000 / time) : 0);
-		fprintf(stdout, "iid cutoff rate:          %lf\n",
-			((double)pos->stats.iid_cutoffs) / pos->stats.iid_tries);
-		fprintf(stdout, "null cutoff rate:         %lf\n",
-			((double)pos->stats.null_cutoffs) / pos->stats.null_tries);
-		fprintf(stdout, "hash hit rate:            %lf\n",
-			((double)pos->stats.hash_hits) / pos->stats.hash_probes);
-		fprintf(stdout, "ordering at cut nodes:    %lf\n",
-			((double)pos->stats.first_beta_cutoffs) / pos->stats.beta_cutoffs);
-		fprintf(stdout, "correct node predictions: %lf\n",
-			((double)pos->stats.correct_nt_guess) / ctlr->nodes_searched);
-	)
+end_search:
+	print_stats(0, &su->pos);
+	for (int i = 0; i < num_threads; ++i) {
+		print_stats(i+1, &search_units[i].pos);
+	}
 
 	return best_move;
 }
