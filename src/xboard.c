@@ -170,10 +170,18 @@ void xboard_loop()
 	struct SearchUnit su;
 	struct Controller controller;
 	init_search_unit(&su, &controller);
+	su.protocol = XBOARD;
 	struct Position* pos    = &su.pos;
 	struct Controller* ctlr = su.ctlr;
+	su.game_over = 0;
+	su.side                 = BLACK;
+	ctlr->time_dependent    = 1;
+	ctlr->depth             = MAX_PLY;
+	ctlr->moves_per_session = 40;
+	ctlr->moves_left        = ctlr->moves_per_session;
+	ctlr->time_left         = 240000;
+	ctlr->increment         = 0;
 
-	su.protocol = XBOARD;
 	pthread_t su_thread;
 	pthread_create(&su_thread, NULL, su_loop_xboard, (void*) &su);
 	pthread_detach(su_thread);
