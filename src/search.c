@@ -462,6 +462,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 			}
 		}
 
+		ss[1].pv_depth = 0;
 		do_move(pos, move);
 
 		// Principal Variation Search
