@@ -109,7 +109,7 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 	}
 
 	struct Position* const pos = &su->pos;
-	struct Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = &controller;
 	struct SearchLocals* const sl = &su->sl;
 	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
 
@@ -203,7 +203,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	}
 
 	struct Position* const pos = &su->pos;
-	struct Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = &controller;
 	struct SearchLocals* const sl = &su->sl;
 	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
 	int old_alpha = alpha;
@@ -647,7 +647,7 @@ int begin_search(struct SearchUnit* const su)
 
 	u64 old_node_counts[2];
 
-	struct Controller* const ctlr = su->ctlr;
+	struct Controller* const ctlr = &controller;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
 	static int* alpha_delta;

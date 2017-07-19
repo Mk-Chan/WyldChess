@@ -25,6 +25,7 @@
 #include "tt.h"
 
 struct TT tt;
+struct Controller controller;
 
 int main()
 {

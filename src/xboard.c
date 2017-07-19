@@ -121,8 +121,9 @@ void* su_loop_xboard(void* args)
 {
 	char mstr[6];
 	u32 move;
-	struct SearchUnit* su = (struct SearchUnit*) args;
-	struct Position* pos  = &su->pos;
+	struct SearchUnit* su   = (struct SearchUnit*) args;
+	struct Position* pos    = &su->pos;
+	struct Controller* ctlr = &controller;
 	while (1) {
 		switch (su->target_state) {
 		case WAITING:
@@ -148,7 +149,7 @@ void* su_loop_xboard(void* args)
 
 		case ANALYZING:
 			su->curr_state = ANALYZING;
-			su->ctlr->search_start_time = curr_time();
+			ctlr->search_start_time = curr_time();
 			begin_search(su);
 			su->target_state = WAITING;
 			break;
@@ -169,11 +170,10 @@ void xboard_loop()
 	u32   move;
 
 	struct SearchUnit su;
-	struct Controller controller;
-	init_search_unit(&su, &controller);
+	init_search_unit(&su);
 	su.protocol = XBOARD;
 	struct Position* pos    = &su.pos;
-	struct Controller* ctlr = su.ctlr;
+	struct Controller* ctlr = &controller;
 	su.game_over = 0;
 	su.side                 = BLACK;
 	ctlr->time_dependent    = 1;
