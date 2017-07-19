@@ -49,7 +49,7 @@ int main()
 			break;
 		} else if (!strncmp(input, "quit", 4)) {
 			break;
-		}else {
+		} else {
 			fprintf(stdout, "Protocol not found!\n");
 		}
 	}

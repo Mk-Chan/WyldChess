@@ -78,19 +78,19 @@ struct SearchLocals
 
 struct SearchUnit
 {
-	struct Position      pos;
-	struct Controller*   ctlr;
-	struct SearchLocals  sl;
-	u32                  max_searched_ply;
-	pthread_mutex_t      mutex;
-	pthread_cond_t       sleep_cv;
-	int                  type;
-	int                  protocol;
-	int                  side;
-	int                  game_over;
-	int                  counter;
-	int volatile         target_state;
-	int volatile         curr_state;
+	struct Position pos;
+	struct Controller* ctlr;
+	struct SearchLocals sl;
+	pthread_mutex_t mutex;
+	pthread_cond_t sleep_cv;
+	u32 max_searched_ply;
+	int type;
+	int protocol;
+	int side;
+	int game_over;
+	int counter;
+	int volatile target_state;
+	int volatile curr_state;
 };
 
 struct SearchParams

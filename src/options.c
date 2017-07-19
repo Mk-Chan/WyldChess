@@ -30,10 +30,9 @@ struct SearchUnit* search_units;
 struct SearchStack (*search_stacks)[MAX_PLY];
 struct SearchParams* search_params;
 
-
 void handle_threads()
 {
-	int num = spin_options[THREADS].curr_val - 1;
+	int num        = spin_options[THREADS].curr_val - 1;
 	search_threads = realloc(search_threads, sizeof(pthread_t) * num);
 	search_units   = realloc(search_units, sizeof(struct SearchUnit) * num);
 	search_params  = realloc(search_params, sizeof(struct SearchParams) * num);
