@@ -108,6 +108,7 @@ static inline void print_options_xboard()
 	fprintf(stdout, "feature usermove=1\n");
 	fprintf(stdout, "feature memory=1\n");
 	fprintf(stdout, "feature time=1\n");
+	fprintf(stdout, "feature smp=1\n");
 	fprintf(stdout, "feature egt=syzygy\n");
 	struct SpinOption* curr = spin_options;
 	struct SpinOption* end  = spin_options + arr_len(spin_options);
@@ -204,6 +205,17 @@ void xboard_loop()
 		} else if (!strncmp(input, "memory", 6)) {
 
 			tt_alloc_MB(&tt, strtoul(input + 7, &end, 10));
+
+		} else if (!strncmp(input, "cores", 5)) {
+
+			struct SpinOption* option = spin_options + THREADS;
+			int value = strtoul(input + 6, &end, 10);
+			if (   value <= option->max_val
+			    && value >= option->min_val) {
+				option->curr_val = value;
+				if (option->handler)
+					option->handler();
+			}
 
 		} else if (!strncmp(input, "egtpath", 7)) {
 
