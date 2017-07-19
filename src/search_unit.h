@@ -54,21 +54,6 @@ struct SearchStack
 	u32 pv[MAX_PLY];
 };
 
-struct Controller
-{
-	int is_stopped;
-	int analyzing;
-	int time_dependent;
-	u32 depth;
-	u32 moves_left;
-	u32 moves_per_session;
-	u64 increment;
-	u64 time_left;
-	u64 search_start_time;
-	u64 search_end_time;
-	u64 nodes_searched;
-};
-
 struct SearchLocals
 {
 	u64 tb_hits;
@@ -102,12 +87,28 @@ struct SearchParams
 	int result;
 };
 
+struct Controller
+{
+	int is_stopped;
+	int analyzing;
+	int time_dependent;
+	u32 depth;
+	u32 moves_left;
+	u32 moves_per_session;
+	u64 increment;
+	u64 time_left;
+	u64 search_start_time;
+	u64 search_end_time;
+	u64 nodes_searched;
+};
+
 extern struct Controller controller;
 
-extern pthread_t* search_threads;
-extern struct SearchUnit* search_units;
-extern struct SearchStack (*search_stacks)[MAX_PLY];
-extern struct SearchParams* search_params;
+extern pthread_t search_threads[MAX_THREADS];
+extern struct SearchUnit search_units[MAX_THREADS];
+extern struct SearchStack search_stacks[MAX_THREADS][MAX_PLY];
+extern struct SearchParams search_params[MAX_THREADS];
+
 
 extern void init_search(struct SearchLocals* const sl);
 extern int begin_search(struct SearchUnit* const su);

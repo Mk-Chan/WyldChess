@@ -36,6 +36,5 @@ enum OPTIONS
 };
 
 extern struct SpinOption spin_options[NUM_OPTIONS];
-extern void handle_threads();
 
 #endif

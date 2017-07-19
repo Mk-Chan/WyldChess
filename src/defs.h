@@ -38,6 +38,7 @@
 #define AUTHOR_NAME (("Manik Charan"))
 #define INITIAL_POSITION (("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
 
+#define MAX_THREADS        (64)
 #define MAX_MOVES_PER_GAME (2048)
 #define MAX_MOVES_PER_POS  (218)
 #define MAX_PLY            (127)

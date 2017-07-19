@@ -20,21 +20,12 @@
 #include "options.h"
 #include "search_unit.h"
 
+pthread_t search_threads[MAX_THREADS];
+struct SearchUnit search_units[MAX_THREADS];
+struct SearchStack search_stacks[MAX_THREADS][MAX_PLY];
+struct SearchParams search_params[MAX_THREADS];
+
 struct SpinOption spin_options[NUM_OPTIONS] = {
 	{ "MoveOverhead", 30, 1, 5000, NULL },
-	{ "Threads", 1, 1, 64, &handle_threads }
+	{ "Threads", 1, 1, MAX_THREADS, NULL }
 };
-
-pthread_t* search_threads;
-struct SearchUnit* search_units;
-struct SearchStack (*search_stacks)[MAX_PLY];
-struct SearchParams* search_params;
-
-void handle_threads()
-{
-	int num        = spin_options[THREADS].curr_val - 1;
-	search_threads = realloc(search_threads, sizeof(pthread_t) * num);
-	search_units   = realloc(search_units, sizeof(struct SearchUnit) * num);
-	search_params  = realloc(search_params, sizeof(struct SearchParams) * num);
-	search_stacks  = realloc(search_stacks, sizeof(struct SearchStack[MAX_PLY]) * num);
-}

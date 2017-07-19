@@ -39,6 +39,13 @@ int main()
 	init_eval_terms();
 	tt_alloc_MB(&tt, 128);
 
+	struct SpinOption* curr = spin_options;
+	struct SpinOption* end  = spin_options + NUM_OPTIONS;
+	for (; curr != end; ++curr) {
+		if (curr->handler)
+			curr->handler();
+	}
+
 	char input[100];
 	while (1) {
 		fgets(input, 100, stdin);

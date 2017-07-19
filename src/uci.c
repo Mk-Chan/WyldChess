@@ -82,14 +82,14 @@ void uci_loop()
 
 	print_options_uci();
 
-	struct SearchUnit su;
-	init_search_unit(&su);
-	struct Position* pos    = &su.pos;
+	struct SearchUnit* su = search_units;
+	init_search_unit(su);
+	struct Position* pos    = &su->pos;
 	struct Controller* ctlr = &controller;
-	su.protocol = UCI;
-	pthread_t su_thread;
-	pthread_create(&su_thread, NULL, su_loop_uci, (void*) &su);
-	pthread_detach(su_thread);
+	su->protocol = UCI;
+	pthread_t* search_thread = search_threads;
+	pthread_create(search_thread, NULL, su_loop_uci, (void*) su);
+	pthread_detach(*search_thread);
 
 	while (1) {
 		fgets(input, max_len, stdin);
@@ -100,12 +100,12 @@ void uci_loop()
 
 		} else if (!strncmp(input, "ucinewgame", 10)) {
 
-			init_search(&su.sl);
+			init_search(&su->sl);
 			tt_clear(&tt);
 
 		} else if (!strncmp(input, "position", 8)) {
 
-			transition(&su, WAITING);
+			transition(su, WAITING);
 			ptr = input + 9;
 			init_pos(pos);
 			if (!strncmp(ptr, "startpos", 8)) {
@@ -132,17 +132,17 @@ void uci_loop()
 
 		} else if (!strncmp(input, "print", 5)) {
 
-			transition(&su, WAITING);
+			transition(su, WAITING);
 			print_board(pos);
 
 		} else if (!strncmp(input, "stop", 4)) {
 
-			transition(&su, WAITING);
+			transition(su, WAITING);
 
 		} else if (!strncmp(input, "quit", 4)) {
 
-			transition(&su, WAITING);
-			transition(&su, QUITTING);
+			transition(su, WAITING);
+			transition(su, QUITTING);
 			goto cleanup_and_exit;
 
 		} else if (!strncmp(input, "setoption name", 14)) {
@@ -181,12 +181,12 @@ void uci_loop()
 
 		} else if (!strncmp(input, "perft", 5)) {
 
-			transition(&su, WAITING);
+			transition(su, WAITING);
 			performance_test(pos, atoi(input + 6));
 
 		} else if (!strncmp(input, "go", 2)) {
 
-			transition(&su, WAITING);
+			transition(su, WAITING);
 			ctlr->time_dependent    = 1;
 			ctlr->depth             = MAX_PLY;
 			ctlr->moves_per_session = 40;
@@ -237,11 +237,11 @@ void uci_loop()
 				}
 			}
 
-			start_thinking(&su);
+			start_thinking(su);
 
 		}
 	}
 cleanup_and_exit:
-	pthread_cond_destroy(&su.sleep_cv);
-	pthread_mutex_destroy(&su.mutex);
+	pthread_cond_destroy(&su->sleep_cv);
+	pthread_mutex_destroy(&su->mutex);
 }

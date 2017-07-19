@@ -635,8 +635,7 @@ int begin_search(struct SearchUnit* const su)
 
 	reduce_history(&su->sl);
 
-	struct SearchStack search_stack[MAX_PLY];
-	struct SearchStack* ss = search_stack;
+	struct SearchStack* ss = *search_stacks;
 	clear_search(su, ss);
 
 	su->sl.tb_hits = 0ULL;
@@ -657,7 +656,7 @@ int begin_search(struct SearchUnit* const su)
 	struct SearchUnit* su_tmp;
 	struct SearchStack (*ss_tmp)[MAX_PLY];
 	struct SearchParams* sp_tmp;
-	for (int i = 0; i < num_threads; ++i) {
+	for (int i = 1; i <= num_threads; ++i) {
 		su_tmp = search_units + i;
 		ss_tmp = search_stacks + i;
 		sp_tmp = search_params + i;
@@ -679,10 +678,9 @@ int begin_search(struct SearchUnit* const su)
 			beta  = min(val + *beta_delta, +INFINITY);
 		}
 		while (1) {
-			ss = search_stack;
 			abort_search = 0;
 			if (depth >= 3) {
-				for (int i = 0; i < num_threads; ++i) {
+				for (int i = 1; i <= num_threads; ++i) {
 					sp_tmp = search_params + i;
 					sp_tmp->alpha = alpha;
 					sp_tmp->beta  = beta;
@@ -693,7 +691,7 @@ int begin_search(struct SearchUnit* const su)
 			val = search(su, ss, alpha, beta, depth);
 			abort_search = 1;
 			if (depth >= 3)
-				for (int i = 0; i < num_threads; ++i)
+				for (int i = 1; i <= num_threads; ++i)
 					pthread_join(search_threads[i], NULL);
 
 			if (   depth > 1
