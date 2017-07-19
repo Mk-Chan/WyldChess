@@ -1,6 +1,7 @@
 /*
  * tbconfig.h
  * (C) 2015 basil, all rights reserved,
+ * Modifications Copyright 2016-2017 Jon Dart
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -75,7 +76,7 @@
  * Define TB_NO_THREADS if your program is not multi-threaded.
  */
 // TODO: Comment this when multithreaded
-#define TB_NO_THREADS
+//#define TB_NO_THREADS
 
 /*
  * Define TB_NO_HELPER_API if you do not need the helper API.
@@ -86,6 +87,12 @@
  * Define TB_NO_HW_POP_COUNT if there is no hardware popcount instruction.
  */
 /* #define TB_NO_HW_POP_COUNT */
+
+/**
+ * Define TB_USE_ATOMIC to use C++ 11 (or higher) <atomic> feature 
+ * (recommended if using C++ and compiler supports it).
+ */
+/* #define TB_USE_ATOMIC */
 
 /***************************************************************************/
 /* ENGINE INTEGRATION CONFIG                                               */
@@ -139,6 +146,6 @@
  *       nothing.  Etc.
  * NOTE: This definition must not include en passant captures.
  */
-#define TB_PAWN_ATTACKS(square, color)   p_atks_bb[color][square]
+/* #define TB_PAWN_ATTACKS(square, color)   p_atks_bb[color][square] */
 
 #endif

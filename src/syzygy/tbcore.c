@@ -1,12 +1,32 @@
 /*
-  Copyright (c) 2011-2015 Ronald de Man
-  This file may be redistributed and/or modified without restrictions.
-
+ *  Copyright (c) 2011-2015 Ronald de Man
+ *  Copyright (c) 2016-2017 Jon Dart
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+/*
   tbcore.c contains engine-independent routines of the tablebase probing code.
   This file should not need to much adaptation to add tablebase probing to
   a particular engine, provided the engine is written in C or C++.
 */
 
+#include <assert.h>
 #include <stdio.h>
 #ifndef TB_NO_STDINT
 #include <stdint.h>
@@ -86,20 +106,36 @@ static FD open_tb(const char *str, const char *suffix)
 {
   int i;
   FD fd;
-  char file[256];
+  size_t remain;
+#ifdef _WIN32
+  const int MAX_LEN = MAX_PATH;
+#else
+  // assume 256
+  const int MAX_LEN = 256;
+#endif
+  remain = MAX_LEN-1; // allow room for null
+  char file[MAX_LEN];
 
   for (i = 0; i < num_paths; i++) {
-    strcpy(file, paths[i]);
-    strcat(file, "/");
-    strcat(file, str);
-    strcat(file, suffix);
+    strncpy(file, paths[i], remain);
+    remain -= strlen(paths[i]);
+    if (remain <=0) break;
+    strncat(file, "/", remain);
+    remain--;
+    if (remain <=0) break;
+    strncat(file, str, remain);
+    remain -= strlen(str);
+    if (remain <=0) break;
+    strncat(file, suffix, remain);
 #ifndef _WIN32
     fd = open(file, O_RDONLY);
 #else
     fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
 			  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 #endif
-    if (fd != FD_ERR) return fd;
+    if (fd != FD_ERR) {
+      return fd;
+    }
   }
   return FD_ERR;
 }
@@ -120,12 +156,16 @@ static char *map_file(const char *name, const char *suffix, uint64 *mapping)
     return NULL;
 #ifndef _WIN32
   struct stat statbuf;
-  fstat(fd, &statbuf);
+  if (fstat(fd, &statbuf)) {
+    perror("fstat");
+    close_tb(fd);
+    return NULL;
+  }
   *mapping = statbuf.st_size;
   char *data = (char *)mmap(NULL, statbuf.st_size, PROT_READ,
 			      MAP_SHARED, fd, 0);
   if (data == (char *)(-1)) {
-    printf("Could not mmap() %s.\n", name);
+    fprintf(stderr,"Could not mmap() %s.\n", name);
     exit(1);
   }
 #else
@@ -135,13 +175,13 @@ static char *map_file(const char *name, const char *suffix, uint64 *mapping)
   HANDLE map = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low,
 				  NULL);
   if (map == NULL) {
-    printf("CreateFileMapping() failed.\n");
+    fprintf(stderr,"CreateFileMapping() failed.\n");
     exit(1);
   }
   *mapping = (uint64)map;
   char *data = (char *)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
   if (data == NULL) {
-    printf("MapViewOfFile() failed, name = %s%s, error = %lu.\n", name, suffix, GetLastError());
+    fprintf(stderr,"MapViewOfFile() failed, name = %s%s, error = %lu.\n", name, suffix, GetLastError());
     exit(1);
   }
 #endif
@@ -153,14 +193,20 @@ static char *map_file(const char *name, const char *suffix, uint64 *mapping)
 static void unmap_file(char *data, uint64 size)
 {
   if (!data) return;
-  munmap(data, size);
+  if (!munmap(data, size)) {
+	  perror("munmap");
+  }
 }
 #else
 static void unmap_file(char *data, uint64 mapping)
 {
   if (!data) return;
-  UnmapViewOfFile(data);
-  CloseHandle((HANDLE)mapping);
+  if (!UnmapViewOfFile(data)) {
+	  fprintf(stderr, "unmap failed, error code %d", GetLastError());
+  }
+  if (!CloseHandle((HANDLE)mapping)) {
+	  fprintf(stderr, "CloseHandle failed, error code %d", GetLastError());
+  }
 }
 #endif
 
@@ -172,7 +218,7 @@ static void add_to_hash(struct TBEntry *ptr, uint64 key)
   while (i < HSHMAX && TB_hash[hshidx][i].ptr)
     i++;
   if (i == HSHMAX) {
-    printf("HSHMAX too low!\n");
+    fprintf(stderr,"HSHMAX too low!\n");
     exit(1);
   } else {
     TB_hash[hshidx][i].key = key;
@@ -226,13 +272,13 @@ static void init_tb(char *str)
   key2 = calc_key_from_pcs(pcs, 1);
   if (pcs[TB_WPAWN] + pcs[TB_BPAWN] == 0) {
     if (TBnum_piece == TBMAX_PIECE) {
-      printf("TBMAX_PIECE limit too low!\n");
+      fprintf(stderr,"TBMAX_PIECE limit too low!\n");
       exit(1);
     }
     entry = (struct TBEntry *)&TB_piece[TBnum_piece++];
   } else {
     if (TBnum_pawn == TBMAX_PAWN) {
-      printf("TBMAX_PAWN limit too low!\n");
+      fprintf(stderr,"TBMAX_PAWN limit too low!\n");
       exit(1);
     }
     entry = (struct TBEntry *)&TB_pawn[TBnum_pawn++];
@@ -391,7 +437,7 @@ void init_tablebases(const char *path)
 //  printf("Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
 }
 
-static const int16_t offdiag[] = {
+static const signed char offdiag[] = {
   0,-1,-1,-1,-1,-1,-1,-1,
   1, 0,-1,-1,-1,-1,-1,-1,
   1, 1, 0,-1,-1,-1,-1,-1,
@@ -754,6 +800,7 @@ static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, int
   uint64 idx;
   int i, j, k, m, l, p;
   int n = ptr->num;
+  assert(n>=0 && n<6);
 
   if (pos[0] & 0x04) {
     for (i = 0; i < n; i++)
@@ -818,6 +865,8 @@ static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, int
       p = pos[m];
       for (l = 0, j = 0; l < i; l++)
 	j += (p > pos[l]);
+      assert(m-i >= 0 && m-i < 5);
+      assert(p-j >= 0 && p-j < 64);
       s += binomial[m - i][p - j];
     }
     idx += ((uint64)s) * ((uint64)factor[i]);
@@ -832,6 +881,7 @@ static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, int
   uint64 idx;
   int i, j, k, m, l, p;
   int n = ptr->num;
+  assert(n>=0 && n<6);
 
   if (ptr->enc_type < 3) {
     if (pos[0] & 0x04) {
@@ -1044,7 +1094,7 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
   f = 1;
   for (i = norm[0], k = 0; i < num || k == order; k++) {
     if (k == order) {
-      factor[0] = f;
+      factor[0] = (int)f;
 #ifndef CONNECTED_KINGS
       f *= pivfac[enc_type];
 #else
@@ -1054,7 +1104,7 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
 	f *= mfactor[enc_type - 2];
 #endif
     } else {
-      factor[i] = f;
+      factor[i] = (int)f;
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -1076,13 +1126,13 @@ static uint64 calc_factors_pawn(int *factor, int num, int order, int order2, uby
   f = 1;
   for (k = 0; i < num || k == order || k == order2; k++) {
     if (k == order) {
-      factor[0] = f;
+      factor[0] = (int)f;
       f *= pfactor[norm[0] - 1][file];
     } else if (k == order2) {
-      factor[norm[0]] = f;
+      factor[norm[0]] = (int)f;
       f *= subfactor(norm[norm[0]], 48 - norm[0]);
     } else {
-      factor[i] = f;
+      factor[i] = (int)f;
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -1248,7 +1298,7 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
   d->min_len = min_len;
   *next = &data[12 + 2 * h + 3 * num_syms + (num_syms & 1)];
 
-  int num_indices = (tb_size + (1ULL << idxbits) - 1) >> idxbits;
+  int num_indices = (int)((tb_size + (1ULL << idxbits) - 1) >> idxbits);
   size[0] = 6ULL * num_indices;
   size[1] = 2ULL * num_blocks;
   size[2] = (1ULL << blocksize) * real_num_blocks;
@@ -1288,13 +1338,13 @@ static int init_table_wdl(struct TBEntry *entry, char *str)
   // first mmap the table into memory
   entry->data = map_file(str, WDLSUFFIX, &entry->mapping);
   if (!entry->data) {
-    printf("Could not find %s" WDLSUFFIX "\n", str);
+    fprintf(stderr,"Could not find %s" WDLSUFFIX "\n", str);
     return 0;
   }
 
   ubyte *data = (ubyte *)entry->data;
   if (((uint32 *)data)[0] != WDL_MAGIC) {
-    printf("Corrupted table.\n");
+    fprintf(stderr,"Corrupted table.\n");
     unmap_file(entry->data, entry->mapping);
     entry->data = 0;
     return 0;
@@ -1404,7 +1454,7 @@ static int init_table_dtz(struct TBEntry *entry)
     return 0;
 
   if (((uint32 *)data)[0] != DTZ_MAGIC) {
-    printf("Corrupted table.\n");
+    fprintf(stderr,"Corrupted table.\n");
     return 0;
   }
 
@@ -1425,8 +1475,8 @@ static int init_table_dtz(struct TBEntry *entry)
     if (ptr->flags & 2) {
       int i;
       for (i = 0; i < 4; i++) {
-	ptr->map_idx[i] = (data + 1 - ptr->map);
-	data += 1 + data[0];
+	     ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
+	     data += 1 + data[0];
       }
       data += ((uintptr_t)data) & 0x01;
     }
@@ -1457,11 +1507,11 @@ static int init_table_dtz(struct TBEntry *entry)
     ptr->map = data;
     for (f = 0; f < files; f++) {
       if (ptr->flags[f] & 2) {
-	int i;
-	for (i = 0; i < 4; i++) {
-	  ptr->map_idx[f][i] = (data + 1 - ptr->map);
-	  data += 1 + data[0];
-	}
+	    int i;
+	    for (i = 0; i < 4; i++) {
+	       ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+	       data += 1 + data[0];
+	    }
       }
     }
     data += ((uintptr_t)data) & 0x01;
@@ -1491,8 +1541,8 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   if (!d->idxbits)
     return d->min_len;
 
-  uint32 mainidx = idx >> d->idxbits;
-  int litidx = (idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
+  uint32 mainidx = (uint32)(idx >> d->idxbits);
+  int litidx = (int)(idx & (((uint64)1 << d->idxbits) - 1)) - ((uint64)1 << (d->idxbits - 1));
   uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
   litidx += *(ushort *)(d->indextable + 6 * mainidx + 4);
   if (litidx < 0) {
@@ -1615,11 +1665,13 @@ void load_dtz_table(char *str, uint64 key1, uint64 key2)
 static void free_wdl_entry(struct TBEntry *entry)
 {
   unmap_file(entry->data, entry->mapping);
+  entry->data = NULL; entry->mapping = 0;
   if (!entry->has_pawns) {
     struct TBEntry_piece *ptr = (struct TBEntry_piece *)entry;
     free(ptr->precomp[0]);
     if (ptr->precomp[1])
       free(ptr->precomp[1]);
+    ptr->precomp[0] = ptr->precomp[1] = NULL;
   } else {
     struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
     int f;
@@ -1627,6 +1679,7 @@ static void free_wdl_entry(struct TBEntry *entry)
       free(ptr->file[f].precomp[0]);
       if (ptr->file[f].precomp[1])
 	free(ptr->file[f].precomp[1]);
+      ptr->file[f].precomp[0] = ptr->file[f].precomp[1] = NULL;
     }
   }
 }
@@ -1634,14 +1687,18 @@ static void free_wdl_entry(struct TBEntry *entry)
 static void free_dtz_entry(struct TBEntry *entry)
 {
   unmap_file(entry->data, entry->mapping);
+  entry->data = NULL; entry->mapping = 0;
   if (!entry->has_pawns) {
     struct DTZEntry_piece *ptr = (struct DTZEntry_piece *)entry;
     free(ptr->precomp);
+    ptr->precomp = NULL;
   } else {
     struct DTZEntry_pawn *ptr = (struct DTZEntry_pawn *)entry;
     int f;
-    for (f = 0; f < 4; f++)
+    for (f = 0; f < 4; f++) {
       free(ptr->file[f].precomp);
+      ptr->file[f].precomp = NULL;
+    }
   }
   free(entry);
 }

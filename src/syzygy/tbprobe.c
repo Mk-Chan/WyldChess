@@ -1,9 +1,8 @@
 /*
  * tbprobe.c
- * Copyright (c) 2013-2015 Ronald de Man
- * This file may be redistributed and/or modified without restrictions.
+ * Copyright (c) 2013-2016 Ronald de Man
+ * Copyright (c) 2016-2017 Jon Dart
  *
- * (C) 2015 basil, all rights reserved,
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -64,8 +63,36 @@
 #define BEST_NONE               0xFFFF
 #define SCORE_ILLEGAL           0x7FFF
 
-#define popcount(x)             (popcnt(__builtin_popcountll(x)))
-#define lsb(b)                  (__builtin_ctzll(b))
+#undef TB_SOFTWARE_POP_COUNT
+
+#if defined(TB_CUSTOM_POP_COUNT)
+#define popcount(x) TB_CUSTOM_POP_COUNT(x)
+#elif defined(TB_NO_HW_POP_COUNT)
+#define TB_SOFTWARE_POP_COUNT
+#elif defined (__GNUC__) && defined(__x86_64__) && defined(__SSE4_2__)
+#include <popcntintrin.h>
+#define popcount(x)             _mm_popcnt_u64((x))
+#elif defined(_MSC_VER) && (_MSC_VER >= 1500) && defined(_M_AMD64)
+#include <nmmintrin.h>
+#define popcount(x)             _mm_popcnt_u64((x))
+#else
+#define TB_SOFTWARE_POP_COUNT
+#endif
+
+#ifdef TB_SOFTWARE_POP_COUNT
+// Not a recognized compiler/architecture that has popcount:
+// fall back to a software popcount. This one is still reasonably
+// fast (faster than GCC's builtin).
+static inline unsigned tb_software_popcount(uint64_t x)
+{
+    x = x - ((x >> 1) & 0x5555555555555555ull);
+    x = (x & 0x3333333333333333ull) + ((x >> 2) & 0x3333333333333333ull);
+    x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0full;
+    return (x * 0x0101010101010101ull) >> 56;
+}
+#define popcount(x) tb_software_popcount(x)
+#endif
+
 #define poplsb(x)               ((x) & ((x) - 1))
 
 #define make_move(promote, from, to)                                    \
@@ -105,6 +132,16 @@ unsigned TB_LARGEST = 0;
 #define rank(s)                 ((s) >> 3)
 #define file(s)                 ((s) & 0x07)
 #define board(s)                ((uint64_t)1 << (s))
+#ifdef TB_CUSTOM_LSB
+#define lsb(b) TB_CUSTOM_LSB(b)
+#else
+static inline unsigned lsb(uint64_t b)
+{
+    size_t idx;
+    __asm__("bsfq %1, %0": "=r"(idx): "rm"(b));
+    return idx;
+}
+#endif
 #define square(r, f)            (8 * (r) + (f))
 
 #ifdef TB_KING_ATTACKS
@@ -665,10 +702,12 @@ static int probe_wdl_table(const struct pos *pos, int *success)
                 return 0;
             }
             // Memory barrier to ensure ptr->ready = 1 is not reordered.
+#if !defined(__cplusplus) || !defined(TB_USE_ATOMIC)
 #ifdef __GNUC__
             __asm__ __volatile__ ("" ::: "memory");
 #elif defined(_MSC_VER)
             MemoryBarrier();
+#endif
 #endif
             ptr->ready = 1;
         }
@@ -784,7 +823,7 @@ static int probe_dtz_table(const struct pos *pos, int wdl, int *success)
             }
             ptr = ptr2[i].ptr;
             char str[16];
-            int mirror = (ptr->key != key);
+            const bool mirror = (ptr->key != key);
             prt_str(pos, str, mirror);
             if (DTZ_table[DTZ_ENTRIES - 1].entry)
                 free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
@@ -1158,6 +1197,8 @@ static bool is_legal(const struct pos *pos)
     uint64_t us = (pos->turn? pos->black: pos->white),
              them = (pos->turn? pos->white: pos->black);
     uint64_t king = pos->kings & us;
+    if (!king)
+        return false;
     unsigned sq = lsb(king);
     if (king_attacks(sq) & (pos->kings & them))
         return false;
@@ -1768,9 +1809,9 @@ static uint16_t probe_root(const struct pos *pos, int *score,
 
 bool tb_init_impl(const char *path)
 {
-    if (sizeof(uint64_t) != 8 &&        // Paranoid check
-            sizeof(uint32_t) != 4 &&
-            sizeof(uint16_t) != 2 &&
+    if (sizeof(uint64_t) != 8 ||        // Paranoid check
+            sizeof(uint32_t) != 4 ||
+            sizeof(uint16_t) != 2 ||
             sizeof(uint8_t) != 1)
         return false;
     king_attacks_init();
