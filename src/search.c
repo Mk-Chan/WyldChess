@@ -684,7 +684,7 @@ int begin_search(struct SearchUnit* const su)
 					sp_tmp = search_params + i;
 					sp_tmp->alpha = alpha;
 					sp_tmp->beta  = beta;
-					sp_tmp->depth = depth + ((i+1)/2 + 1);
+					sp_tmp->depth = depth + ((i/2 + 1) % 4);
 					pthread_create(search_threads + i, NULL, parallel_search, sp_tmp);
 				}
 			}
