@@ -591,6 +591,17 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	return best_val;
 }
 
+void* parallel_search(void* arg)
+{
+	struct SearchParams* params = (struct SearchParams*) arg;
+	params->result = INVALID;
+	int val = search(params->su, params->ss, params->alpha, params->beta, params->depth);
+	// TODO: Try to abort search here itself and use this result
+	if (!abort_search)
+		params->result = val;
+	return NULL;
+}
+
 void print_stats(int thread_num, struct Position const * const pos)
 {
 	STATS(
@@ -641,6 +652,22 @@ int begin_search(struct SearchUnit* const su)
 	static int* alpha_delta;
 	static int* beta_delta;
 
+	int num_threads = spin_options[THREADS].curr_val - 1;
+	struct SearchUnit* su_tmp;
+	struct SearchStack (*ss_tmp)[MAX_PLY];
+	struct SearchParams* sp_tmp;
+	for (int i = 1; i <= num_threads; ++i) {
+		su_tmp = search_units + i;
+		ss_tmp = search_stacks + i;
+		sp_tmp = search_params + i;
+
+		get_search_unit_copy(su, su_tmp);
+		su_tmp->type = HELPER;
+		clear_search(su_tmp, *ss_tmp);
+		sp_tmp->su = su_tmp;
+		sp_tmp->ss = *ss_tmp;
+	}
+
 	for (depth = 1; depth <= max_depth; ++depth) {
 		alpha_delta = beta_delta = deltas;
 		if (depth < 5) {
@@ -651,7 +678,21 @@ int begin_search(struct SearchUnit* const su)
 			beta  = min(val + *beta_delta, +INFINITY);
 		}
 		while (1) {
+			abort_search = 0;
+			if (depth >= 3) {
+				for (int i = 1; i <= num_threads; ++i) {
+					sp_tmp = search_params + i;
+					sp_tmp->alpha = alpha;
+					sp_tmp->beta  = beta;
+					sp_tmp->depth = depth + ((i/2 + 1) % 4);
+					pthread_create(search_threads + i, NULL, parallel_search, sp_tmp);
+				}
+			}
 			val = search(su, ss, alpha, beta, depth);
+			abort_search = 1;
+			if (depth >= 3)
+				for (int i = 1; i <= num_threads; ++i)
+					pthread_join(search_threads[i], NULL);
 
 			if (   depth > 1
 			    && ctlr->is_stopped)
@@ -705,6 +746,9 @@ int begin_search(struct SearchUnit* const su)
 	}
 end_search:
 	print_stats(0, &su->pos);
+	for (int i = 0; i < num_threads; ++i) {
+		print_stats(i+1, &search_units[i].pos);
+	}
 
 	return best_move;
 }
