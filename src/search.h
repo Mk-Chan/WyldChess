@@ -156,7 +156,8 @@ static inline void clear_search(struct SearchUnit* const su, struct SearchStack*
 {
 	struct Controller* const ctlr = &controller;
 	ctlr->is_stopped     = 0;
-	ctlr->nodes_searched = 0ULL;
+	for (int i = 0; i < MAX_THREADS; ++i)
+		ctlr->nodes_searched[i] = 0ULL;
 	su->counter          = 0;
 	STATS(
 		struct Position* const pos    = &su->pos;

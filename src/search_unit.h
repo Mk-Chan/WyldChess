@@ -99,7 +99,7 @@ struct Controller
 	u64 time_left;
 	u64 search_start_time;
 	u64 search_end_time;
-	u64 nodes_searched;
+	u64 nodes_searched[MAX_THREADS];
 };
 
 extern struct Controller controller;
@@ -144,6 +144,16 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 	copy_su->max_searched_ply = 0;
 	copy_su->side             = su->side;
 	copy_su->game_over        = su->game_over;
+}
+
+static inline u64 total_nodes_searched()
+{
+	u64* thread_nodes = controller.nodes_searched;
+	static u64* end = controller.nodes_searched + MAX_THREADS;
+	u64 count = *thread_nodes;
+	for (++thread_nodes; thread_nodes < end; ++thread_nodes)
+		count += *thread_nodes;
+	return count;
 }
 
 static inline void sync(struct SearchUnit const * const su)
