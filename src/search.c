@@ -111,7 +111,7 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 	struct Position* const pos = &su->pos;
 	struct Controller* const ctlr = &controller;
 	struct SearchLocals* const sl = &su->sl;
-	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
+	++ctlr->nodes_searched[su - search_units];
 
 	if (pos->state->fifty_moves > 99)
 		return 0;
@@ -205,7 +205,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	struct Position* const pos = &su->pos;
 	struct Controller* const ctlr = &controller;
 	struct SearchLocals* const sl = &su->sl;
-	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
+	++ctlr->nodes_searched[su - search_units];
 	int old_alpha = alpha;
 	su->counter += (su->type == MAIN);
 
@@ -407,7 +407,7 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 				char mstr[6];
 				move_str(move, mstr);
 				fprintf(stdout, "info currmovenumber %d currmove %s nps %llu\n",
-					legal_moves, mstr, ctlr->nodes_searched * 1000 / time_passed);
+					legal_moves, mstr, total_nodes_searched() * 1000 / time_passed);
 			}
 		}
 
@@ -659,14 +659,14 @@ int begin_search(struct SearchUnit* const su)
 
 			time = curr_time() - ctlr->search_start_time;
 			if (su->protocol == XBOARD) {
-				fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, ctlr->nodes_searched);
+				fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, total_nodes_searched());
 			} else if (su->protocol == UCI) {
 				fprintf(stdout, "info ");
 				fprintf(stdout, "depth %u ", depth);
 				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
 				fprintf(stdout, "tbhits %llu ", su->sl.tb_hits);
 				if (depth > 2)
-					fprintf(stdout, "ebf %lf ", sqrt((double)ctlr->nodes_searched / old_node_counts[1]));
+					fprintf(stdout, "ebf %lf ", sqrt((double)total_nodes_searched() / old_node_counts[1]));
 				fprintf(stdout, "score ");
 				if (abs(val) < MAX_MATE_VAL) {
 					fprintf(stdout, "cp %d ", val);
@@ -677,9 +677,9 @@ int begin_search(struct SearchUnit* const su)
 					else
 						fprintf(stdout, "%d ", (-val + MATE + 1) / 2);
 				}
-				fprintf(stdout, "nodes %llu ", ctlr->nodes_searched);
+				fprintf(stdout, "nodes %llu ", total_nodes_searched());
 				if (time > 1000ULL)
-					fprintf(stdout, "nps %llu ", ctlr->nodes_searched * 1000 / time);
+					fprintf(stdout, "nps %llu ", total_nodes_searched() * 1000 / time);
 				fprintf(stdout, "time %llu ", time);
 				fprintf(stdout, "pv");
 			}
@@ -688,7 +688,7 @@ int begin_search(struct SearchUnit* const su)
 
 			if (depth > 1)
 				old_node_counts[1] = old_node_counts[0];
-			old_node_counts[0] = ctlr->nodes_searched;
+			old_node_counts[0] = total_nodes_searched();
 
 			if (val <= alpha) {
 				++alpha_delta;
