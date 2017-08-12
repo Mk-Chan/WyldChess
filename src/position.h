@@ -36,7 +36,6 @@ STATS(
 		u64 beta_cutoffs;
 		u64 hash_probes;
 		u64 hash_hits;
-		u64 cut_nodes;
 		u64 all_nodes;
 		u64 pv_nodes;
 		u64 total_nodes;
@@ -93,6 +92,7 @@ extern void undo_null_move(struct Position* const pos);
 extern void undo_move(struct Position* const pos);
 extern void do_move(struct Position* const pos, u32 const m);
 
+extern void legalize_list(struct Position* pos, struct Movelist* list);
 extern void gen_pseudo_legal_moves(struct Position* pos, struct Movelist* list);
 extern void gen_captures(struct Position* pos, struct Movelist* list);
 extern void gen_quiesce_moves(struct Position* pos, struct Movelist* list);
@@ -100,7 +100,6 @@ extern void gen_legal_moves(struct Position* pos, struct Movelist* list);
 extern void gen_check_evasions(struct Position* pos, struct Movelist* list);
 
 extern int evaluate(struct Position* const pos);
-extern void tune();
 
 static inline int king_sq(struct Position const * const pos, int c)
 {

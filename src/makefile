@@ -7,7 +7,7 @@ SZG_FILES = tbprobe.c
 
 CC_FILES = bitboard.c eval.c genmoves.c magicmoves.c main.c \
 	  move.c mt19937-64.c perft.c position.c search.c   \
-	  uci.c xboard.c misc.c options.c
+	  uci.c xboard.c misc.c options.c parallel_search.c
 
 SZG_OBJS = $(addprefix $(SZG_PATH)/, $(SZG_FILES:.c=.o))
 OBJS = $(CC_FILES:.c=.o)
@@ -47,7 +47,7 @@ stats:
 	$(MAKE) CC_FLAGS="$(CC_FLAGS) -DSTATS_BUILD"
 
 debug:
-	$(MAKE) CC_FLAGS="$(CC_FLAGS) -g -fno-omit-frame-pointer"
+	$(MAKE) CC_FLAGS="-g -fno-omit-frame-pointer"
 
 %.o: %.c
 	$(CC) $(CC_FLAGS) -c $< -o $@

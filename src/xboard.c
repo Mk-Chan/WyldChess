@@ -122,24 +122,26 @@ void* su_loop_xboard(void* args)
 	char mstr[6];
 	u32 move;
 	struct SearchUnit* su   = (struct SearchUnit*) args;
+	struct SearchWorker* sw = &su->sw;
 	struct Position* pos    = &su->pos;
 	struct Controller* ctlr = &controller;
 	while (1) {
-		switch (su->target_state) {
+		switch (sw->target_state) {
 		case WAITING:
-			su->curr_state = WAITING;
-			pthread_mutex_lock(&su->mutex);
-			while (su->target_state == WAITING)
-				pthread_cond_wait(&su->sleep_cv, &su->mutex);
-			pthread_mutex_unlock(&su->mutex);
+			sw->curr_state = WAITING;
+			pthread_mutex_lock(&sw->mutex);
+			while (sw->target_state == WAITING)
+				pthread_cond_wait(&sw->sleep_cv, &sw->mutex);
+			pthread_mutex_unlock(&sw->mutex);
 			break;
 
 		case THINKING:
-			su->curr_state = THINKING;
+			sw->curr_state = THINKING;
 			move = begin_search(su);
-			su->target_state = WAITING;
+			sw->target_state = WAITING;
 			move_str(move, mstr);
 			if (!legal_move(pos, move)) {
+				print_board(pos);
 				fprintf(stdout, "Invalid move by engine: %s\n", mstr);
 				pthread_exit(0);
 			}
@@ -148,14 +150,14 @@ void* su_loop_xboard(void* args)
 			break;
 
 		case ANALYZING:
-			su->curr_state = ANALYZING;
+			sw->curr_state = ANALYZING;
 			ctlr->search_start_time = curr_time();
 			begin_search(su);
-			su->target_state = WAITING;
+			sw->target_state = WAITING;
 			break;
 
 		case QUITTING:
-			su->curr_state = QUITTING;
+			sw->curr_state = QUITTING;
 			pthread_exit(0);
 		}
 	}
@@ -170,12 +172,12 @@ void xboard_loop()
 	u32   move;
 
 	struct SearchUnit* su = search_units;
+	struct SearchWorker* sw = &su->sw;
 	init_search_unit(su);
-	su->protocol = XBOARD;
 	struct Position* pos    = &su->pos;
 	struct Controller* ctlr = &controller;
-	su->game_over           = 0;
-	su->side                = BLACK;
+	sw->game_over           = 0;
+	sw->side                = BLACK;
 	ctlr->time_dependent    = 1;
 	ctlr->depth             = MAX_PLY;
 	ctlr->moves_per_session = 40;
@@ -183,7 +185,7 @@ void xboard_loop()
 	ctlr->time_left         = 240000;
 	ctlr->increment         = 0;
 
-	pthread_t* search_thread = search_threads;
+	pthread_t* search_thread = threads;
 	pthread_create(search_thread, NULL, su_loop_xboard, (void*) su);
 	pthread_detach(*search_thread);
 
@@ -228,12 +230,12 @@ void xboard_loop()
 		} else if (!strncmp(input, "new", 3)) {
 
 			transition(su, WAITING);
-			su->game_over = 0;
+			sw->game_over = 0;
 			init_search(&su->sl);
 			tt_clear(&tt);
 			init_pos(pos);
 			set_pos(pos, INITIAL_POSITION);
-			su->side                 = BLACK;
+			sw->side                = BLACK;
 			ctlr->time_dependent    = 1;
 			ctlr->depth             = MAX_PLY;
 			ctlr->moves_per_session = 40;
@@ -252,7 +254,7 @@ void xboard_loop()
 			transition(su, WAITING);
 			ctlr->time_dependent = 0;
 			ctlr->analyzing      = 1;
-			su->side             = -1;
+			sw->side             = -1;
 			transition(su, ANALYZING);
 
 		} else if (!strncmp(input, "exit", 4)) {
@@ -318,12 +320,12 @@ void xboard_loop()
 		} else if (!strncmp(input, "force", 5)) {
 
 			transition(su, WAITING);
-			su->side = -1;
+			sw->side = -1;
 
 		} else if (!strncmp(input, "result", 6)) {
 
 			transition(su, WAITING);
-			su->game_over = 1;
+			sw->game_over = 1;
 
 		} else if (!strncmp(input, "?", 1)) {
 
@@ -332,16 +334,16 @@ void xboard_loop()
 		} else if (!strncmp(input, "go", 2)) {
 
 			transition(su, WAITING);
-			su->side = pos->stm;
+			sw->side = pos->stm;
 			if (ctlr->moves_per_session) {
 				ctlr->moves_left = ctlr->moves_per_session
 					- ((pos->state->full_moves - 1) % ctlr->moves_per_session);
 			}
 
-			if (su->game_over)
+			if (sw->game_over)
 				check_result(pos);
 			else if (check_result(pos) != NO_RESULT)
-				su->game_over = 1;
+				sw->game_over = 1;
 			else
 				start_thinking(su);
 
@@ -356,7 +358,7 @@ void xboard_loop()
 			transition(su, WAITING);
 			if (pos->state > pos->hist)
 				undo_move(pos);
-			su->side = -1;
+			sw->side = -1;
 			if (ctlr->analyzing)
 				transition(su, ANALYZING);
 
@@ -400,11 +402,11 @@ void xboard_loop()
 			else
 				do_move(pos, move);
 
-			if (su->game_over)
+			if (sw->game_over)
 				check_result(pos);
 			else if (check_result(pos) != NO_RESULT)
-				su->game_over = 1;
-			else if (su->side == pos->stm)
+				sw->game_over = 1;
+			else if (sw->side == pos->stm)
 				start_thinking(su);
 			else if (ctlr->analyzing)
 				transition(su, ANALYZING);
@@ -412,6 +414,6 @@ void xboard_loop()
 		}
 	}
 cleanup_and_exit:
-	pthread_cond_destroy(&su->sleep_cv);
-	pthread_mutex_destroy(&su->mutex);
+	pthread_cond_destroy(&sw->sleep_cv);
+	pthread_mutex_destroy(&sw->mutex);
 }

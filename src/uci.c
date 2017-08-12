@@ -47,26 +47,27 @@ void* su_loop_uci(void* args)
 	char mstr[6];
 	u32 move;
 	struct SearchUnit* su = (struct SearchUnit*) args;
+	struct SearchWorker* sw = &su->sw;
 	while (1) {
-		switch(su->target_state) {
+		switch(su->sw.target_state) {
 		case WAITING:
-			su->curr_state = WAITING;
-			pthread_mutex_lock(&su->mutex);
-			while (su->target_state == WAITING)
-				pthread_cond_wait(&su->sleep_cv, &su->mutex);
-			pthread_mutex_unlock(&su->mutex);
+			sw->curr_state = WAITING;
+			pthread_mutex_lock(&sw->mutex);
+			while (sw->target_state == WAITING)
+				pthread_cond_wait(&sw->sleep_cv, &sw->mutex);
+			pthread_mutex_unlock(&sw->mutex);
 			break;
 
 		case THINKING:
-			su->curr_state = THINKING;
+			sw->curr_state = THINKING;
 			move = begin_search(su);
 			move_str(move, mstr);
 			fprintf(stdout, "bestmove %s\n", mstr);
-			su->target_state = WAITING;
+			sw->target_state = WAITING;
 			break;
 
 		case QUITTING:
-			su->curr_state = QUITTING;
+			sw->curr_state = QUITTING;
 			pthread_exit(0);
 		}
 	}
@@ -86,8 +87,7 @@ void uci_loop()
 	init_search_unit(su);
 	struct Position* pos    = &su->pos;
 	struct Controller* ctlr = &controller;
-	su->protocol = UCI;
-	pthread_t* search_thread = search_threads;
+	pthread_t* search_thread = threads;
 	pthread_create(search_thread, NULL, su_loop_uci, (void*) su);
 	pthread_detach(*search_thread);
 
@@ -242,6 +242,6 @@ void uci_loop()
 		}
 	}
 cleanup_and_exit:
-	pthread_cond_destroy(&su->sleep_cv);
-	pthread_mutex_destroy(&su->mutex);
+	pthread_cond_destroy(&su->sw.sleep_cv);
+	pthread_mutex_destroy(&su->sw.mutex);
 }

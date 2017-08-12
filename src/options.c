@@ -18,12 +18,6 @@
 
 #include "defs.h"
 #include "options.h"
-#include "search_unit.h"
-
-pthread_t search_threads[MAX_THREADS];
-struct SearchUnit search_units[MAX_THREADS];
-struct SearchStack search_stacks[MAX_THREADS][MAX_PLY];
-struct SearchParams search_params[MAX_THREADS];
 
 struct SpinOption spin_options[NUM_OPTIONS] = {
 	{ "MoveOverhead", 30, 1, 5000, NULL },

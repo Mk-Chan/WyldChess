@@ -21,6 +21,18 @@
 
 #include "search_unit.h"
 #include "tt.h"
+#include "syzygy/tbprobe.h"
+
+#define HISTORY_LIM (8000)
+#define MAX_HISTORY_DEPTH (12)
+
+extern volatile int abort_search;
+extern pthread_mutex_t split_mutex;
+
+extern int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth);
+extern int search_move(struct SearchUnit* su, struct SearchStack* ss, int best_val, int alpha, int beta, int depth,
+		       u32 move, u32 counter_move, int move_num, int static_eval, int checked, int node_type);
+extern void* work_loop(void* arg);
 
 static int equal_cap_bound = 50;
 
@@ -104,13 +116,30 @@ static inline int cap_order(struct Position const * const pos, u32 const m)
 	return cap_order + see_val;
 }
 
+static inline void sort_moves(u32* const move_arr, int* const order_arr, u32 len)
+{
+	u32 to_shift, i, j;
+	int to_shift_order;
+	for (i = 1; i < len; ++i) {
+		to_shift = move_arr[i];
+		to_shift_order = order_arr[i];
+		for (j = i; j && to_shift_order < order_arr[j - 1]; --j) {
+			move_arr[j] = move_arr[j - 1];
+			order_arr[j] = order_arr[j - 1];
+		}
+		move_arr[j] = to_shift;
+		order_arr[j] = to_shift_order;
+	}
+}
+
+
 static inline int stopped(struct SearchUnit* const su)
 {
 	struct Controller* ctlr = &controller;
 	if (ctlr->is_stopped)
 		return 1;
-	if (   su->target_state != THINKING
-	    && su->target_state != ANALYZING) {
+	if (   su->sw.target_state != THINKING
+	    && su->sw.target_state != ANALYZING) {
 		ctlr->is_stopped = 1;
 		return 1;
 	}
@@ -157,7 +186,7 @@ static inline void clear_search(struct SearchUnit* const su, struct SearchStack*
 	struct Controller* const ctlr = &controller;
 	ctlr->is_stopped     = 0;
 	ctlr->nodes_searched = 0ULL;
-	su->counter          = 0;
+	su->counter          = 0ULL;
 	STATS(
 		struct Position* const pos    = &su->pos;
 		pos->stats.correct_nt_guess   = 0;
@@ -171,7 +200,6 @@ static inline void clear_search(struct SearchUnit* const su, struct SearchStack*
 		pos->stats.hash_hits          = 0;
 		pos->stats.all_nodes          = 0ULL;
 		pos->stats.pv_nodes           = 0ULL;
-		pos->stats.cut_nodes          = 0ULL;
 		pos->stats.total_nodes        = 0ULL;
 	)
 	u32 i, j;

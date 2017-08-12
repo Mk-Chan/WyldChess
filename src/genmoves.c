@@ -366,9 +366,8 @@ void gen_pseudo_legal_moves(struct Position* pos, struct Movelist* list)
 	}
 }
 
-void gen_legal_moves(struct Position* pos, struct Movelist* list)
+void legalize_list(struct Position* pos, struct Movelist* list)
 {
-	gen_pseudo_legal_moves(pos, list);
 	int ksq       = king_sq(pos, pos->stm);
 	u64 pinned_bb = pos->state->pinned_bb;
 	u32* move;
@@ -383,4 +382,10 @@ void gen_legal_moves(struct Position* pos, struct Movelist* list)
 		else
 			++move;
 	}
+}
+
+void gen_legal_moves(struct Position* pos, struct Movelist* list)
+{
+	gen_pseudo_legal_moves(pos, list);
+	legalize_list(pos, list);
 }

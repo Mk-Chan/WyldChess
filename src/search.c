@@ -17,10 +17,6 @@
  */
 
 #include "search.h"
-#include "syzygy/tbprobe.h"
-
-#define HISTORY_LIM (8000)
-#define MAX_HISTORY_DEPTH (12)
 
 volatile int abort_search;
 
@@ -28,6 +24,66 @@ void init_search(struct SearchLocals* const sl)
 {
 	memset(sl->history, 0, sizeof(int) * 8 * 64);
 	memset(sl->counter_move_table, 0, sizeof(u32) * 64 * 64);
+}
+
+static int split_search(struct Position* pos, struct SearchLocals* sl, struct Movelist* list, int* order_arr, u32 counter_move,
+			u32 ply, u32* pv, u32* pv_depth, int* best_val, u32* best_move, int* alpha, int beta,
+			int depth, int move_num, int static_eval, int checked, int node_type, int thread_num)
+{
+	// Choose a split point
+	struct SplitPoint* sp = split_points;
+	static struct SplitPoint* end = split_points + MAX_SPLIT_POINTS;
+	pthread_mutex_lock(&split_mutex);
+	for (; sp != end; ++sp) {
+		if (!sp->in_use) {
+			sp->in_use = 1;
+			break;
+		}
+	}
+	if (sp == end) {
+		pthread_mutex_unlock(&split_mutex);
+		return 0;
+	}
+	pthread_mutex_unlock(&split_mutex);
+
+	// Sort the movelist(exempt already-tried first move) and copy to split point [Not necessarily useful]
+	int len = list->end - list->moves - 1;
+	sort_moves(list->moves + 1, order_arr + 1, len);
+	sp->list.end = sp->list.moves + len;
+	memcpy(&sp->list.moves, list->moves + 1, sizeof(u32) * len);
+
+	// Copy necessary items to split point
+	get_position_copy(pos, &sp->pos);
+	memcpy(&sp->sl, sl, sizeof(struct SearchLocals));
+	sp->pv = pv;
+	sp->pv_depth = pv_depth;
+	sp->ply = ply;
+	sp->beta = beta;
+	sp->alpha = alpha;
+	sp->depth = depth;
+	sp->checked = checked;
+	sp->best_val = best_val;
+	sp->move_num = move_num;
+	sp->best_move = best_move;
+	sp->node_type = node_type;
+	sp->moves_left = len;
+	sp->static_eval = static_eval;
+	sp->num_threads = 0;
+	sp->counter_move = counter_move;
+
+	// Set the owner, flag the split point joinable and go into the workloop
+	sp->owner_num = thread_num;
+	search_split_point(sp, thread_num);
+
+	// Could not get more moves from the split point so wait for it to finish
+	while (!sp->finished)
+		continue;
+
+	pthread_mutex_lock(&split_mutex);
+	sp->in_use = 0;
+	pthread_mutex_unlock(&split_mutex);
+
+	return 1;
 }
 
 static void reduce_history(struct SearchLocals* const sl)
@@ -108,7 +164,7 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 		return 0;
 	}
 
-	struct Position* const pos = &su->pos;
+	struct Position* const pos    = &su->pos;
 	struct Controller* const ctlr = &controller;
 	struct SearchLocals* const sl = &su->sl;
 	__sync_add_and_fetch(&ctlr->nodes_searched, 1);
@@ -195,7 +251,112 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 	return alpha;
 }
 
-static int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth)
+int search_move(struct SearchUnit* su, struct SearchStack* ss, int best_val, int alpha, int beta, int depth,
+		u32 move, u32 counter_move, int move_num, int static_eval, int checked, int node_type)
+{
+	struct Position* pos    = &su->pos;
+	struct SearchLocals* sl = &su->sl;
+	struct Controller* ctlr = &controller;
+
+	int non_pawn_pieces_count = popcnt((pos->bb[pos->stm] & ~(pos->bb[KING] ^ pos->bb[PAWN])));
+
+	int depth_left    = depth - 1;
+	int checking_move = gives_check(pos, move);
+
+	if (  !ss->ply
+	    && protocol == UCI) {
+		u64 time_passed = curr_time() - ctlr->search_start_time;
+		if (time_passed >= 1000ULL) {
+			char mstr[6];
+			move_str(move, mstr);
+			fprintf(stdout, "info thread %ld currmovenumber %d currmove %s nps %llu\n",
+				su - search_units, move_num, mstr, ctlr->nodes_searched * 1000 / time_passed);
+		}
+	}
+
+	// Check extension
+	if (    checking_move
+	    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
+		++depth_left;
+
+	// Heuristic pruning and reductions
+	if (    ss->ply
+	    &&  best_val > -MAX_MATE_VAL
+	    &&  move_num > 1
+	    &&  prom_type(move) != QUEEN
+	    &&  non_pawn_pieces_count
+	    && !checking_move
+	    && !cap_type(move)) {
+
+		// Futility pruning
+		if (   depth < 8
+		    && node_type != PV_NODE
+		    && static_eval + 100 * depth_left <= alpha)
+			return -INFINITY;
+
+		// Prune moves with horrible SEE at low depth(idea from Stockfish)
+		if (   depth < 8
+		    && see(pos, move) < -10 * depth * depth)
+			return -INFINITY;
+
+		int passer_move = is_passed_pawn(pos, from_sq(move), pos->stm)
+			  && (pos->stm == WHITE ? rank_of(to_sq(move)) >= RANK_6 : rank_of(to_sq(move)) <= RANK_3);
+
+		// Late move reduction
+		if (    depth > 2
+		    &&  move_num > (node_type == PV_NODE ? 5 : 3)
+		    &&  move != ss->killers[0]
+		    &&  move != ss->killers[1]
+		    &&  move != counter_move
+		    && !passer_move
+		    && !checked) {
+			int reduction = 2;
+			int hist_val = sl->history[pos->board[from_sq(move)]][to_sq(move)];
+			reduction += (move_num > 10)
+				   + (node_type != PV_NODE)
+				   + (hist_val < -500)
+				   + (hist_val < -3000)
+				   - (hist_val > 500)
+				   - (hist_val > 3000);
+			depth_left = max(1, depth - max(2, reduction));
+		}
+	}
+
+	int val = INVALID;
+	ss[1].pv_depth = 0;
+	do_move(pos, move);
+
+	if (move_num == 1) {
+		ss[1].node_type = node_type == PV_NODE  ? PV_NODE
+				: node_type == CUT_NODE ? ALL_NODE
+				: CUT_NODE;
+		ss[1].forward_prune = 1;
+		val = -search(su, ss + 1, -beta , -alpha, depth_left);
+	} else if (node_type != PV_NODE) {
+		ss[1].node_type     = CUT_NODE;
+		ss[1].forward_prune = 1;
+		val = -search(su, ss + 1, -beta, -alpha, depth_left);
+		if (   val > alpha
+		    && depth_left < depth - 1) {
+			ss[1].node_type = ALL_NODE;
+			val = -search(su, ss + 1, -beta, -alpha, depth - 1);
+		}
+	} else {
+		ss[1].node_type     = CUT_NODE;
+		ss[1].forward_prune = 1;
+		val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
+		if (val > alpha) {
+			ss[1].node_type = PV_NODE;
+			val = -search(su, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
+		}
+	}
+
+	undo_move(pos);
+
+	return val;
+}
+
+int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth)
 {
 	if (depth <= 0) {
 		ss->pv_depth = 0;
@@ -209,8 +370,8 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	int old_alpha = alpha;
 	su->counter += (su->type == MAIN);
 
-	if (ss->ply > su->max_searched_ply)
-		su->max_searched_ply = ss->ply;
+	if (ss->ply > su->max_ply)
+		su->max_ply = ss->ply;
 
 	if (ss->ply) {
 		if (     su->type == MAIN
@@ -348,7 +509,6 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 				STATS(
 					++pos->stats.null_cutoffs;
 					++pos->stats.correct_nt_guess;
-					++pos->stats.cut_nodes;
 					++pos->stats.total_nodes;
 				)
 				if (val >= MAX_MATE_VAL)
@@ -370,11 +530,11 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 			++pos->stats.iid_tries;
 		)
 
-		int reduction     = 2;
-		int ep            = ss->forward_prune;
+		int iid_depth     = depth - 2;
+		int fp            = ss->forward_prune;
 		ss->forward_prune = 0;
-		search(su, ss, alpha, beta, depth - reduction);
-		ss->forward_prune = ep;
+		search(su, ss, alpha, beta, iid_depth);
+		ss->forward_prune = fp;
 
 		entry   = tt_probe(&tt, pos->state->pos_key);
 		tt_move = get_move(entry.data);
@@ -385,6 +545,13 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	set_pinned(pos);
 	gen_legal_moves(pos, list);
 
+	if (!(list->end - list->moves)) {
+		if (checked)
+			return -MATE + ss->ply;
+		else
+			return 0;
+	}
+
 	order_moves(pos, ss, sl, tt_move);
 
 	u32 counter_move = 0;
@@ -392,106 +559,15 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 		counter_move = sl->counter_move_table[from_sq((pos->state-1)->move)][to_sq((pos->state-1)->move)];
 
 	int best_val    = -INFINITY,
-	    best_move   = 0,
 	    legal_moves = 0;
-	int checking_move, depth_left, val;
+	int val;
+	u32 best_move = 0;
 	u32 move;
 	while ((move = get_next_move(ss, legal_moves))) {
 		++legal_moves;
 
-		if (  !ss->ply
-		    && su->type == MAIN
-		    && su->protocol == UCI) {
-			u64 time_passed = curr_time() - ctlr->search_start_time;
-			if (time_passed >= 1000ULL) {
-				char mstr[6];
-				move_str(move, mstr);
-				fprintf(stdout, "info currmovenumber %d currmove %s nps %llu\n",
-					legal_moves, mstr, ctlr->nodes_searched * 1000 / time_passed);
-			}
-		}
-
-		depth_left    = depth - 1;
-		checking_move = gives_check(pos, move);
-
-		// Check extension
-		if (    checking_move
-		    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
-			++depth_left;
-
-		// Heuristic pruning and reductions
-		if (    ss->ply
-		    &&  best_val > -MAX_MATE_VAL
-		    &&  legal_moves > 1
-		    &&  prom_type(move) != QUEEN
-		    &&  non_pawn_pieces_count
-		    && !checking_move
-		    && !cap_type(move)) {
-
-			// Futility pruning
-			if (   depth < 8
-			    && node_type != PV_NODE
-			    && static_eval + 100 * depth_left <= alpha)
-				continue;
-
-			// Prune moves with horrible SEE at low depth(idea from Stockfish)
-			if (   depth < 8
-			    && see(pos, move) < -10 * depth * depth)
-				continue;
-
-			int passer_move = is_passed_pawn(pos, from_sq(move), pos->stm)
-				  && (pos->stm == WHITE ? rank_of(to_sq(move)) >= RANK_6 : rank_of(to_sq(move)) <= RANK_3);
-
-			// Late move reduction
-			if (    depth > 2
-			    &&  legal_moves > (node_type == PV_NODE ? 5 : 3)
-			    &&  move != ss->killers[0]
-			    &&  move != ss->killers[1]
-			    &&  move != counter_move
-			    && !passer_move
-			    && !checked) {
-				int reduction = 2;
-				int hist_val = sl->history[pos->board[from_sq(move)]][to_sq(move)];
-				reduction += (legal_moves > 10)
-					   + (node_type != PV_NODE)
-					   + (hist_val < -500)
-					   + (hist_val < -3000)
-					   - (hist_val > 500)
-					   - (hist_val > 3000);
-				depth_left = max(1, depth - max(2, reduction));
-			}
-		}
-
-		ss[1].pv_depth = 0;
-		do_move(pos, move);
-
-		// Principal Variation Search
-		if (legal_moves == 1) {
-			ss[1].node_type = node_type == PV_NODE  ? PV_NODE
-				        : node_type == CUT_NODE ? ALL_NODE
-					: CUT_NODE;
-			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -beta , -alpha, depth_left);
-		} else if (node_type != PV_NODE) {
-			ss[1].node_type     = CUT_NODE;
-			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -beta, -alpha, depth_left);
-			if (   val > alpha
-			    && depth_left < depth - 1) {
-				ss[1].node_type = ALL_NODE;
-				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
-			}
-		} else {
-			ss[1].node_type     = CUT_NODE;
-			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
-			if (val > alpha) {
-				ss[1].node_type = PV_NODE;
-				val = -search(su, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
-			}
-		}
-
-		undo_move(pos);
+		val = search_move(su, ss, best_val, alpha, beta, depth, move,
+			    counter_move, legal_moves, static_eval, checked, node_type);
 
 		if (ctlr->is_stopped || abort_search)
 			return 0;
@@ -547,9 +623,24 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 					break;
 				}
 
-				ss->pv[0] = move;
-				memcpy(ss->pv + 1, ss[1].pv, sizeof(u32) * ss[1].pv_depth);
-				ss->pv_depth = ss[1].pv_depth + 1;
+				if (node_type == PV_NODE) {
+					ss->pv[0] = move;
+					memcpy(ss->pv + 1, ss[1].pv, sizeof(u32) * ss[1].pv_depth);
+					ss->pv_depth = ss[1].pv_depth + 1;
+				}
+			}
+		}
+
+		// Young Brothers Wait Parallel Search
+		if (   legal_moves == 1
+		    && (list->end - list->moves) >= 3
+		    && depth >= 5) {
+			int split = split_search( pos, sl, list, ss->order_arr, counter_move, ss->ply, ss->pv, &ss->pv_depth,
+						 &best_val, &best_move, &alpha, beta, depth, legal_moves + 1, static_eval,
+						  checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
+			if (split) {
+				legal_moves = list->end - list->moves;
+				break;
 			}
 		}
 	}
@@ -557,7 +648,6 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	STATS(
 		if (best_val >= beta) {
 			pos->stats.correct_nt_guess += (node_type == CUT_NODE);
-			++pos->stats.cut_nodes;
 		} else if (best_val > old_alpha) {
 			pos->stats.correct_nt_guess += (node_type == PV_NODE);
 			++pos->stats.pv_nodes;
@@ -573,13 +663,6 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	    && legal_moves == 1) {
 		ctlr->is_stopped = 1;
 		abort_search = 1;
-	}
-
-	if (!legal_moves) {
-		if (checked)
-			return -MATE + ss->ply;
-		else
-			return 0;
 	}
 
 	u64 flag = best_val >= beta     ? FLAG_LOWER
@@ -607,7 +690,7 @@ void print_stats(int thread_num, struct Position const * const pos)
 		fprintf(stdout, "all nodes:                %lf\n",
 			((double)stats->all_nodes) / stats->total_nodes);
 		fprintf(stdout, "cut nodes:                %lf\n",
-			((double)stats->cut_nodes) / stats->total_nodes);
+			((double)stats->beta_cutoffs) / stats->total_nodes);
 		fprintf(stdout, "ordering at cut nodes:    %lf\n",
 			((double)stats->first_beta_cutoffs) / stats->beta_cutoffs);
 		fprintf(stdout, "correct node predictions: %lf\n",
@@ -629,9 +712,9 @@ int begin_search(struct SearchUnit* const su)
 
 	su->sl.tb_hits = 0ULL;
 
-	ss->forward_prune    = 0;
-	ss->node_type        = PV_NODE;
-	su->max_searched_ply = 0;
+	ss->forward_prune = 0;
+	ss->node_type     = PV_NODE;
+	su->max_ply       = 0;
 
 	u64 old_node_counts[2];
 
@@ -640,6 +723,14 @@ int begin_search(struct SearchUnit* const su)
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
 	static int* alpha_delta;
 	static int* beta_delta;
+
+	abort_search = 0;
+	pthread_t* thread;
+	int num_threads = spin_options[THREADS].curr_val - 1;
+	for (int i = 1; i <= num_threads; ++i) {
+		thread = threads + i;
+		pthread_create(thread, NULL, work_loop, thread);
+	}
 
 	for (depth = 1; depth <= max_depth; ++depth) {
 		alpha_delta = beta_delta = deltas;
@@ -658,12 +749,12 @@ int begin_search(struct SearchUnit* const su)
 				goto end_search;
 
 			time = curr_time() - ctlr->search_start_time;
-			if (su->protocol == XBOARD) {
+			if (protocol == XBOARD) {
 				fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, ctlr->nodes_searched);
-			} else if (su->protocol == UCI) {
+			} else if (protocol == UCI) {
 				fprintf(stdout, "info ");
 				fprintf(stdout, "depth %u ", depth);
-				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
+				fprintf(stdout, "seldepth %u ", su->max_ply);
 				fprintf(stdout, "tbhits %llu ", su->sl.tb_hits);
 				if (depth > 2)
 					fprintf(stdout, "ebf %lf ", sqrt((double)ctlr->nodes_searched / old_node_counts[1]));
@@ -704,6 +795,9 @@ int begin_search(struct SearchUnit* const su)
 		best_move = get_pv_move(ss);
 	}
 end_search:
+	abort_search = 1;
+	for (int i = 1; i <= num_threads; ++i)
+		pthread_join(*thread, NULL);
 	print_stats(0, &su->pos);
 
 	return best_move;

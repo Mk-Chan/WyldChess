@@ -50,8 +50,8 @@ struct SearchStack
 	u32 killers[2];
 	int order_arr[MAX_MOVES_PER_POS];
 	struct Movelist list;
-	int pv_depth;
 	u32 pv[MAX_PLY];
+	u32 pv_depth;
 };
 
 struct SearchLocals
@@ -61,30 +61,24 @@ struct SearchLocals
 	u32 counter_move_table[64][64];
 };
 
+struct SearchWorker
+{
+	int side;
+	int game_over;
+	int volatile target_state;
+	int volatile curr_state;
+	pthread_mutex_t mutex;
+	pthread_cond_t sleep_cv;
+};
+
 struct SearchUnit
 {
 	struct Position pos;
 	struct SearchLocals sl;
-	pthread_mutex_t mutex;
-	pthread_cond_t sleep_cv;
-	u32 max_searched_ply;
+	u64 counter;
+	u32 max_ply;
 	int type;
-	int protocol;
-	int side;
-	int game_over;
-	int counter;
-	int volatile target_state;
-	int volatile curr_state;
-};
-
-struct SearchParams
-{
-	struct SearchUnit* su;
-	struct SearchStack* ss;
-	int alpha;
-	int beta;
-	int depth;
-	int result;
+	struct SearchWorker sw;
 };
 
 struct Controller
@@ -102,14 +96,42 @@ struct Controller
 	u64 nodes_searched;
 };
 
+struct SplitPoint
+{
+	struct Position pos;
+	struct SearchLocals sl;
+	struct Movelist list;
+	u32 counter_move;
+	u32 ply;
+	u32* pv;
+	u32* pv_depth;
+	int* best_val;
+	u32* best_move;
+	int* alpha;
+	int beta;
+	int depth;
+	int checked;
+	int move_num;
+	int node_type;
+	int static_eval;
+	int moves_left;
+	int volatile num_threads;
+	int volatile in_use;
+	int volatile finished;
+	int volatile joinable;
+	int owner_num;
+	pthread_mutex_t mutex;
+};
+
+extern int protocol;
 extern struct Controller controller;
 
-extern pthread_t search_threads[MAX_THREADS];
 extern struct SearchUnit search_units[MAX_THREADS];
 extern struct SearchStack search_stacks[MAX_THREADS][MAX_PLY];
-extern struct SearchParams search_params[MAX_THREADS];
+extern struct SplitPoint split_points[MAX_SPLIT_POINTS];
+extern pthread_t threads[MAX_THREADS];
 
-
+extern void search_split_point(struct SplitPoint* sp, int thread_num);
 extern void init_search(struct SearchLocals* const sl);
 extern int begin_search(struct SearchUnit* const su);
 extern void xboard_loop();
@@ -117,10 +139,10 @@ extern void uci_loop();
 
 static inline void init_search_unit(struct SearchUnit* const su)
 {
-	pthread_mutex_init(&su->mutex, NULL);
-	pthread_cond_init(&su->sleep_cv, NULL);
+	pthread_mutex_init(&su->sw.mutex, NULL);
+	pthread_cond_init(&su->sw.sleep_cv, NULL);
 	su->type = MAIN;
-	su->target_state = WAITING;
+	su->sw.target_state = WAITING;
 	init_search(&su->sl);
 	init_pos(&su->pos);
 	set_pos(&su->pos, INITIAL_POSITION);
@@ -135,33 +157,32 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 {
 	get_position_copy(&su->pos, &copy_su->pos);
 	get_search_locals_copy(&su->sl, &copy_su->sl);
-	pthread_mutex_init(&copy_su->mutex, NULL);
-	pthread_cond_init(&copy_su->sleep_cv, NULL);
+	pthread_mutex_init(&copy_su->sw.mutex, NULL);
+	pthread_cond_init(&copy_su->sw.sleep_cv, NULL);
+	copy_su->counter          = 0ULL;
 	copy_su->type             = su->type;
-	copy_su->target_state     = WAITING;
-	copy_su->counter          = 0;
-	copy_su->protocol         = su->protocol;
-	copy_su->max_searched_ply = 0;
-	copy_su->side             = su->side;
-	copy_su->game_over        = su->game_over;
+	copy_su->max_ply          = su->max_ply;
+	copy_su->sw.target_state  = WAITING;
+	copy_su->sw.side          = su->sw.side;
+	copy_su->sw.game_over     = su->sw.game_over;
 }
 
 static inline void sync(struct SearchUnit const * const su)
 {
-	while (su->curr_state != su->target_state)
+	while (su->sw.curr_state != su->sw.target_state)
 		continue;
 }
 
 static inline void transition(struct SearchUnit* const su, int target_state)
 {
-	if (su->curr_state == WAITING) {
-		pthread_mutex_lock(&su->mutex);
-		su->target_state = target_state;
-		pthread_cond_signal(&su->sleep_cv);
-		pthread_mutex_unlock(&su->mutex);
+	if (su->sw.curr_state == WAITING) {
+		pthread_mutex_lock(&su->sw.mutex);
+		su->sw.target_state = target_state;
+		pthread_cond_signal(&su->sw.sleep_cv);
+		pthread_mutex_unlock(&su->sw.mutex);
 	}
 	else {
-		su->target_state = target_state;
+		su->sw.target_state = target_state;
 	}
 	sync(su);
 }
