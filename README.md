@@ -1,11 +1,7 @@
-# WyldChess
-
-## Latest Release
-Get the latest release here: [Latest Release](https://github.com/Mk-Chan/WyldChess/releases/latest)
+# Young Wyld
 
 ### Overview
-A free chess engine in C. It does not provide a GUI (Graphical User Interface)
-but can be linked to one that supports either the UCI protocol or CECP (the Xboard/Winboard protocol) such as Winboard/Xboard, Arena or Cutechess
+A branch dedicated to the development of the YBW algorithm in WyldChess.
 
 ### Features
 
