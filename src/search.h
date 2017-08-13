@@ -155,10 +155,10 @@ static inline u32 get_pv_move(struct SearchStack const * const ss)
 static inline void clear_search(struct SearchUnit* const su, struct SearchStack* const ss)
 {
 	struct Controller* const ctlr = &controller;
-	ctlr->is_stopped     = 0;
 	for (int i = 0; i < MAX_THREADS; ++i)
 		ctlr->nodes_searched[i] = 0ULL;
-	su->counter          = 0;
+	ctlr->is_stopped = 0;
+	su->counter = 0;
 	STATS(
 		struct Position* const pos    = &su->pos;
 		pos->stats.correct_nt_guess   = 0;
