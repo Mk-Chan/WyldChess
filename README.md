@@ -35,7 +35,7 @@ but can be linked to one that supports either the UCI protocol or CECP (the Xboa
     * "Can win?" scenarios(incomplete)
 
 #### Search
-* Lazy SMP
+* Young Brothers Wait
 * Aspiration window search
 * Pruning losing captures (negative SEE) in quiescence search if not in check
 * Mate distance pruning
