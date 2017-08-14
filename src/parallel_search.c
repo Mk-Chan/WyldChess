@@ -49,11 +49,14 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 	// Select move
 	if (thread_num == sp->owner_num) {
 		move = get_next_move(sp, &move_num);
+		++sp->num_threads;
 		sp->finished = 0;
 		sp->joinable = 1;
 	} else {
 		pthread_mutex_lock(&sp->mutex);
-		if (!sp->joinable || sp->finished) {
+		if (  !sp->joinable
+		    || sp->finished
+		    || sp->num_threads >= MAX_THREADS_PER_SP) {
 			pthread_mutex_unlock(&sp->mutex);
 			return;
 		}
@@ -111,17 +114,17 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 		pthread_mutex_lock(&sp->mutex);
 		--sp->moves_left;
 		if (!sp->moves_left) {
+			--sp->num_threads;
 			sp->joinable = 0;
 			sp->finished = 1;
-			--sp->num_threads;
 			pthread_mutex_unlock(&sp->mutex);
 			break;
 		}
 
 		move = get_next_move(sp, &move_num);
 		if (!move) {
-			sp->joinable = 0;
 			--sp->num_threads;
+			sp->joinable = 0;
 			pthread_mutex_unlock(&sp->mutex);
 			break;
 		}
@@ -144,7 +147,8 @@ void* work_loop(void* arg)
 		min_depth = INFINITY;
 		for (; curr != end; ++curr) {
 			if (curr->in_use && curr->joinable) {
-				if (min_depth > curr->depth) {
+				if (   min_depth > curr->depth
+				    && curr->num_threads < MAX_THREADS_PER_SP) {
 					min_depth = curr->depth;
 					sp = curr;
 				}

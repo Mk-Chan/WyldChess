@@ -581,7 +581,7 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 	// Young Brothers Wait Parallel Search
 	if (    node_type == ALL_NODE
 	    && (list->end - list->moves) >= 3
-	    &&  depth >= 5) {
+	    &&  depth >= MIN_SPLIT_DEPTH) {
 		int split = split_search( pos, sl, list, ss->order_arr, SKIP_NONE, counter_move, ss->ply, ss->pv,
 					 &ss->pv_depth, &best_val, &best_move, &alpha, beta, depth, legal_moves + 1,
 					  static_eval, checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
@@ -661,7 +661,7 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 		// Young Brothers Wait Parallel Search
 		if (    legal_moves == 1
 		    && (list->end - list->moves) >= 3
-		    &&  depth >= 5) {
+		    &&  depth >= MIN_SPLIT_DEPTH) {
 			int split = split_search( pos, sl, list, ss->order_arr, SKIP_FIRST, counter_move, ss->ply, ss->pv, &ss->pv_depth,
 						 &best_val, &best_move, &alpha, beta, depth, legal_moves + 1, static_eval,
 						  checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
