@@ -52,7 +52,7 @@
 #define MAX_PHASE          (256)
 #define INVALID            (INFINITY+1)
 #define MAX_SPLIT_POINTS   (64)
-#define MIN_SPLIT_DEPTH    (8)
+#define MIN_SPLIT_DEPTH    (5)
 #define MAX_THREADS_PER_SP (4)
 
 #define MOVE_TYPE_SHIFT (12)

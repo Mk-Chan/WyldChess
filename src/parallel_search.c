@@ -147,10 +147,9 @@ void* work_loop(void* arg)
 		min_depth = INFINITY;
 		for (; curr != end; ++curr) {
 			if (curr->in_use && curr->joinable) {
-				if (   min_depth > curr->depth
-				    && curr->num_threads < MAX_THREADS_PER_SP) {
-					min_depth = curr->depth;
+				if (curr->num_threads < MAX_THREADS_PER_SP) {
 					sp = curr;
+					break;
 				}
 			}
 		}
