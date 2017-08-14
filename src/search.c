@@ -18,6 +18,11 @@
 
 #include "search.h"
 
+enum {
+	SKIP_FIRST,
+	SKIP_NONE
+};
+
 volatile int abort_search;
 
 void init_search(struct SearchLocals* const sl)
@@ -26,9 +31,10 @@ void init_search(struct SearchLocals* const sl)
 	memset(sl->counter_move_table, 0, sizeof(u32) * 64 * 64);
 }
 
-static int split_search(struct Position* pos, struct SearchLocals* sl, struct Movelist* list, int* order_arr, u32 counter_move,
-			u32 ply, u32* pv, u32* pv_depth, int* best_val, u32* best_move, int* alpha, int beta,
-			int depth, int move_num, int static_eval, int checked, int node_type, int thread_num)
+static int split_search(struct Position* pos, struct SearchLocals* sl, struct Movelist* list, int* order_arr,
+			int skip_first, u32 counter_move, u32 ply, u32* pv, u32* pv_depth, int* best_val,
+			u32* best_move, int* alpha, int beta, int depth, int move_num, int static_eval,
+			int checked, int node_type, int thread_num)
 {
 	// Choose a split point
 	struct SplitPoint* sp = split_points;
@@ -46,11 +52,19 @@ static int split_search(struct Position* pos, struct SearchLocals* sl, struct Mo
 	}
 	pthread_mutex_unlock(&split_mutex);
 
-	// Sort the movelist(exempt already-tried first move) and copy to split point [Not necessarily useful]
-	int len = list->end - list->moves - 1;
-	sort_moves(list->moves + 1, order_arr + 1, len);
-	sp->list.end = sp->list.moves + len;
-	memcpy(&sp->list.moves, list->moves + 1, sizeof(u32) * len);
+	// Sort the movelist and copy to split point [Not necessarily useful]
+	int len = 0;
+	if (skip_first == SKIP_FIRST) {
+		len = list->end - list->moves - 1;
+		sort_moves(list->moves + 1, order_arr + 1, len);
+		sp->list.end = sp->list.moves + len;
+		memcpy(&sp->list.moves, list->moves + 1, sizeof(u32) * len);
+	} else {
+		len = list->end - list->moves;
+		sort_moves(list->moves, order_arr, len);
+		sp->list.end = sp->list.moves + len;
+		memcpy(&sp->list.moves, list->moves, sizeof(u32) * len);
+	}
 
 	// Copy necessary items to split point
 	get_position_copy(pos, &sp->pos);
@@ -563,6 +577,19 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 	int val;
 	u32 best_move = 0;
 	u32 move;
+
+	// Young Brothers Wait Parallel Search
+	if (    node_type == ALL_NODE
+	    && (list->end - list->moves) >= 3
+	    &&  depth >= 5) {
+		int split = split_search( pos, sl, list, ss->order_arr, SKIP_NONE, counter_move, ss->ply, ss->pv,
+					 &ss->pv_depth, &best_val, &best_move, &alpha, beta, depth, legal_moves + 1,
+					  static_eval, checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
+		if (split) {
+			legal_moves = list->end - list->moves;
+			goto after_move_loop;
+		}
+	}
 	while ((move = get_next_move(ss, legal_moves))) {
 		++legal_moves;
 
@@ -632,10 +659,10 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 		}
 
 		// Young Brothers Wait Parallel Search
-		if (   legal_moves == 1
+		if (    legal_moves == 1
 		    && (list->end - list->moves) >= 3
-		    && depth >= 5) {
-			int split = split_search( pos, sl, list, ss->order_arr, counter_move, ss->ply, ss->pv, &ss->pv_depth,
+		    &&  depth >= 5) {
+			int split = split_search( pos, sl, list, ss->order_arr, SKIP_FIRST, counter_move, ss->ply, ss->pv, &ss->pv_depth,
 						 &best_val, &best_move, &alpha, beta, depth, legal_moves + 1, static_eval,
 						  checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
 			if (split) {
@@ -644,6 +671,7 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 			}
 		}
 	}
+after_move_loop:
 
 	STATS(
 		if (best_val >= beta) {
