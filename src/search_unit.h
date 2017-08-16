@@ -103,6 +103,7 @@ struct SplitPoint
 	struct Movelist list;
 	u32 counter_move;
 	u32 ply;
+	u32 max_ply;
 	u32* pv;
 	u32* pv_depth;
 	int* best_val;

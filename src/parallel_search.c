@@ -74,7 +74,7 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 	memcpy(&su->sl, &sp->sl, sizeof(struct SearchLocals));
 
 	su->counter = 0ULL;
-	su->max_ply = 0;
+	su->max_ply = sp->max_ply;
 	while (1) {
 		pthread_mutex_lock(&sp->mutex);
 		alpha = *sp->alpha;
@@ -86,9 +86,9 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 
 		if (ctlr->is_stopped || abort_search) {
 			pthread_mutex_lock(&sp->mutex);
+			--sp->num_threads;
 			sp->joinable = 0;
 			sp->finished = 1;
-			--sp->num_threads;
 			pthread_mutex_unlock(&sp->mutex);
 			break;
 		}
@@ -134,7 +134,6 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 
 void* work_loop(void* arg)
 {
-	int min_depth;
 	int thread_num = ((pthread_t*) arg) - threads;
 
 	struct SplitPoint* sp;
@@ -144,7 +143,6 @@ void* work_loop(void* arg)
 		// Choose split point
 		sp = NULL;
 		curr = split_points;
-		min_depth = INFINITY;
 		for (; curr != end; ++curr) {
 			if (curr->in_use && curr->joinable) {
 				if (curr->num_threads < MAX_THREADS_PER_SP) {

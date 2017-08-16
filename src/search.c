@@ -34,7 +34,7 @@ void init_search(struct SearchLocals* const sl)
 static int split_search(struct Position* pos, struct SearchLocals* sl, struct Movelist* list, int* order_arr,
 			int skip_first, u32 counter_move, u32 ply, u32* pv, u32* pv_depth, int* best_val,
 			u32* best_move, int* alpha, int beta, int depth, int move_num, int static_eval,
-			int checked, int node_type, int thread_num)
+			u32 max_ply, int checked, int node_type, int thread_num)
 {
 	// Choose a split point
 	struct SplitPoint* sp = split_points;
@@ -76,6 +76,7 @@ static int split_search(struct Position* pos, struct SearchLocals* sl, struct Mo
 	sp->alpha = alpha;
 	sp->depth = depth;
 	sp->checked = checked;
+	sp->max_ply = max_ply;
 	sp->best_val = best_val;
 	sp->move_num = move_num;
 	sp->best_move = best_move;
@@ -582,9 +583,9 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 	if (    node_type == ALL_NODE
 	    && (list->end - list->moves) >= 3
 	    &&  depth >= MIN_SPLIT_DEPTH) {
-		int split = split_search( pos, sl, list, ss->order_arr, SKIP_NONE, counter_move, ss->ply, ss->pv,
-					 &ss->pv_depth, &best_val, &best_move, &alpha, beta, depth, legal_moves + 1,
-					  static_eval, checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
+		int split = split_search( pos, sl, list, ss->order_arr, SKIP_NONE, counter_move, ss->ply, ss->pv, &ss->pv_depth,
+					 &best_val, &best_move, &alpha, beta, depth, legal_moves + 1, static_eval, su->max_ply,
+					 checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
 		if (split) {
 			legal_moves = list->end - list->moves;
 			goto after_move_loop;
@@ -663,7 +664,7 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 		    && (list->end - list->moves) >= 3
 		    &&  depth >= MIN_SPLIT_DEPTH) {
 			int split = split_search( pos, sl, list, ss->order_arr, SKIP_FIRST, counter_move, ss->ply, ss->pv, &ss->pv_depth,
-						 &best_val, &best_move, &alpha, beta, depth, legal_moves + 1, static_eval,
+						 &best_val, &best_move, &alpha, beta, depth, legal_moves + 1, static_eval, su->max_ply,
 						  checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
 			if (split) {
 				legal_moves = list->end - list->moves;
