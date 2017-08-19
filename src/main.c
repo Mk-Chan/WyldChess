@@ -38,6 +38,10 @@ void init_parallel_resources()
 		curr->joinable = 0;
 		curr->finished = 1;
 		pthread_mutex_init(&curr->mutex, NULL);
+		if (i)
+			search_units[i].type = HELPER;
+		else
+			search_units[i].type = MAIN;
 	}
 	for (int i = 0; i < MAX_THREADS; ++i) {
 		for (int j = 0; j < MAX_PLY; ++j) {
