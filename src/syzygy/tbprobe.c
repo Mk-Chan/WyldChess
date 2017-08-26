@@ -126,7 +126,6 @@ struct pos
 static bool do_move(struct pos *pos, const struct pos *pos0, uint16_t move);
 static int probe_dtz(const struct pos *pos, int *success);
 
-unsigned TB_LARGEST = 0;
 #include "tbcore.c"
 
 #define rank(s)                 ((s) >> 3)

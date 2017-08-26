@@ -686,7 +686,7 @@ int begin_search(struct SearchUnit* const su)
 					sp_tmp = search_params + i;
 					sp_tmp->alpha = alpha;
 					sp_tmp->beta  = beta;
-					sp_tmp->depth = depth + 1;
+					sp_tmp->depth = depth + (i/2 + 1);
 					pthread_create(search_threads + i, NULL, parallel_search, sp_tmp);
 				}
 			}
@@ -695,12 +695,14 @@ int begin_search(struct SearchUnit* const su)
 				if (depth >= 5) {
 					for (int i = 1; i <= num_threads; ++i) {
 						pthread_join(search_threads[i], NULL);
+						su->sl.tb_hits += sp_tmp->su->sl.tb_hits;
 						sp_tmp = search_params + i;
 						if (   sp_tmp->result != INVALID
 						    && sp_tmp->depth > max_searched_depth) {
 							max_searched_depth = sp_tmp->depth;
 							val = sp_tmp->result;
-							ss = search_stacks[i];
+							ss = sp_tmp->ss;
+							su->max_searched_ply = sp_tmp->su->max_searched_ply;
 						}
 					}
 				}

@@ -75,7 +75,6 @@
 /*
  * Define TB_NO_THREADS if your program is not multi-threaded.
  */
-// TODO: Comment this when multithreaded
 //#define TB_NO_THREADS
 
 /*

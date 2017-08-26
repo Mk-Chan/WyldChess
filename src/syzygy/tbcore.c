@@ -81,6 +81,7 @@ static LOCK_T TB_MUTEX;
 #else
 #define internal_bswap64(x) __builtin_bswap64(x)
 #endif
+unsigned TB_LARGEST = 0;
 
 static int initialized = 0;
 static int num_paths = 0;
