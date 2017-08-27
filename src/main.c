@@ -23,8 +23,10 @@
 #include "search.h"
 #include "misc.h"
 #include "tt.h"
+#include "pt.h"
 
 struct TT tt;
+struct PT pt;
 struct Controller controller;
 
 int main()
@@ -38,6 +40,7 @@ int main()
 	init_lookups();
 	init_eval_terms();
 	tt_alloc_MB(&tt, 128);
+	pt_alloc_MB(&pt, 2);
 
 	struct SpinOption* curr = spin_options;
 	struct SpinOption* end  = spin_options + NUM_OPTIONS;
@@ -61,6 +64,8 @@ int main()
 			fprintf(stdout, "Protocol not found!\n");
 		}
 	}
+
+	pt_destroy(&pt);
 	tt_destroy(&tt);
 
 	return 0;

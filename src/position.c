@@ -77,6 +77,7 @@ void init_pos(struct Position* pos)
 	pos->state                  = pos->hist;
 	pos->phase                  = 0;
 	pos->state->pos_key         = 0ULL;
+	pos->state->pawn_key        = 0ULL;
 	pos->state->ep_sq_bb        = 0ULL;
 	pos->state->pinned_bb       = 0ULL;
 	pos->state->full_moves      = 0;
@@ -93,6 +94,8 @@ int set_pos(struct Position* pos, char* fen)
 	    tsq   = 0,
 	    index = 0;
 	char c;
+	pos->state->pos_key = 0ULL;
+	pos->state->pawn_key = 0ULL;
 	while (tsq < 64) {
 		sq = tsq ^ 56;
 		c  = fen[index++];
@@ -192,4 +195,6 @@ void print_board(struct Position* pos)
 			printf("%c ", get_char_from_piece(piece, (BB((i ^ 56)) & pos->bb[WHITE] ? WHITE : BLACK)));
 	}
 	printf("\n");
+	printf("PosKey: %llu\n", pos->state->pos_key);
+	printf("PawnKey: %llu\n", pos->state->pawn_key);
 }

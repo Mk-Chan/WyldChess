@@ -36,6 +36,8 @@ STATS(
 		u64 beta_cutoffs;
 		u64 hash_probes;
 		u64 hash_hits;
+		u64 pawn_probes;
+		u64 pawn_hits;
 		u64 cut_nodes;
 		u64 all_nodes;
 		u64 pv_nodes;
@@ -55,6 +57,7 @@ struct State
 	u64 checkers_bb;
 	u64 ep_sq_bb;
 	u64 pos_key;
+	u64 pawn_key;
 	u32 castling_rights;
 	u32 fifty_moves;
 	u32 full_moves;
@@ -86,7 +89,6 @@ extern void performance_test(struct Position* const pos, u32 max_depth);
 extern void init_pos(struct Position* pos);
 extern int set_pos(struct Position* pos, char* fen);
 extern void get_position_copy(struct Position const * const pos, struct Position* const copy_pos);
-
 
 extern void do_null_move(struct Position* const pos);
 extern void undo_null_move(struct Position* const pos);
@@ -150,6 +152,8 @@ static inline void move_piece(struct Position* pos, u32 from, u32 to, u32 pt, u3
 	pos->board[from]        = 0;
 	pos->state->pos_key    ^= psq_keys[c][pt][from] ^ psq_keys[c][pt][to];
 	pos->piece_psq_eval[c] += psqt[c][pt][to] - psqt[c][pt][from];
+	if (pt == PAWN)
+		pos->state->pawn_key ^= psq_keys[c][pt][from] ^ psq_keys[c][pt][to];
 }
 
 static inline void put_piece(struct Position* pos, u32 sq, u32 pt, u32 c)
@@ -162,6 +166,8 @@ static inline void put_piece(struct Position* pos, u32 sq, u32 pt, u32 c)
 	pos->state->pos_key    ^= psq_keys[c][pt][sq];
 	pos->phase             += phase[pt];
 	pos->piece_psq_eval[c] += piece_val[pt] + psqt[c][pt][sq];
+	if (pt == PAWN)
+		pos->state->pawn_key ^= psq_keys[c][pt][sq];
 }
 
 static inline void remove_piece(struct Position* pos, u32 sq, u32 pt, u32 c)
@@ -174,6 +180,8 @@ static inline void remove_piece(struct Position* pos, u32 sq, u32 pt, u32 c)
 	pos->state->pos_key    ^= psq_keys[c][pt][sq];
 	pos->phase             -= phase[pt];
 	pos->piece_psq_eval[c] -= piece_val[pt] + psqt[c][pt][sq];
+	if (pt == PAWN)
+		pos->state->pawn_key ^= psq_keys[c][pt][sq];
 }
 
 static inline u64 pawn_push(int from, u32 c)
