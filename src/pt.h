@@ -47,7 +47,7 @@ static inline void pt_clear(struct PT* pt)
 
 static inline void pt_alloc_MB(struct PT* pt, u32 size)
 {
-	size     *= 0x10000 * 2 / 3;
+	size     *= 0x10000 / 3;
 	size      = max(size, 1);
 	pt->table = (struct PTEntry*) realloc(pt->table, sizeof(struct PTEntry) * size);
 	pt->size  = size;
