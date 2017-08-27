@@ -387,6 +387,7 @@ int evaluate(struct Position* const pos)
 {
 	if (insufficient_material(pos))
 		return 0;
+
 	struct Eval ev;
 	int ksq, c, pt;
 	for (c = WHITE; c <= BLACK; ++c) {

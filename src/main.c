@@ -40,7 +40,7 @@ int main()
 	init_lookups();
 	init_eval_terms();
 	tt_alloc_MB(&tt, 128);
-	pt_alloc_MB(&pt, 2);
+	pt_alloc_MB(&pt, 8);
 
 	struct SpinOption* curr = spin_options;
 	struct SpinOption* end  = spin_options + NUM_OPTIONS;
