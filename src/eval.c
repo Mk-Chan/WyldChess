@@ -17,6 +17,7 @@
  */
 
 #include "position.h"
+#include "pt.h"
 
 struct Eval
 {
@@ -176,33 +177,51 @@ void init_eval_terms()
 
 static void eval_pawns(struct Position* const pos, struct Eval* const ev)
 {
-	u64 bb, pawn_bb;
-	u64* atks_bb;
-	int c, sq;
-	int* eval = ev->eval;
-	for (c = WHITE; c <= BLACK; ++c) {
-		atks_bb = ev->atks_bb[c];
-		pawn_bb = ev->pawn_bb[c];
-		bb      = pawn_bb;
-		while (bb) {
-			sq  = bitscan(bb);
-			bb &= bb - 1;
+	STATS(++pos->stats.pawn_probes);
+	struct PTEntry entry = pt_probe(&pt, pos->state->pawn_key);
+	if ((entry.key ^ entry.pawn_atks_white_bb ^ entry.pawn_atks_black_bb) == pos->state->pawn_key) {
+		STATS(++pos->stats.pawn_hits);
+		ev->eval[WHITE] += entry.score_white;
+		ev->eval[BLACK] += entry.score_black;
+		ev->atks_bb[WHITE][PAWN] = entry.pawn_atks_white_bb;
+		ev->atks_bb[BLACK][PAWN] = entry.pawn_atks_black_bb;
+		ev->passed_pawn_bb[WHITE] = entry.passed_pawn_white_bb;
+		ev->passed_pawn_bb[BLACK] = entry.passed_pawn_black_bb;
+	} else {
+		u64 bb, pawn_bb;
+		u64* atks_bb;
+		int c, sq;
+		int eval[2] = { 0, 0 };
+		for (c = WHITE; c <= BLACK; ++c) {
+			atks_bb = ev->atks_bb[c];
+			pawn_bb = ev->pawn_bb[c];
+			bb      = pawn_bb;
+			while (bb) {
+				sq  = bitscan(bb);
+				bb &= bb - 1;
 
-			// Store the attacks
-			atks_bb[PAWN] |= p_atks_bb[c][sq];
+				// Store the attacks
+				atks_bb[PAWN] |= p_atks_bb[c][sq];
 
-			// Pawn of the same color in front of this pawn => Doubled pawn
-			if (file_forward_mask[c][sq] & pawn_bb)
-				eval[c] += doubled_pawns;
+				// Pawn of the same color in front of this pawn => Doubled pawn
+				if (file_forward_mask[c][sq] & pawn_bb)
+					eval[c] += doubled_pawns;
 
-			// No pawn of same color in adjacent files and not doubled => Isolated pawn
-			if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
-				eval[c] += isolated_pawn;
+				// No pawn of same color in adjacent files and not doubled => Isolated pawn
+				if (!(adjacent_files_mask[file_of(sq)] & pawn_bb))
+					eval[c] += isolated_pawn;
 
-			// Store passed pawn position for later
-			if (is_passed_pawn(pos, sq, c))
-				ev->passed_pawn_bb[c] |= BB(sq);
+				// Store passed pawn position for later
+				if (is_passed_pawn(pos, sq, c))
+					ev->passed_pawn_bb[c] |= BB(sq);
+			}
 		}
+
+		pt_store(&pt, eval[WHITE], eval[BLACK], ev->passed_pawn_bb[WHITE], ev->passed_pawn_bb[BLACK],
+			 ev->atks_bb[WHITE][PAWN], ev->atks_bb[BLACK][PAWN], pos->state->pawn_key);
+
+		ev->eval[WHITE] += eval[WHITE];
+		ev->eval[BLACK] += eval[BLACK];
 	}
 }
 

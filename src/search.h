@@ -198,6 +198,8 @@ static inline void clear_search(struct SearchUnit* const su, struct SearchStack*
 		pos->stats.beta_cutoffs       = 0;
 		pos->stats.hash_probes        = 0;
 		pos->stats.hash_hits          = 0;
+		pos->stats.pawn_probes        = 0;
+		pos->stats.pawn_hits          = 0;
 		pos->stats.all_nodes          = 0ULL;
 		pos->stats.pv_nodes           = 0ULL;
 		pos->stats.total_nodes        = 0ULL;

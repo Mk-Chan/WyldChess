@@ -31,6 +31,7 @@ void do_null_move(struct Position* const pos)
 	next->ep_sq_bb         = 0ULL;
 	next->castling_rights  = curr->castling_rights;
 	next->pos_key          = curr->pos_key ^ stm_key;
+	next->pawn_key         = curr->pawn_key;
 	if (curr->ep_sq_bb)
 		next->pos_key ^= psq_keys[0][0][bitscan(curr->ep_sq_bb)];
 }
@@ -136,6 +137,7 @@ void do_move(struct Position* const pos, u32 const m)
 	          c    = pos->stm,
 	          mt   = move_type(m);
 
+	next->pawn_key = curr->pawn_key;
 	if (curr->ep_sq_bb)
 		next->pos_key = curr->pos_key ^ psq_keys[0][0][bitscan(curr->ep_sq_bb)];
 	else
