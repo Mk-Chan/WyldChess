@@ -602,6 +602,8 @@ void print_stats(int thread_num, struct Position const * const pos)
 			((double)stats->null_cutoffs) / stats->null_tries);
 		fprintf(stdout, "hash hit rate:            %lf\n",
 			((double)stats->hash_hits) / stats->hash_probes);
+		fprintf(stdout, "pawn hash hit rate:       %lf\n",
+			((double)stats->pawn_hits) / stats->pawn_probes);
 		fprintf(stdout, "pv nodes:                 %lf\n",
 			((double)stats->pv_nodes) / stats->total_nodes);
 		fprintf(stdout, "all nodes:                %lf\n",
