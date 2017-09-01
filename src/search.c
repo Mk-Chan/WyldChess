@@ -36,7 +36,7 @@ static int split_search(struct Position* pos, struct SearchLocals* sl, struct Mo
 			u32* best_move, int* alpha, int beta, int depth, int move_num, int static_eval,
 			u32 max_ply, int checked, int node_type, int thread_num)
 {
-	// Choose a split point
+	// Choose a split point to populate
 	struct SplitPoint* sp = split_points;
 	static struct SplitPoint* end = split_points + MAX_SPLIT_POINTS;
 	pthread_mutex_lock(&split_mutex);
@@ -52,7 +52,7 @@ static int split_search(struct Position* pos, struct SearchLocals* sl, struct Mo
 	}
 	pthread_mutex_unlock(&split_mutex);
 
-	// Sort the movelist and copy to split point [Not necessarily useful]
+	// Sort the movelist and copy to split point
 	int len = 0;
 	if (skip_first == SKIP_FIRST) {
 		len = list->end - list->moves - 1;
@@ -393,6 +393,7 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 		    && !(su->counter & 0x7ff)
 		    &&   stopped(su)) {
 			abort_search = 1;
+			ctlr->is_stopped = 1;
 			return 0;
 		}
 
@@ -579,12 +580,12 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 	u32 best_move = 0;
 	u32 move;
 
-	// Young Brothers Wait Parallel Search
+	// Split early at predicted ALL nodes
 	if (    node_type == ALL_NODE
 	    && (list->end - list->moves) >= 3
 	    &&  depth >= MIN_SPLIT_DEPTH) {
 		int split = split_search( pos, sl, list, ss->order_arr, SKIP_NONE, counter_move, ss->ply, ss->pv, &ss->pv_depth,
-					 &best_val, &best_move, &alpha, beta, depth, legal_moves + 1, static_eval, su->max_ply,
+					 &best_val, &best_move, &alpha, beta, depth, legal_moves, static_eval, su->max_ply,
 					 checked, node_type == PV_NODE ? PV_NODE : ALL_NODE, (su - search_units));
 		if (split) {
 			legal_moves = list->end - list->moves;

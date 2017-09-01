@@ -44,7 +44,6 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 	struct Controller* ctlr = &controller;
 	struct SearchUnit* su = search_units + thread_num;
 	struct SearchStack* ss = search_stacks[thread_num] + sp->ply;
-	su->type = thread_num ? HELPER : MAIN;
 
 	// Select move
 	if (thread_num == sp->owner_num) {
@@ -73,7 +72,6 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 	get_position_copy(&sp->pos, &su->pos);
 	memcpy(&su->sl, &sp->sl, sizeof(struct SearchLocals));
 
-	su->counter = 0ULL;
 	su->max_ply = sp->max_ply;
 	while (1) {
 		pthread_mutex_lock(&sp->mutex);
@@ -82,7 +80,8 @@ void search_split_point(struct SplitPoint* sp, int thread_num)
 		pthread_mutex_unlock(&sp->mutex);
 
 		int val = search_move(su, ss, best_val, alpha, sp->beta, sp->depth,
-				      move, sp->counter_move, move_num, sp->static_eval, sp->checked, sp->node_type);
+				      move, sp->counter_move, move_num, sp->static_eval,
+				      sp->checked, sp->node_type);
 
 		if (ctlr->is_stopped || abort_search) {
 			pthread_mutex_lock(&sp->mutex);
