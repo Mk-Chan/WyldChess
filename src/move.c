@@ -163,10 +163,12 @@ void do_move(struct Position* const pos, u32 const m)
 	case DOUBLE_PUSH:
 		{
 			move_piece(pos, from, to, PAWN, c);
-			if (c == WHITE) {
+			if (    c == WHITE
+			    && (p_atks_bb[WHITE][from + 8] & pos->bb[PAWN] & pos->bb[BLACK])) {
 				next->ep_sq_bb  = BB(from + 8);
 				next->pos_key  ^= psq_keys[0][0][from + 8];
-			} else if (c == BLACK) {
+			} else if (    c == BLACK
+				   && (p_atks_bb[BLACK][from - 8] & pos->bb[PAWN] & pos->bb[WHITE])) {
 				next->ep_sq_bb  = BB(from - 8);
 				next->pos_key  ^= psq_keys[0][0][from - 8];
 			}
