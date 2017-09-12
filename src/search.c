@@ -504,6 +504,9 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 			best_val  = val;
 			best_move = move;
 
+			ss->pv[0] = move;
+			ss->pv_depth = 1;
+
 			if (val > alpha) {
 				alpha = val;
 
@@ -633,7 +636,7 @@ void print_stats(int thread_num, struct Position const * const pos)
 int begin_search(struct SearchUnit* const su)
 {
 	u64 time;
-	int val, alpha, beta, depth, max_searched_depth;
+	int val, alpha, beta, depth;
 	int best_move = 0;
 
 	reduce_history(&su->sl);
@@ -672,7 +675,6 @@ int begin_search(struct SearchUnit* const su)
 	}
 
 	for (depth = 1; depth <= max_depth; ++depth) {
-		max_searched_depth = 0;
 		alpha_delta = beta_delta = deltas;
 		if (depth < 5) {
 			alpha = -INFINITY;
@@ -699,9 +701,7 @@ int begin_search(struct SearchUnit* const su)
 						pthread_join(search_threads[i], NULL);
 						su->sl.tb_hits += sp_tmp->su->sl.tb_hits;
 						sp_tmp = search_params + i;
-						if (   sp_tmp->result != INVALID
-						    && sp_tmp->depth > max_searched_depth) {
-							max_searched_depth = sp_tmp->depth;
+						if (sp_tmp->result != INVALID) {
 							val = sp_tmp->result;
 							ss = sp_tmp->ss;
 							su->max_searched_ply = sp_tmp->su->max_searched_ply;
