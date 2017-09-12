@@ -6,46 +6,37 @@ then
 	exit
 fi
 
-
 TARGETS=( linux win64 )
-
-for T in "${TARGETS[@]}"
-do
-	mkdir -p binaries/WyldChess_v$1/$T
-done
+EXEC_PATH="WyldChess_v$1"
 
 cd src
-
 for T in "${TARGETS[@]}"
 do
 	if [ "$T" = "win64" ]
 	then
 		CC=x86_64-w64-mingw32-gcc
+		EXEC_EXT=".exe"
+		EXTRA_FLAGS="-static"
 	else
 		CC=gcc
+		EXEC_EXT=""
 	fi
+	command -v "$CC" >/dev/null 2>&1 || { echo >&2 "$CC not found, skipping..."; continue; }
+	TARGET_PATH="$EXEC_PATH/$T"
+	mkdir -p $TARGET_PATH
 	make clean
-	make CC="$CC" RELEASE=$1 TARGET="$T" $2
+	make CC="$CC" EXTRA_FLAGS=$EXTRA_FLAGS EXEC="wyldchess_v$1$EXEC_EXT" EXEC_PATH="$TARGET_PATH" $2
 	make clean
-	make popcnt CC="$CC" RELEASE=$1 TARGET="$T" $2
+	make popcnt CC="$CC" EXTRA_FLAGS=$EXTRA_FLAGS EXEC="wyldchess_popcnt_v$1$EXEC_EXT" EXEC_PATH="$TARGET_PATH" $2
 	make clean
-	make bmi CC="$CC" RELEASE=$1 TARGET="$T" $2
+	make bmi CC="$CC" EXTRA_FLAGS=$EXTRA_FLAGS EXEC="wyldchess_bmi_v$1$EXEC_EXT" EXEC_PATH="$TARGET_PATH" $2
+	make clean
+	if [ "$T" = "win64" ]
+	then
+		7z a $EXEC_PATH/WyldChess_v$1_win64.zip $EXEC_PATH/$T
+	else
+		tar cvzf $EXEC_PATH/WyldChess_v$1_linux.tar.gz $EXEC_PATH/$T
+	fi
 done
-
-make clean
-cd ../binaries/WyldChess_v$1
-
-BASE=wyldchess
-
-for T in "${TARGETS[@]}"
-do
-	mv $T "$BASE"_$T
-done
-
-for F in wyldchess_win64/*
-do
-	mv $F $F.exe
-done
-
-tar cvzf WyldChess_v$1_linux.tar.gz "$BASE"_linux
-7z a WyldChess_v$1_win64.zip "$BASE"_win64
+cd ..
+mv src/WyldChess_v$1 .
