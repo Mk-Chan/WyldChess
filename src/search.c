@@ -653,7 +653,9 @@ int begin_search(struct SearchUnit* const su)
 			beta  = min(val + *beta_delta, +INFINITY);
 		}
 		while (1) {
+			abort_search = 0;
 			val = search(su, ss, alpha, beta, depth);
+			abort_search = 1;
 
 			if (   depth > 1
 			    && ctlr->is_stopped)
