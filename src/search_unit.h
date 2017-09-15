@@ -109,7 +109,6 @@ extern struct SearchUnit search_units[MAX_THREADS];
 extern struct SearchStack search_stacks[MAX_THREADS][MAX_PLY];
 extern struct SearchParams search_params[MAX_THREADS];
 
-
 extern void init_search(struct SearchLocals* const sl);
 extern int begin_search(struct SearchUnit* const su);
 extern void xboard_loop();
