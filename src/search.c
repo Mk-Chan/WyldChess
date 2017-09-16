@@ -770,10 +770,8 @@ int begin_search(struct SearchUnit* const su)
 		best_move = get_pv_move(ss);
 	}
 end_search:
-	print_stats(0, &su->pos);
-	for (int i = 0; i < num_threads; ++i) {
-		print_stats(i+1, &search_units[i].pos);
-	}
+	for (int i = 0; i <= num_threads; ++i)
+		print_stats(i, &search_units[i].pos);
 
 	return best_move;
 }
