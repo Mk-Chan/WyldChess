@@ -504,6 +504,12 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 			best_val  = val;
 			best_move = move;
 
+			if (node_type == PV_NODE) {
+				ss->pv[0] = move;
+				memcpy(ss->pv + 1, ss[1].pv, sizeof(u32) * ss[1].pv_depth);
+				ss->pv_depth = ss[1].pv_depth + 1;
+			}
+
 			if (val > alpha) {
 				alpha = val;
 
@@ -546,10 +552,6 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 					}
 					break;
 				}
-
-				ss->pv[0] = move;
-				memcpy(ss->pv + 1, ss[1].pv, sizeof(u32) * ss[1].pv_depth);
-				ss->pv_depth = ss[1].pv_depth + 1;
 			}
 		}
 	}
