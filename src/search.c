@@ -687,6 +687,7 @@ int begin_search(struct SearchUnit* const su)
 		}
 		while (1) {
 			abort_search = 0;
+			ss = *search_stacks;
 			if (depth >= 5) {
 				for (int i = 1; i <= num_threads; ++i) {
 					sp_tmp = search_params + i;
@@ -750,7 +751,6 @@ int begin_search(struct SearchUnit* const su)
 			}
 			print_pv_line(ss);
 			fprintf(stdout, "\n");
-			ss = *search_stacks;
 
 			if (depth > 1)
 				old_node_counts[1] = old_node_counts[0];
