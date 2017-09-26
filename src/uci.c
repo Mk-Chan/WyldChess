@@ -193,6 +193,7 @@ void uci_loop()
 			ctlr->moves_left        = ctlr->moves_per_session;
 			ctlr->time_left         = 240000;
 			ctlr->increment         = 0;
+			su->limited_moves_num   = 0;
 
 			ptr = input;
 			while ((ptr = strstr(ptr, " "))) {
