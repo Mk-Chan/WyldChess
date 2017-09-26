@@ -234,6 +234,23 @@ void uci_loop()
 
 					ctlr->time_dependent = 0;
 
+				} else if (!strncmp(ptr, "searchmoves", 11)) {
+
+					su->limited_moves_num = 0;
+					while ((ptr = strstr(ptr, " "))) {
+						++ptr;
+						move = parse_move(pos, ptr);
+						if (!legal_move(pos, move)) {
+							char mstr[6];
+							move_str(move, mstr);
+							fprintf(stdout, "Illegal move: %s\n", mstr);
+							break;
+						}
+						su->limited_moves[su->limited_moves_num] = move;
+						++su->limited_moves_num;
+					}
+					break;
+
 				}
 			}
 

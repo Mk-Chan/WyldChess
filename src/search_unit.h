@@ -73,6 +73,8 @@ struct SearchUnit
 	int side;
 	int game_over;
 	int counter;
+	u32 limited_moves_num;
+	u32 limited_moves[MAX_MOVES_PER_POS];
 	int volatile target_state;
 	int volatile curr_state;
 };
@@ -120,6 +122,7 @@ static inline void init_search_unit(struct SearchUnit* const su)
 	pthread_cond_init(&su->sleep_cv, NULL);
 	su->type = MAIN;
 	su->target_state = WAITING;
+	su->limited_moves_num = 0;
 	init_search(&su->sl);
 	init_pos(&su->pos);
 	set_pos(&su->pos, INITIAL_POSITION);
@@ -136,13 +139,15 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 	get_search_locals_copy(&su->sl, &copy_su->sl);
 	pthread_mutex_init(&copy_su->mutex, NULL);
 	pthread_cond_init(&copy_su->sleep_cv, NULL);
-	copy_su->type             = su->type;
-	copy_su->target_state     = WAITING;
-	copy_su->counter          = 0;
-	copy_su->protocol         = su->protocol;
-	copy_su->max_searched_ply = 0;
-	copy_su->side             = su->side;
-	copy_su->game_over        = su->game_over;
+	memcpy(copy_su->limited_moves, su->limited_moves, sizeof(u32) * su->limited_moves_num);
+	copy_su->limited_moves_num = su->limited_moves_num;
+	copy_su->type              = su->type;
+	copy_su->target_state      = WAITING;
+	copy_su->counter           = 0;
+	copy_su->protocol          = su->protocol;
+	copy_su->max_searched_ply  = 0;
+	copy_su->side              = su->side;
+	copy_su->game_over         = su->game_over;
 }
 
 static inline u64 total_nodes_searched()

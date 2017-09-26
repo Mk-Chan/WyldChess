@@ -491,7 +491,12 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 	struct Movelist* list = &ss->list;
 	list->end = list->moves;
 	set_pinned(pos);
-	gen_legal_moves(pos, list);
+	if (!ss->ply && su->limited_moves_num) {
+		list->end += su->limited_moves_num;
+		memcpy(list->moves, su->limited_moves, sizeof(u32) * su->limited_moves_num);
+	} else {
+		gen_legal_moves(pos, list);
+	}
 
 	order_moves(pos, ss, sl, tt_move);
 
@@ -588,9 +593,10 @@ int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha,
 		++pos->stats.total_nodes;
 	)
 
-	if (  !ss->ply
-	    && alpha < beta
-	    && legal_moves == 1) {
+	if (   !ss->ply
+	    && !su->limited_moves_num
+	    &&  alpha < beta
+	    &&  legal_moves == 1) {
 		ctlr->is_stopped = 1;
 		abort_search = 1;
 	}
