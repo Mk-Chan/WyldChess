@@ -33,7 +33,7 @@ static inline void print_options_uci()
 {
 	fprintf(stdout, "id name %s\n", ENGINE_NAME);
 	fprintf(stdout, "id author %s\n", AUTHOR_NAME);
-	fprintf(stdout, "option name Ponder type check default true\n");
+	fprintf(stdout, "option name Ponder type check default false\n");
 	fprintf(stdout, "option name SyzygyPath type string default <empty>\n");
 	fprintf(stdout, "option name Hash type spin default 128 min 1 max 1048576\n");
 	struct SpinOption* curr = spin_options;
