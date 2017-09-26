@@ -195,7 +195,115 @@ static int qsearch(struct SearchUnit* const su, struct SearchStack* const ss, in
 	return alpha;
 }
 
-static int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth)
+static int search_move(struct SearchUnit* su, struct SearchStack* ss, struct SearchLocals* sl, int best_val,
+		       int alpha, int beta, int checked, int depth, u32 move, int move_num, int node_type,
+		       u64 non_pawn_pieces_count, int static_eval, u32 counter_move)
+{
+
+	int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth);
+	struct Controller* ctlr = &controller;
+
+	if (  !ss->ply
+	    && su->type == MAIN
+	    && su->protocol == UCI) {
+		u64 time_passed = curr_time() - ctlr->search_start_time;
+		if (time_passed >= 1000ULL) {
+			char mstr[6];
+			move_str(move, mstr);
+			fprintf(stdout, "info currmovenumber %d currmove %s nps %llu\n",
+				move_num, mstr, total_nodes_searched() * 1000 / time_passed);
+		}
+	}
+
+	struct Position* pos = &su->pos;
+
+	int depth_left    = depth - 1;
+	int checking_move = gives_check(pos, move);
+
+	// Check extension
+	if (    checking_move
+	    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
+		++depth_left;
+
+	// Heuristic pruning and reductions
+	if (    ss->ply
+	    &&  best_val > -MAX_MATE_VAL
+	    &&  move_num > 1
+	    &&  prom_type(move) != QUEEN
+	    &&  non_pawn_pieces_count
+	    && !checking_move
+	    && !cap_type(move)) {
+
+		// Futility pruning
+		if (   depth < 8
+		    && node_type != PV_NODE
+		    && static_eval + 100 * depth_left <= alpha)
+			return -INFINITY;
+
+		// Prune moves with horrible SEE at low depth(idea from Stockfish)
+		if (   depth < 8
+		    && see(pos, move) < -10 * depth * depth)
+			return -INFINITY;
+
+		int passer_move = is_passed_pawn(pos, from_sq(move), pos->stm)
+			  && (pos->stm == WHITE ? rank_of(to_sq(move)) >= RANK_6 : rank_of(to_sq(move)) <= RANK_3);
+
+		// Late move reduction
+		if (    depth > 2
+		    &&  move_num > (node_type == PV_NODE ? 5 : 3)
+		    &&  move != ss->killers[0]
+		    &&  move != ss->killers[1]
+		    &&  move != counter_move
+		    && !passer_move
+		    && !checked) {
+			int reduction = 2;
+			int hist_val = sl->history[pos->board[from_sq(move)]][to_sq(move)];
+			reduction += (move_num > 10)
+				   + (node_type != PV_NODE)
+				   + (hist_val < -500)
+				   + (hist_val < -3000)
+				   - (hist_val > 500)
+				   - (hist_val > 3000);
+			depth_left = max(1, depth - max(2, reduction));
+		}
+	}
+
+	ss[1].pv_depth = 0;
+	do_move(pos, move);
+
+	int val;
+	// Principal Variation Search
+	if (move_num == 1) {
+		ss[1].node_type = node_type == PV_NODE  ? PV_NODE
+				: node_type == CUT_NODE ? ALL_NODE
+				: CUT_NODE;
+		ss[1].forward_prune = 1;
+		val = -search(su, ss + 1, -beta , -alpha, depth_left);
+	} else if (node_type != PV_NODE) {
+		ss[1].node_type     = CUT_NODE;
+		ss[1].forward_prune = 1;
+		val = -search(su, ss + 1, -beta, -alpha, depth_left);
+		if (   val > alpha
+		    && depth_left < depth - 1) {
+			ss[1].node_type = ALL_NODE;
+			val = -search(su, ss + 1, -beta, -alpha, depth - 1);
+		}
+	} else {
+		ss[1].node_type     = CUT_NODE;
+		ss[1].forward_prune = 1;
+		val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
+		if (val > alpha) {
+			ss[1].node_type = PV_NODE;
+			val = -search(su, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
+		}
+	}
+
+	undo_move(pos);
+
+	return val;
+}
+
+int search(struct SearchUnit* const su, struct SearchStack* const ss, int alpha, int beta, int depth)
 {
 	if (depth <= 0) {
 		ss->pv_depth = 0;
@@ -394,104 +502,14 @@ static int search(struct SearchUnit* const su, struct SearchStack* const ss, int
 	int best_val    = -INFINITY,
 	    best_move   = 0,
 	    legal_moves = 0;
-	int checking_move, depth_left, val;
+	int val;
 	u32 move;
 	while ((move = get_next_move(ss, legal_moves))) {
 		++legal_moves;
 
-		if (  !ss->ply
-		    && su->type == MAIN
-		    && su->protocol == UCI) {
-			u64 time_passed = curr_time() - ctlr->search_start_time;
-			if (time_passed >= 1000ULL) {
-				char mstr[6];
-				move_str(move, mstr);
-				fprintf(stdout, "info currmovenumber %d currmove %s nps %llu\n",
-					legal_moves, mstr, total_nodes_searched() * 1000 / time_passed);
-			}
-		}
-
-		depth_left    = depth - 1;
-		checking_move = gives_check(pos, move);
-
-		// Check extension
-		if (    checking_move
-		    && (depth == 1 || see(pos, to_sq(move)) > -equal_cap_bound))
-			++depth_left;
-
-		// Heuristic pruning and reductions
-		if (    ss->ply
-		    &&  best_val > -MAX_MATE_VAL
-		    &&  legal_moves > 1
-		    &&  prom_type(move) != QUEEN
-		    &&  non_pawn_pieces_count
-		    && !checking_move
-		    && !cap_type(move)) {
-
-			// Futility pruning
-			if (   depth < 8
-			    && node_type != PV_NODE
-			    && static_eval + 100 * depth_left <= alpha)
-				continue;
-
-			// Prune moves with horrible SEE at low depth(idea from Stockfish)
-			if (   depth < 8
-			    && see(pos, move) < -10 * depth * depth)
-				continue;
-
-			int passer_move = is_passed_pawn(pos, from_sq(move), pos->stm)
-				  && (pos->stm == WHITE ? rank_of(to_sq(move)) >= RANK_6 : rank_of(to_sq(move)) <= RANK_3);
-
-			// Late move reduction
-			if (    depth > 2
-			    &&  legal_moves > (node_type == PV_NODE ? 5 : 3)
-			    &&  move != ss->killers[0]
-			    &&  move != ss->killers[1]
-			    &&  move != counter_move
-			    && !passer_move
-			    && !checked) {
-				int reduction = 2;
-				int hist_val = sl->history[pos->board[from_sq(move)]][to_sq(move)];
-				reduction += (legal_moves > 10)
-					   + (node_type != PV_NODE)
-					   + (hist_val < -500)
-					   + (hist_val < -3000)
-					   - (hist_val > 500)
-					   - (hist_val > 3000);
-				depth_left = max(1, depth - max(2, reduction));
-			}
-		}
-
-		ss[1].pv_depth = 0;
-		do_move(pos, move);
-
-		// Principal Variation Search
-		if (legal_moves == 1) {
-			ss[1].node_type = node_type == PV_NODE  ? PV_NODE
-				        : node_type == CUT_NODE ? ALL_NODE
-					: CUT_NODE;
-			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -beta , -alpha, depth_left);
-		} else if (node_type != PV_NODE) {
-			ss[1].node_type     = CUT_NODE;
-			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -beta, -alpha, depth_left);
-			if (   val > alpha
-			    && depth_left < depth - 1) {
-				ss[1].node_type = ALL_NODE;
-				val = -search(su, ss + 1, -beta, -alpha, depth - 1);
-			}
-		} else {
-			ss[1].node_type     = CUT_NODE;
-			ss[1].forward_prune = 1;
-			val = -search(su, ss + 1, -alpha - 1, -alpha, depth_left);
-			if (val > alpha) {
-				ss[1].node_type = PV_NODE;
-				val = -search(su, ss + 1, -beta, -alpha, max(depth - 1, depth_left));
-			}
-		}
-
-		undo_move(pos);
+		val = search_move(su, ss, sl, best_val, alpha, beta, checked, depth, move,
+				  legal_moves, node_type, non_pawn_pieces_count, static_eval,
+				  counter_move);
 
 		if (ctlr->is_stopped || abort_search)
 			return 0;
