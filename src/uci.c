@@ -241,6 +241,11 @@ void uci_loop()
 					while ((ptr = strstr(ptr, " "))) {
 						++ptr;
 						move = parse_move(pos, ptr);
+						if (!move) {
+							printf("strleft: %s\n", ptr);
+							--ptr;
+							break;
+						}
 						if (!legal_move(pos, move)) {
 							char mstr[6];
 							move_str(move, mstr);
@@ -250,7 +255,8 @@ void uci_loop()
 						su->limited_moves[su->limited_moves_num] = move;
 						++su->limited_moves_num;
 					}
-					break;
+					if (!ptr)
+						break;
 
 				}
 			}
