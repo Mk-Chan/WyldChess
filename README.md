@@ -1,7 +1,12 @@
-# Lazy Wyld
+# WyldChess
+
+Get the latest release here: [Latest Release](https://github.com/Mk-Chan/WyldChess/releases/latest)
 
 ### Overview
-The branch dedicated to the development of the Lazy SMP algorithm in WyldChess.
+A free chess engine in C. It does not provide a GUI (Graphical User Interface)
+but can be linked to one that supports either the UCI protocol or CECP (the Xboard/Winboard protocol) such as Winboard/Xboard, Arena or Cutechess.
+
+The master branch will reflect the latest (adequately tested) best version of the engine. Implementations of different concepts (such as various parallel algorithms or different algorithms altogether) will have their own individual branches.
 
 ### Features
 
