@@ -792,10 +792,16 @@ int begin_search(struct SearchUnit* const su)
 		}
 
 		best_move = get_pv_move(ss);
+		if (legal_move(&su->pos, ss->pv[1]))
+			su->ponder_move = ss->pv[1];
 	}
 end_search:
 	for (int i = 0; i <= num_threads; ++i)
 		print_stats(i, &search_units[i].pos);
+
+	if (!ctlr->time_dependent)
+		while (su->target_state != WAITING)
+			continue;
 
 	return best_move;
 }

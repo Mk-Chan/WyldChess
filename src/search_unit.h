@@ -73,6 +73,7 @@ struct SearchUnit
 	int side;
 	int game_over;
 	int counter;
+	u32 ponder_move;
 	u32 limited_moves_num;
 	u32 limited_moves[MAX_MOVES_PER_POS];
 	int volatile target_state;
@@ -122,6 +123,7 @@ static inline void init_search_unit(struct SearchUnit* const su)
 	pthread_cond_init(&su->sleep_cv, NULL);
 	su->type = MAIN;
 	su->target_state = WAITING;
+	su->ponder_move = 0;
 	su->limited_moves_num = 0;
 	init_search(&su->sl);
 	init_pos(&su->pos);
@@ -141,6 +143,7 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 	pthread_cond_init(&copy_su->sleep_cv, NULL);
 	memcpy(copy_su->limited_moves, su->limited_moves, sizeof(u32) * su->limited_moves_num);
 	copy_su->limited_moves_num = su->limited_moves_num;
+	copy_su->ponder_move       = su->ponder_move;
 	copy_su->type              = su->type;
 	copy_su->target_state      = WAITING;
 	copy_su->counter           = 0;
@@ -184,12 +187,10 @@ static inline void start_thinking(struct SearchUnit* const su)
 {
 	struct Controller* const ctlr = &controller;
 	ctlr->search_start_time = curr_time();
-	if (ctlr->time_dependent) {
-		ctlr->time_left += (ctlr->moves_left - 1) * ctlr->increment;
-		ctlr->search_end_time = ctlr->search_start_time
-			             + (ctlr->time_left / ctlr->moves_left)
-				     -  spin_options[MOVE_OVERHEAD].curr_val;
-	}
+	ctlr->time_left += (ctlr->moves_left - 1) * ctlr->increment;
+	ctlr->search_end_time = ctlr->search_start_time
+			     + (ctlr->time_left / ctlr->moves_left)
+			     -  spin_options[MOVE_OVERHEAD].curr_val;
 	transition(su, THINKING);
 	if (ctlr->moves_per_session) {
 		--ctlr->moves_left;
