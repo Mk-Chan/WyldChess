@@ -673,8 +673,6 @@ int begin_search(struct SearchUnit* const su)
 	ss->node_type        = PV_NODE;
 	su->max_searched_ply = 0;
 
-	u64 old_node_counts[2];
-
 	struct Controller* const ctlr = &controller;
 	int max_depth = ctlr->depth > MAX_PLY ? MAX_PLY : ctlr->depth;
 	static int deltas[] = { 10, 25, 50, 100, 200, INFINITY };
@@ -755,8 +753,6 @@ int begin_search(struct SearchUnit* const su)
 				fprintf(stdout, "depth %u ", depth);
 				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
 				fprintf(stdout, "tbhits %llu ", su->sl.tb_hits);
-				if (depth > 2)
-					fprintf(stdout, "ebf %lf ", sqrt((double)total_nodes_searched() / old_node_counts[1]));
 				fprintf(stdout, "score ");
 				if (abs(val) < MAX_MATE_VAL) {
 					fprintf(stdout, "cp %d ", val);
@@ -775,10 +771,6 @@ int begin_search(struct SearchUnit* const su)
 			}
 			print_pv_line(ss);
 			fprintf(stdout, "\n");
-
-			if (depth > 1)
-				old_node_counts[1] = old_node_counts[0];
-			old_node_counts[0] = total_nodes_searched();
 
 			if (val <= alpha) {
 				++alpha_delta;
