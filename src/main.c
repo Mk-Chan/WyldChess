@@ -17,6 +17,7 @@
  */
 
 #include <time.h>
+#include "eval_terms.h"
 #include "search_unit.h"
 #include "magicmoves.h"
 #include "position.h"

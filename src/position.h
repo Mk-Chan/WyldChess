@@ -23,6 +23,7 @@
 #include "misc.h"
 #include "bitboard.h"
 #include "magicmoves.h"
+#include "eval_terms.h"
 
 STATS(
 	struct Stats
@@ -77,7 +78,6 @@ struct Position
 	STATS(struct Stats stats;)
 };
 
-extern int piece_val[8];
 extern int psqt[2][8][64];
 extern int phase[8];
 

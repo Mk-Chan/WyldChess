@@ -26,7 +26,27 @@
 static inline void print_spin_option(struct SpinOption* option)
 {
 	fprintf(stdout, "option name %s type spin default %d min %d max %d\n",
-			option->name, option->curr_val, option->min_val, option->max_val);
+		option->name, option->curr_val, option->min_val, option->max_val);
+}
+
+static inline void print_eval_term_spin_option(struct EvalTerm* term, int num)
+{
+	if (num < TAPERED_END) {
+		char str[53];
+		int len = strlen(term->name);
+		memcpy(str, term->name, len * sizeof(char));
+		str[len] = 'M';
+		str[len+1] = 'g';
+		str[len+2] = '\0';
+		fprintf(stdout, "option name %s type spin default %d min %d max %d\n",
+			str, mg_val(*term->ptr), -10000, 10000);
+		str[len] = 'E';
+		fprintf(stdout, "option name %s type spin default %d min %d max %d\n",
+			str, eg_val(*term->ptr), -10000, 10000);
+	} else {
+		fprintf(stdout, "option name %s type spin default %d min %d max %d\n",
+			term->name, *term->ptr, -10000, 10000);
+	}
 }
 
 static inline void print_options_uci()
@@ -36,10 +56,17 @@ static inline void print_options_uci()
 	fprintf(stdout, "option name Ponder type check default true\n");
 	fprintf(stdout, "option name SyzygyPath type string default <empty>\n");
 	fprintf(stdout, "option name Hash type spin default 128 min 1 max 1048576\n");
+
 	struct SpinOption* curr = spin_options;
 	struct SpinOption* end  = spin_options + arr_len(spin_options);
 	for (; curr != end; ++curr)
 		print_spin_option(curr);
+
+	struct EvalTerm* curr_et = eval_terms;
+	struct EvalTerm* end_et  = eval_terms + NUM_TERMS;
+	for (; curr_et != end_et; ++curr_et)
+		print_eval_term_spin_option(curr_et, curr_et - eval_terms);
+
 	fprintf(stdout, "uciok\n");
 }
 
@@ -177,11 +204,13 @@ void uci_loop()
 				}
 
 			} else {
+				int found = 0;
 				struct SpinOption* curr = spin_options;
 				struct SpinOption* option_end = spin_options + arr_len(spin_options);
 				for (; curr != option_end; ++curr) {
 					int len = strlen(curr->name);
 					if (!strncmp(ptr, curr->name, len)) {
+						found = 1;
 						ptr += len + 1;
 						if (!strncmp(ptr, "value", 5)) {
 							int value = strtoul(ptr + 6, &end, 10);
@@ -190,6 +219,40 @@ void uci_loop()
 								curr->curr_val = value;
 								if (curr->handler)
 									curr->handler();
+							}
+						}
+					}
+				}
+				if (!found) {
+					struct EvalTerm* curr_et = eval_terms;
+					struct EvalTerm* end_et  = eval_terms + NUM_TERMS;
+					for (; curr_et != end_et; ++curr_et) {
+						int len = strlen(curr_et->name);
+						if (!strncmp(ptr, curr_et->name, len)) {
+							if (curr_et - eval_terms < TAPERED_END) {
+								ptr += len;
+								if (!strncmp(ptr, "Mg", 2)) {
+									ptr += 3;
+									if (!strncmp(ptr, "value", 5)) {
+										int value = strtoul(ptr + 6, &end, 10);
+										if (value <= 10000 && value >= -10000)
+											set_mg_val(*curr_et->ptr, value);
+									}
+								} else if (!strncmp(ptr, "Eg", 2)) {
+									ptr += 3;
+									if (!strncmp(ptr, "value", 5)) {
+										int value = strtoul(ptr + 6, &end, 10);
+										if (value <= 10000 && value >= -10000)
+											set_eg_val(*curr_et->ptr, value);
+									}
+								}
+							} else {
+								ptr += len + 1;
+								if (!strncmp(ptr, "value", 5)) {
+									int value = strtoul(ptr + 6, &end, 10);
+									if (value <= 10000 && value >= -10000)
+										*curr_et->ptr = value;
+								}
 							}
 						}
 					}

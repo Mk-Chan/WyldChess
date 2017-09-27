@@ -200,6 +200,8 @@ static int const is_prom_sq[64] = {
 #define move(from, to, mt, prom, cap)      ((from) | ((to)<< 6) | mt | prom | (cap << CAP_TYPE_SHIFT))
 
 #define S(mg, eg) ((int) (mg + (((unsigned int) eg) << 16)))
+#define set_mg_val(var, mg) (var = (var & 0xffff0000) ^ ((unsigned int) mg))
+#define set_eg_val(var, eg) (var = (var & 0xffff) ^ (((unsigned int) eg) << 16))
 
 // Taken from stockfish to clean out my old narrowing solution
 static inline int eg_val(int val)
