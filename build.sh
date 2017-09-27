@@ -2,12 +2,13 @@
 
 if [ $# -lt 1 ]
 then
-	echo "Usage: ./build.sh <release-number> [-j<cores>]"
-	exit
+	set `date +%m%d%Y`
+	echo "No version number provided, using date(MMDDYYYY): $1"
 fi
 
 TARGETS=( linux win64 )
 EXEC_PATH="WyldChess_v$1"
+NAME="WyldChess $1"
 
 cd src
 for T in "${TARGETS[@]}"
@@ -25,11 +26,29 @@ do
 	TARGET_PATH="$EXEC_PATH/$T"
 	mkdir -p $TARGET_PATH
 	make clean
-	make CC="$CC" EXTRA_FLAGS=$EXTRA_FLAGS EXEC="wyldchess_v$1$EXEC_EXT" EXEC_PATH="$TARGET_PATH" $2
+	make \
+		CC="$CC" \
+		EXTRA_FLAGS=$EXTRA_FLAGS \
+		EXEC="wyldchess_v$1$EXEC_EXT" \
+		EXEC_PATH="$TARGET_PATH" \
+		ENGINE_NAME="$NAME" \
+		$2
 	make clean
-	make popcnt CC="$CC" EXTRA_FLAGS=$EXTRA_FLAGS EXEC="wyldchess_popcnt_v$1$EXEC_EXT" EXEC_PATH="$TARGET_PATH" $2
+	make popcnt \
+		CC="$CC" \
+		EXTRA_FLAGS=$EXTRA_FLAGS \
+		EXEC="wyldchess_popcnt_v$1$EXEC_EXT" \
+		EXEC_PATH="$TARGET_PATH" \
+		ENGINE_NAME="$NAME" \
+		$2
 	make clean
-	make bmi CC="$CC" EXTRA_FLAGS=$EXTRA_FLAGS EXEC="wyldchess_bmi_v$1$EXEC_EXT" EXEC_PATH="$TARGET_PATH" $2
+	make bmi \
+		CC="$CC" \
+		EXTRA_FLAGS=$EXTRA_FLAGS \
+		EXEC="wyldchess_bmi_v$1$EXEC_EXT" \
+		EXEC_PATH="$TARGET_PATH" \
+		ENGINE_NAME="$NAME" \
+		$2
 	make clean
 	if [ "$T" = "win64" ]
 	then
@@ -39,4 +58,5 @@ do
 	fi
 done
 cd ..
-mv src/WyldChess_v$1 .
+cp -r src/$EXEC_PATH .
+rm -rf src/$EXEC_PATH

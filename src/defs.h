@@ -34,7 +34,10 @@
 #define STATS(x)
 #endif
 
+#ifndef ENGINE_NAME
 #define ENGINE_NAME (("WyldChess"))
+#endif
+
 #define AUTHOR_NAME (("Manik Charan"))
 #define INITIAL_POSITION (("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
 
