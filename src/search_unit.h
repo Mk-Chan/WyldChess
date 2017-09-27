@@ -73,6 +73,7 @@ struct SearchUnit
 	int side;
 	int game_over;
 	int counter;
+	u32 ponder_allowed;
 	u32 ponder_move;
 	u32 limited_moves_num;
 	u32 limited_moves[MAX_MOVES_PER_POS];
@@ -94,7 +95,7 @@ struct Controller
 {
 	int is_stopped;
 	int analyzing;
-	int time_dependent;
+	volatile int time_dependent;
 	u32 depth;
 	u32 moves_left;
 	u32 moves_per_session;
@@ -123,6 +124,7 @@ static inline void init_search_unit(struct SearchUnit* const su)
 	pthread_cond_init(&su->sleep_cv, NULL);
 	su->type = MAIN;
 	su->target_state = WAITING;
+	su->ponder_allowed = 0;
 	su->ponder_move = 0;
 	su->limited_moves_num = 0;
 	init_search(&su->sl);
@@ -143,6 +145,7 @@ static inline void get_search_unit_copy(struct SearchUnit const * const su, stru
 	pthread_cond_init(&copy_su->sleep_cv, NULL);
 	memcpy(copy_su->limited_moves, su->limited_moves, sizeof(u32) * su->limited_moves_num);
 	copy_su->limited_moves_num = su->limited_moves_num;
+	copy_su->ponder_allowed    = su->ponder_allowed;
 	copy_su->ponder_move       = su->ponder_move;
 	copy_su->type              = su->type;
 	copy_su->target_state      = WAITING;

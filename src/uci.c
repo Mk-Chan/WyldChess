@@ -45,7 +45,7 @@ static inline void print_options_uci()
 
 void* su_loop_uci(void* args)
 {
-	char mstr[6], ponder_mstr[6];
+	char mstr[6];
 	u32 move;
 	struct SearchUnit* su = (struct SearchUnit*) args;
 	while (1) {
@@ -62,8 +62,12 @@ void* su_loop_uci(void* args)
 			su->curr_state = THINKING;
 			move = begin_search(su);
 			move_str(move, mstr);
-			move_str(su->ponder_move, ponder_mstr);
-			fprintf(stdout, "bestmove %s ponder %s\n", mstr, ponder_mstr);
+			fprintf(stdout, "bestmove %s", mstr);
+			if (su->ponder_allowed) {
+				move_str(su->ponder_move, mstr);
+				fprintf(stdout, " ponder %s", mstr);
+			}
+			fprintf(stdout, "\n");
 			su->target_state = WAITING;
 			break;
 
@@ -160,6 +164,18 @@ void uci_loop()
 					tb_init(ptr + 6);
 					fprintf(stdout, "info string Largest tablebase size = %u\n", TB_LARGEST);
 				}
+			} else if (!strncmp(ptr, "Ponder", 6)) {
+
+				ptr += 7;
+				if (!strncmp(ptr, "value", 5)) {
+					ptr += 6;
+					if (!strncmp(ptr, "false", 5)) {
+						su->ponder_allowed = 0;
+					} else if (!strncmp(ptr, "true", 4)) {
+						su->ponder_allowed = 1;
+					}
+				}
+
 			} else {
 				struct SpinOption* curr = spin_options;
 				struct SpinOption* option_end = spin_options + arr_len(spin_options);
