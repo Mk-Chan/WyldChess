@@ -124,7 +124,7 @@ static inline void init_search_unit(struct SearchUnit* const su)
 	pthread_cond_init(&su->sleep_cv, NULL);
 	su->type = MAIN;
 	su->target_state = WAITING;
-	su->ponder_allowed = 0;
+	su->ponder_allowed = 1;
 	su->ponder_move = 0;
 	su->limited_moves_num = 0;
 	init_search(&su->sl);
