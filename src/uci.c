@@ -63,10 +63,12 @@ static inline void print_options_uci()
 	for (; curr != end; ++curr)
 		print_spin_option(curr);
 
+	/*
 	struct EvalTerm* curr_et = eval_terms;
 	struct EvalTerm* end_et  = eval_terms + NUM_TERMS;
 	for (; curr_et != end_et; ++curr_et)
 		print_eval_term_spin_option(curr_et, curr_et - eval_terms);
+	*/
 
 	fprintf(stdout, "uciok\n");
 }
