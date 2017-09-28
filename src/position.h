@@ -430,6 +430,18 @@ static inline u32 parse_move(struct Position* pos, char* str)
 	u32 from  = (str[0] - 'a') + ((str[1] - '1') << 3),
 	    to    = (str[2] - 'a') + ((str[3] - '1') << 3);
 	char prom = str[4];
+	int c = pos->stm;
+
+	// If capturing a rook of our own color in FRC, return castling move
+	if (   is_frc
+	    && (BB(to) & pos->bb[c])
+	    && pos->board[from] == KING
+	    && pos->board[to] == ROOK)
+	{
+		return    castling_rook_pos[c][KINGSIDE] == to
+			? move_castle(from, (c == WHITE ? G1 : G8))
+			: move_castle(from, (c == WHITE ? C1 : C8));
+	}
 	int pr_t;
 	struct Movelist list;
 	list.end = list.moves;
