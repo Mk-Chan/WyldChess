@@ -21,6 +21,8 @@
 #include "misc.h"
 
 int phase[8] = { 0, 0, 1, 10, 10, 20, 40, 0 };
+int castling_rook_pos[2][2];
+u32 castle_perms[64];
 
 static inline u32 get_piece_from_char(char c)
 {
@@ -96,6 +98,8 @@ int set_pos(struct Position* pos, char* fen)
 	char c;
 	pos->state->pos_key = 0ULL;
 	pos->state->pawn_key = 0ULL;
+	for (sq = 0; sq < 64; ++sq)
+		castle_perms[sq] = 15;
 	while (tsq < 64) {
 		sq = tsq ^ 56;
 		c  = fen[index++];
@@ -110,8 +114,18 @@ int set_pos(struct Position* pos, char* fen)
 			pt = piece & 7;
 			pc = piece >> 3;
 			put_piece(pos, sq, pt, pc);
-			if (pt == KING)
+			if (pt == KING) {
 				pos->king_sq[pc] = sq;
+				castle_perms[sq] = pc == WHITE ? 12 : 3;
+			} else if (pt == ROOK) {
+				if (is_kingside(sq)) {
+					castling_rook_pos[pc][KINGSIDE] = sq;
+					castle_perms[sq] = pc == WHITE ? 14 : 11;
+				} else if (is_queenside(sq)) {
+					castling_rook_pos[pc][QUEENSIDE] = sq;
+					castle_perms[sq] = pc == WHITE ? 13 : 7;
+				}
+			}
 			++tsq;
 		}
 	}

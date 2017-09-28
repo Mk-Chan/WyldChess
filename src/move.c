@@ -78,24 +78,33 @@ void undo_move(struct Position* const pos)
 		break;
 	case CASTLE:
 		{
-			move_piece_no_key(pos, to, from, KING, c);
-			pos->king_sq[c] = from;
-			switch(to) {
+			int rfrom, rto;
+			switch (to) {
 			case C1:
-				move_piece_no_key(pos, D1, A1, ROOK, c);
+				rto = D1;
+				rfrom = castling_rook_pos[WHITE][QUEENSIDE];
 				break;
 			case G1:
-				move_piece_no_key(pos, F1, H1, ROOK, c);
+				rto = F1;
+				rfrom = castling_rook_pos[WHITE][KINGSIDE];
 				break;
 			case C8:
-				move_piece_no_key(pos, D8, A8, ROOK, c);
+				rto = D8;
+				rfrom = castling_rook_pos[BLACK][QUEENSIDE];
 				break;
 			case G8:
-				move_piece_no_key(pos, F8, H8, ROOK, c);
+				rto = F8;
+				rfrom = castling_rook_pos[BLACK][KINGSIDE];
 				break;
 			default:
+				rto = rfrom = -1;
 				break;
 			}
+			remove_piece_no_key(pos, rto, ROOK, c);
+			remove_piece_no_key(pos, to, KING, c);
+			put_piece_no_key(pos, rfrom, ROOK, c);
+			put_piece_no_key(pos, from, KING, c);
+			pos->king_sq[c] = from;
 		}
 		break;
 	default:
@@ -113,17 +122,6 @@ void undo_move(struct Position* const pos)
 
 void do_move(struct Position* const pos, u32 const m)
 {
-	static u32 const castle_perms[64] = {
-		13, 15, 15, 15, 12, 15, 15, 14,
-		15, 15, 15, 15, 15, 15, 15, 15,
-		15, 15, 15, 15, 15, 15, 15, 15,
-		15, 15, 15, 15, 15, 15, 15, 15,
-		15, 15, 15, 15, 15, 15, 15, 15,
-		15, 15, 15, 15, 15, 15, 15, 15,
-		15, 15, 15, 15, 15, 15, 15, 15,
-		 7, 15, 15, 15, 3,  15, 15, 11
-	};
-
 	struct State* const curr = pos->state;
 	struct State* const next = ++pos->state;
 
@@ -182,26 +180,34 @@ void do_move(struct Position* const pos, u32 const m)
 		break;
 	case CASTLE:
 		{
-			next->fifty_moves = curr->fifty_moves + 1;
-			pos->king_sq[c]   = to;
-			move_piece(pos, from, to, KING, c);
-
+			int rfrom, rto;
 			switch (to) {
 			case C1:
-				move_piece(pos, A1, D1, ROOK, c);
+				rto = D1;
+				rfrom = castling_rook_pos[WHITE][QUEENSIDE];
 				break;
 			case G1:
-				move_piece(pos, H1, F1, ROOK, c);
+				rto = F1;
+				rfrom = castling_rook_pos[WHITE][KINGSIDE];
 				break;
 			case C8:
-				move_piece(pos, A8, D8, ROOK, c);
+				rto = D8;
+				rfrom = castling_rook_pos[BLACK][QUEENSIDE];
 				break;
 			case G8:
-				move_piece(pos, H8, F8, ROOK, c);
+				rto = F8;
+				rfrom = castling_rook_pos[BLACK][KINGSIDE];
 				break;
 			default:
+				rto = rfrom = -1;
 				break;
 			}
+			remove_piece(pos, rfrom, ROOK, c);
+			remove_piece(pos, from, KING, c);
+			put_piece(pos, rto, ROOK, c);
+			put_piece(pos, to, KING, c);
+			pos->king_sq[c]   = to;
+			next->fifty_moves = curr->fifty_moves + 1;
 		}
 		break;
 	default:

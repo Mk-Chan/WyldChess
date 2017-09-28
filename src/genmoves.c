@@ -301,33 +301,53 @@ static void gen_castling(struct Position* pos, struct Movelist* list)
 		{ WKC, WQC },
 		{ BKC, BQC }
 	};
-	static int const castling_intermediate_sqs[2][2][2] = {
-		{ { F1, G1 }, { D1, C1 } },
-		{ { F8, G8 }, { D8, C8 } }
+	static int const king_end_pos[2][2] = {
+		{ G1, C1 },
+		{ G8, C8 }
 	};
-	static int const castling_king_sqs[2][2][2] = {
-		{ { E1, G1 }, { E1, C1 } },
-		{ { E8, G8 }, { E8, C8 } }
-	};
-	static u64 const castle_mask[2][2] = {
-		{ (BB(F1) | BB(G1)), (BB(D1) | BB(C1) | BB(B1)) },
-		{ (BB(F8) | BB(G8)), (BB(D8) | BB(C8) | BB(B8)) }
+	static int const rook_end_pos[2][2] = {
+		{ F1, D1 },
+		{ F8, D8 }
 	};
 
-	int const c       = pos->stm;
-	u64 const full_bb = pos->bb[FULL];
+	int c = pos->stm;
+	int ksq = pos->king_sq[c];
+	int sq, rsq, k_end_sq, r_end_sq, can_castle;
+	u64 full_bb, intermediate_sqs_bb;
+	for (int cside = KINGSIDE; cside <= QUEENSIDE; ++cside) {
+		// Make sure we can castle on the chosen side
+		if (castling_poss[c][cside] & pos->state->castling_rights) {
+			rsq = castling_rook_pos[c][cside];
+			k_end_sq = king_end_pos[c][cside];
+			r_end_sq = rook_end_pos[c][cside];
+			full_bb = pos->bb[FULL] ^ BB(ksq) ^ BB(rsq);
 
-	if (    (castling_poss[c][0] & pos->state->castling_rights)
-	    && !(castle_mask[c][0] & full_bb)
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][0], !c, full_bb))
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][0][1], !c, full_bb)))
-		add_move(move_castle(castling_king_sqs[c][0][0], castling_king_sqs[c][0][1]), list);
+			// Check for vacant intermediate squares for rook
+			intermediate_sqs_bb = intervening_sqs_bb[rsq][r_end_sq] | BB(r_end_sq);
+			if (intermediate_sqs_bb & full_bb)
+				continue;
 
-	if (    (castling_poss[c][1] & pos->state->castling_rights)
-	    && !(castle_mask[c][1] & full_bb)
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][0], !c, full_bb))
-	    && !(atkers_to_sq(pos, castling_intermediate_sqs[c][1][1], !c, full_bb)))
-		add_move(move_castle(castling_king_sqs[c][1][0], castling_king_sqs[c][1][1]), list);
+			// Check for vacant intermediate squares for king
+			intermediate_sqs_bb = intervening_sqs_bb[ksq][k_end_sq] | BB(k_end_sq);
+			if (intermediate_sqs_bb & full_bb)
+				continue;
+
+			// Check if any intermediate squares of king are attacked
+			can_castle = 1;
+			while (intermediate_sqs_bb) {
+				sq = bitscan(intermediate_sqs_bb);
+				intermediate_sqs_bb &= intermediate_sqs_bb - 1;
+				if (atkers_to_sq(pos, sq, !c, full_bb)) {
+					can_castle = 0;
+					break;
+				}
+			}
+
+			// If all fine, add castling move
+			if (can_castle)
+				add_move(move_castle(ksq, k_end_sq), list);
+		}
+	}
 }
 
 void gen_quiesce_moves(struct Position* pos, struct Movelist* list)

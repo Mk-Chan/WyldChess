@@ -78,6 +78,9 @@ struct Position
 	STATS(struct Stats stats;)
 };
 
+extern int castling_rook_pos[2][2];
+extern u32 castle_perms[64];
+
 extern int psqt[2][8][64];
 extern int phase[8];
 
