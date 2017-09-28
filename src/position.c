@@ -25,14 +25,14 @@ int is_frc = 0;
 int castling_rook_pos[2][2];
 u32 castle_perms[64];
 
-inline int is_kingside(int ksq, int sq, int c)
+inline int is_kingside(int ksq, int sq)
 {
-	return (c == WHITE && sq > ksq) || (c == BLACK && sq > ksq);
+	return sq > ksq;
 }
 
-inline int is_queenside(int ksq, int sq, int c)
+inline int is_queenside(int ksq, int sq)
 {
-	return (c == WHITE && sq < ksq) || (c == BLACK && sq < ksq);
+	return sq < ksq;
 }
 
 static inline u32 get_piece_from_char(char c)
@@ -128,6 +128,14 @@ int set_pos(struct Position* pos, char* fen)
 			if (pt == KING) {
 				pos->king_sq[pc] = sq;
 				castle_perms[sq] = pc == WHITE ? 12 : 3;
+			} else if (pt == ROOK && !is_frc) {
+				if (sq == H1 || sq == H8) {
+					castling_rook_pos[pc][KINGSIDE] = sq;
+					castle_perms[sq] = pc == WHITE ? 14 : 11;
+				} else if (sq == A1 || sq == A8) {
+					castling_rook_pos[pc][QUEENSIDE] = sq;
+					castle_perms[sq] = pc == WHITE ? 13 : 7;
+				}
 			}
 			++tsq;
 		}
@@ -154,11 +162,11 @@ int set_pos(struct Position* pos, char* fen)
 				file = c - 'A';
 			}
 			sq = get_sq(rank, file);
-			if (is_kingside(pos->king_sq[color], sq, color)) {
+			if (is_kingside(pos->king_sq[color], sq)) {
 				castling_rook_pos[color][KINGSIDE] = sq;
 				castle_perms[sq] = color == WHITE ? 14 : 11;
 				pos->state->castling_rights |= color == WHITE ? WKC : BKC;
-			} else if (is_queenside(pos->king_sq[color], sq, color)) {
+			} else if (is_queenside(pos->king_sq[color], sq)) {
 				castling_rook_pos[color][QUEENSIDE] = sq;
 				castle_perms[sq] = color == WHITE ? 13 : 7;
 				pos->state->castling_rights |= color == WHITE ? WQC : BQC;
