@@ -21,8 +21,19 @@
 #include "misc.h"
 
 int phase[8] = { 0, 0, 1, 10, 10, 20, 40, 0 };
+int is_frc = 0;
 int castling_rook_pos[2][2];
 u32 castle_perms[64];
+
+inline int is_kingside(int ksq, int sq, int c)
+{
+	return (c == WHITE && sq > ksq) || (c == BLACK && sq > ksq);
+}
+
+inline int is_queenside(int ksq, int sq, int c)
+{
+	return (c == WHITE && sq < ksq) || (c == BLACK && sq < ksq);
+}
 
 static inline u32 get_piece_from_char(char c)
 {
@@ -117,14 +128,6 @@ int set_pos(struct Position* pos, char* fen)
 			if (pt == KING) {
 				pos->king_sq[pc] = sq;
 				castle_perms[sq] = pc == WHITE ? 12 : 3;
-			} else if (pt == ROOK) {
-				if (is_kingside(sq)) {
-					castling_rook_pos[pc][KINGSIDE] = sq;
-					castle_perms[sq] = pc == WHITE ? 14 : 11;
-				} else if (is_queenside(sq)) {
-					castling_rook_pos[pc][QUEENSIDE] = sq;
-					castle_perms[sq] = pc == WHITE ? 13 : 7;
-				}
 			}
 			++tsq;
 		}
@@ -133,12 +136,33 @@ int set_pos(struct Position* pos, char* fen)
 	++index;
 	pos->stm = fen[index] == 'w' ? WHITE : BLACK;
 	index   += 2;
+	int file, rank, color;
 	while ((c = fen[index++]) != ' ') {
 		if (c == '-') {
 			++index;
 			break;
-		} else {
+		} else if (!is_frc) {
 			pos->state->castling_rights |= get_cr_from_char(c);
+		} else {
+			if (c >= 'a' && c <= 'z') {
+				color = BLACK;
+				rank = RANK_8;
+				file = c - 'a';
+			} else if (c >= 'A' && c <= 'Z') {
+				color = WHITE;
+				rank = RANK_1;
+				file = c - 'A';
+			}
+			sq = get_sq(rank, file);
+			if (is_kingside(pos->king_sq[color], sq, color)) {
+				castling_rook_pos[color][KINGSIDE] = sq;
+				castle_perms[sq] = color == WHITE ? 14 : 11;
+				pos->state->castling_rights |= color == WHITE ? WKC : BKC;
+			} else if (is_queenside(pos->king_sq[color], sq, color)) {
+				castling_rook_pos[color][QUEENSIDE] = sq;
+				castle_perms[sq] = color == WHITE ? 13 : 7;
+				pos->state->castling_rights |= color == WHITE ? WQC : BQC;
+			}
 		}
 	}
 	pos->state->pos_key ^= castle_keys[pos->state->castling_rights];

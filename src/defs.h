@@ -184,8 +184,6 @@ static int const is_prom_sq[64] = {
 #define get_sq(r, f) (((r << 3) | f))
 #define rank_of(sq)  (sq >> 3)
 #define file_of(sq)  (sq & 7)
-#define is_kingside(sq) ((BB(sq) & 0xf0f0f0f0f0f0f0f0ULL))
-#define is_queenside(sq) ((BB(sq) & 0xf0f0f0f0f0f0f0fULL))
 
 #define from_sq(m)   ((int)(m & 0x3f))
 #define to_sq(m)     ((int)(m >> 6) & 0x3f)

@@ -204,6 +204,17 @@ void uci_loop()
 					}
 				}
 
+			} else if (!strncmp(ptr, "UCI_Chess960", 12)) {
+
+				ptr += 13;
+				if (!strncmp(ptr, "value", 5)) {
+					ptr += 6;
+					if (!strncmp(ptr, "false", 5)) {
+						is_frc = 0;
+					} else if (!strncmp(ptr, "true", 4)) {
+						is_frc = 1;
+					}
+				}
 			} else {
 				int found = 0;
 				struct SpinOption* curr = spin_options;

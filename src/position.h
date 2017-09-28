@@ -78,6 +78,7 @@ struct Position
 	STATS(struct Stats stats;)
 };
 
+extern int is_frc;
 extern int castling_rook_pos[2][2];
 extern u32 castle_perms[64];
 
