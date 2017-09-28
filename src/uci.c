@@ -281,7 +281,6 @@ void uci_loop()
 
 		} else if (!strncmp(input, "ponderhit", 9)) {
 
-			ctlr->search_end_time += curr_time() - ctlr->search_start_time;
 			ctlr->time_dependent = 1;
 
 		} else if (!strncmp(input, "go", 2)) {
