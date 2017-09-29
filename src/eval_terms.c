@@ -49,6 +49,8 @@ struct EvalTerm eval_terms[NUM_TERMS] = {
 int parse_persona_file(char const * const path)
 {
 	FILE* file = fopen(path, "r");
+	if (!file)
+		return 1;
 	static const int max_len = 100;
 	char buf[max_len];
 	while (1) {
