@@ -1,0 +1,17 @@
+The format to create a persona file is a follows:
+
+<Name of variable><space>=<space><value>
+
+aka
+
+<name> = <value>
+
+for example:
+
+PawnValueMg = 123
+KnightValueEg = 321
+KnightMobilityWt = 3
+
+Any unmentioned term will have it's default value used.
+The minimum and maximum values of each term are -10000 and +10000 respectively.
+For ease of use, copy the 'default.txt' and modify the values as you please.
