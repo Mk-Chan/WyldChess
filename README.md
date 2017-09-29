@@ -1,62 +1,37 @@
-# WyldChess
-
 Get the latest release here: [Latest Release](https://github.com/Mk-Chan/WyldChess/releases/latest)
 
 ### Overview
 A free chess engine in C. It does not provide a GUI (Graphical User Interface)
-but can be linked to one that supports either the UCI protocol or CECP (the Xboard/Winboard protocol) such as Winboard/Xboard, Arena or Cutechess.
+but can be linked to one that supports either the UCI protocol or CECP(Xboard protocol) such as
+Winboard/Xboard, Arena or Cutechess.
 
-The master branch will reflect the latest (adequately tested) best version of the engine. Implementations of different concepts (such as various parallel algorithms or different algorithms altogether) will have their own individual branches.
+Please note: It is recommended to use the UCI protocol as CECP support is not up to the mark at the
+moment. It can be used but some major features may not be present.
 
 ### Features
+Supports the following major features:
 
-#### Evaluation
-* Phased/Tapered evaluation
-* Piece values
-* Piece square tables (custom)
-* King attack:
-	* Glaurung 1.2 attack table
-	* Queen next to king
-	* King shelter
+* Syzygy Tablebases - Play against the perfect n-piece logic.
+* Chess960 - Enjoy a fresh game of Fischer Random Chess!
+* Personae - Load a predefined persona instead of the boring ol' default Wyld.
+* Pondering - Do you really want to play hard mode?
+* Parallel Search - Feel the power of Lazy Wyld!
 
-* Pawn structure:
-	* Passed pawns
-	* Doubled pawns
-	* Isolated pawns
+#### Syzygy Tablebases
+Adapted from Jon Dart's fork of the [Fathom tool](https://github.com/basil00/Fathom)
 
-* Piece mobility
-* Miscellaneous terms:
-	* Dual bishops
-	* Rook on open file
-	* Rook on semi-open file
-	* Rook on relative 7th rank
-	* Knight and bishop outposts
+#### Personae
+Inspired by Rodent, I too exposed some parameters that can be either inputted manually by creating a
+'persona' file (Presets and format in `personae` folder) or by editing the UCI options.
 
-* Basic endgame knowledge
-    * "Can win?" scenarios(incomplete)
+#### Pondering
+Also known as 'Permanent Brain', it involves thinking during the opponents turn.
 
-#### Search
-* Lazy SMP
-* Aspiration window search
-* Pruning losing captures (negative SEE) in quiescence search if not in check
-* Mate distance pruning
-* Transposition table
-* Syzygy EGTB (Adapted from the [Fathom tool](https://github.com/basil00/Fathom))
-* Futility pruning
-* Null move pruning
-* Internal iterative deepening
-* Move ordering:
-    * Hash move
-    * Good captures (positive SEE)
-    * Killer moves
-    * Counter moves
-    * Other captures (negative and zero SEE)
-    * History heuristic
-* Check extension at frontier nodes and SEE >= 0 moves
-* Late move reduction
-* Principal variation search
+#### Parallel Search
+An implementation of the Lazy SMP algorithm.
 
 ### Files
+* `personae` : A subdirectory containing the format for persona creation as well as some custom presets.
 * `src`      : A subdirectory containing the source code of the program and the makefile.
 * `LICENSE`  : A file containing a copy of the GNU Public License.
 * `README.md`: The file you're currently reading.
@@ -65,7 +40,7 @@ The master branch will reflect the latest (adequately tested) best version of th
 ### Binaries
 All binaries are 64-bit
 
-MacOS release is provided by Michael B
+MacOS release has been provided by Michael B
 
 WyldChess 1.5 and beyond now have an Android/Rpi release!
 
