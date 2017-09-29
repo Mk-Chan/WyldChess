@@ -151,15 +151,39 @@ int set_pos(struct Position* pos, char* fen)
 				rank = RANK_1;
 				file = c - 'A';
 			}
-			sq = get_sq(rank, file);
-			if (is_kingside(pos->king_sq[color], sq)) {
-				castling_rook_pos[color][KINGSIDE] = sq;
-				castle_perms[sq] = color == WHITE ? 14 : 11;
-				pos->state->castling_rights |= color == WHITE ? WKC : BKC;
-			} else if (is_queenside(pos->king_sq[color], sq)) {
-				castling_rook_pos[color][QUEENSIDE] = sq;
-				castle_perms[sq] = color == WHITE ? 13 : 7;
-				pos->state->castling_rights |= color == WHITE ? WQC : BQC;
+			u32 cr = get_cr_from_char(c);
+			if (cr != -1) {
+				u64 r_bb = pos->bb[ROOK] & pos->bb[color];
+				int ksq = pos->king_sq[color];
+				int kside_sq, qside_sq = 0;
+				while (r_bb) {
+					kside_sq = bitscan(r_bb);
+					r_bb &= r_bb - 1;
+					if (is_queenside(ksq, kside_sq))
+						qside_sq = kside_sq;
+					if (qside_sq && kside_sq != qside_sq)
+						break;
+				}
+				if (cr & (WKC | BKC)) {
+					castling_rook_pos[color][KINGSIDE] = kside_sq;
+					castle_perms[kside_sq] = color == WHITE ? 14 : 11;
+					pos->state->castling_rights |= color == WHITE ? WKC : BKC;
+				} else if (cr & (WQC | BQC)) {
+					castling_rook_pos[color][QUEENSIDE] = qside_sq;
+					castle_perms[qside_sq] = color == WHITE ? 13 : 7;
+					pos->state->castling_rights |= color == WHITE ? WQC : BQC;
+				}
+			} else {
+				sq = get_sq(rank, file);
+				if (is_kingside(pos->king_sq[color], sq)) {
+					castling_rook_pos[color][KINGSIDE] = sq;
+					castle_perms[sq] = color == WHITE ? 14 : 11;
+					pos->state->castling_rights |= color == WHITE ? WKC : BKC;
+				} else if (is_queenside(pos->king_sq[color], sq)) {
+					castling_rook_pos[color][QUEENSIDE] = sq;
+					castle_perms[sq] = color == WHITE ? 13 : 7;
+					pos->state->castling_rights |= color == WHITE ? WQC : BQC;
+				}
 			}
 		}
 	}
