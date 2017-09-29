@@ -46,14 +46,56 @@ struct EvalTerm
 
 extern struct EvalTerm eval_terms[NUM_TERMS];
 
-static inline int* eval_term(char* term)
+static inline int* get_eval_term(char* term)
 {
-	struct EvalTerm* curr = eval_terms;
-	struct EvalTerm* end  = eval_terms + NUM_TERMS;
-	for (; curr != end; ++curr)
-		if (!strcmp(term, curr->name))
-			return curr->ptr;
+	struct EvalTerm* curr_et = eval_terms;
+	struct EvalTerm* end_et  = eval_terms + NUM_TERMS;
+	for (; curr_et != end_et; ++curr_et) {
+		int len = strlen(curr_et->name);
+		if (!strncmp(term, curr_et->name, len))
+			return curr_et->ptr;
+	}
 	return NULL;
 }
+
+static inline void parse_eval_term(char* term, char* separator)
+{
+	char* end;
+	int sep_len = strlen(separator);
+	struct EvalTerm* curr_et = eval_terms;
+	struct EvalTerm* end_et  = eval_terms + NUM_TERMS;
+	for (; curr_et != end_et; ++curr_et) {
+		int len = strlen(curr_et->name);
+		if (!strncmp(term, curr_et->name, len)) {
+			if (curr_et - eval_terms < TAPERED_END) {
+				term += len;
+				if (!strncmp(term, "Mg", 2)) {
+					term += 3;
+					if (!strncmp(term, separator, sep_len)) {
+						int value = strtoul(term + sep_len + 1, &end, 10);
+						if (value <= 10000 && value >= -10000)
+							set_mg_val(*curr_et->ptr, value);
+					}
+				} else if (!strncmp(term, "Eg", 2)) {
+					term += 3;
+					if (!strncmp(term, separator, sep_len)) {
+						int value = strtoul(term + sep_len + 1, &end, 10);
+						if (value <= 10000 && value >= -10000)
+							set_eg_val(*curr_et->ptr, value);
+					}
+				}
+			} else {
+				term += len + 1;
+				if (!strncmp(term, separator, sep_len)) {
+					int value = strtoul(term + sep_len + 1, &end, 10);
+					if (value <= 10000 && value >= -10000)
+						*curr_et->ptr = value;
+				}
+			}
+		}
+	}
+}
+
+extern int parse_persona_file(char const * const path);
 
 #endif

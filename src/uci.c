@@ -56,6 +56,7 @@ static inline void print_options_uci()
 	fprintf(stdout, "option name UCI_Chess960 type check default false\n");
 	fprintf(stdout, "option name Ponder type check default true\n");
 	fprintf(stdout, "option name SyzygyPath type string default <empty>\n");
+	fprintf(stdout, "option name PersonaPath type string default <empty>\n");
 	fprintf(stdout, "option name Hash type spin default 128 min 1 max 1048576\n");
 
 	struct SpinOption* curr = spin_options;
@@ -194,8 +195,12 @@ void uci_loop()
 					tb_init(ptr + 6);
 					fprintf(stdout, "info string Largest tablebase size = %u\n", TB_LARGEST);
 				}
+			} else if (!strncmp(ptr, "PersonaPath", 11)) {
+				ptr += 12;
+				if (!strncmp(ptr, "value", 5)) {
+					parse_persona_file(ptr + 6);
+				}
 			} else if (!strncmp(ptr, "Ponder", 6)) {
-
 				ptr += 7;
 				if (!strncmp(ptr, "value", 5)) {
 					ptr += 6;
@@ -205,9 +210,7 @@ void uci_loop()
 						su->ponder_allowed = 1;
 					}
 				}
-
 			} else if (!strncmp(ptr, "UCI_Chess960", 12)) {
-
 				ptr += 13;
 				if (!strncmp(ptr, "value", 5)) {
 					ptr += 6;
@@ -237,41 +240,8 @@ void uci_loop()
 						}
 					}
 				}
-				if (!found) {
-					struct EvalTerm* curr_et = eval_terms;
-					struct EvalTerm* end_et  = eval_terms + NUM_TERMS;
-					for (; curr_et != end_et; ++curr_et) {
-						int len = strlen(curr_et->name);
-						if (!strncmp(ptr, curr_et->name, len)) {
-							if (curr_et - eval_terms < TAPERED_END) {
-								ptr += len;
-								if (!strncmp(ptr, "Mg", 2)) {
-									ptr += 3;
-									if (!strncmp(ptr, "value", 5)) {
-										int value = strtoul(ptr + 6, &end, 10);
-										if (value <= 10000 && value >= -10000)
-											set_mg_val(*curr_et->ptr, value);
-									}
-								} else if (!strncmp(ptr, "Eg", 2)) {
-									ptr += 3;
-									if (!strncmp(ptr, "value", 5)) {
-										int value = strtoul(ptr + 6, &end, 10);
-										if (value <= 10000 && value >= -10000)
-											set_eg_val(*curr_et->ptr, value);
-									}
-								}
-							} else {
-								ptr += len + 1;
-								if (!strncmp(ptr, "value", 5)) {
-									int value = strtoul(ptr + 6, &end, 10);
-									if (value <= 10000 && value >= -10000)
-										*curr_et->ptr = value;
-								}
-							}
-						}
-					}
-				}
-
+				if (!found)
+					parse_eval_term(ptr, "value");
 			}
 
 		} else if (!strncmp(input, "perft", 5)) {

@@ -45,3 +45,18 @@ struct EvalTerm eval_terms[NUM_TERMS] = {
 	{ "RookMobilityWt",   &mobility[ROOK]      },
 	{ "QueenMobilityWt",  &mobility[QUEEN]     },
 };
+
+int parse_persona_file(char const * const path)
+{
+	FILE* file = fopen(path, "r");
+	static const int max_len = 100;
+	char buf[max_len];
+	while (1) {
+		if (!fgets(buf, max_len, file))
+			break;
+		buf[strlen(buf) - 1] = '\0';
+		parse_eval_term(buf, "=");
+	}
+
+	return 0;
+}
