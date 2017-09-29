@@ -25,16 +25,6 @@ int is_frc = 0;
 int castling_rook_pos[2][2];
 u32 castle_perms[64];
 
-inline int is_kingside(int ksq, int sq)
-{
-	return sq > ksq;
-}
-
-inline int is_queenside(int ksq, int sq)
-{
-	return sq < ksq;
-}
-
 static inline u32 get_piece_from_char(char c)
 {
 	switch (c) {

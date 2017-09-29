@@ -402,7 +402,15 @@ static inline void move_str(u32 move, char str[6])
 	str[1]   = rank_of(from) + '1';
 	str[2]   = file_of(to)   + 'a';
 	str[3]   = rank_of(to)   + '1';
-	if (move_type(move) == PROMOTION) {
+	if (is_frc && move_type(move) == CASTLE) {
+		int c = rank_of(from) == RANK_1 ? WHITE : BLACK;
+		int cside;
+		if (c == WHITE)
+			cside = to == G1 ? KINGSIDE : QUEENSIDE;
+		else
+			cside = to == G8 ? KINGSIDE : QUEENSIDE;
+		str[2] = file_of(castling_rook_pos[c][cside]) + 'a';
+	} else if (move_type(move) == PROMOTION) {
 		const u32 prom = prom_type(move);
 		switch (prom) {
 		case QUEEN:
@@ -450,6 +458,8 @@ static inline u32 parse_move(struct Position* pos, char* str)
 	gen_pseudo_legal_moves(pos, &list);
 	u32* move;
 	for(move = list.moves; move != list.end; ++move) {
+		if (is_frc && move_type(*move) == CASTLE)
+			continue;
 		if (   from_sq(*move) == from
 		    && to_sq(*move) == to) {
 			if (   pos->board[from] == PAWN

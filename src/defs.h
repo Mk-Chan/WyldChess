@@ -185,6 +185,9 @@ static int const is_prom_sq[64] = {
 #define rank_of(sq)  (sq >> 3)
 #define file_of(sq)  (sq & 7)
 
+#define is_kingside(ksq, sq) (((sq) > (ksq)))
+#define is_queenside(ksq, sq) (((sq) < (ksq)))
+
 #define from_sq(m)   ((int)(m & 0x3f))
 #define to_sq(m)     ((int)(m >> 6) & 0x3f)
 #define move_type(m) ((int)(m & MOVE_TYPE_MASK))
