@@ -172,6 +172,7 @@ void uci_loop()
 
 		} else if (!strncmp(input, "stop", 4)) {
 
+			ctlr->analyzing = 0;
 			transition(su, WAITING);
 
 		} else if (!strncmp(input, "quit", 4)) {
