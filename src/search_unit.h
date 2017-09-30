@@ -93,8 +93,8 @@ struct SearchParams
 
 struct Controller
 {
-	int is_stopped;
-	int analyzing;
+	volatile int is_stopped;
+	volatile int analyzing;
 	volatile int time_dependent;
 	u32 depth;
 	u32 moves_left;
