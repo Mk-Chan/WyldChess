@@ -791,9 +791,8 @@ end_search:
 	for (int i = 0; i <= num_threads; ++i)
 		print_stats(i, &search_units[i].pos);
 
-	if (!ctlr->time_dependent)
-		while (su->target_state != WAITING)
-			continue;
+	while (ctlr->analyzing)
+		continue;
 
 	return best_move;
 }

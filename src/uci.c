@@ -250,6 +250,7 @@ void uci_loop()
 		} else if (!strncmp(input, "ponderhit", 9)) {
 
 			ctlr->time_dependent = 1;
+			ctlr->analyzing = 0;
 
 		} else if (!strncmp(input, "go", 2)) {
 
@@ -260,6 +261,7 @@ void uci_loop()
 			ctlr->moves_left        = ctlr->moves_per_session;
 			ctlr->time_left         = 240000;
 			ctlr->increment         = 0;
+			ctlr->analyzing         = 0;
 			su->limited_moves_num   = 0;
 
 			ptr = input;
@@ -301,10 +303,12 @@ void uci_loop()
 				} else if (!strncmp(ptr, "ponder", 6)) {
 
 					ctlr->time_dependent = 0;
+					ctlr->analyzing = 1;
 
 				} else if (!strncmp(ptr, "infinite", 8)) {
 
 					ctlr->time_dependent = 0;
+					ctlr->analyzing = 1;
 
 				} else if (!strncmp(ptr, "searchmoves", 11)) {
 
