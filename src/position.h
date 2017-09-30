@@ -73,6 +73,7 @@ struct Position
 	int board[64];
 	int phase;
 	int piece_psq_eval[2];
+	int has_castled[2];
 	struct State* state;
 	struct State hist[MAX_MOVES_PER_GAME + MAX_PLY];
 	STATS(struct Stats stats;)

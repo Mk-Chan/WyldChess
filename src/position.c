@@ -87,6 +87,8 @@ void init_pos(struct Position* pos)
 	pos->state->fifty_moves     = 0;
 	pos->state->checkers_bb     = 0ULL;
 	pos->state->castling_rights = 0;
+	pos->has_castled[WHITE]     = 0;
+	pos->has_castled[BLACK]     = 0;
 	pos->piece_psq_eval[WHITE]  = 0;
 	pos->piece_psq_eval[BLACK]  = 0;
 }

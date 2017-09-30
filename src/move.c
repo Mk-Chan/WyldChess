@@ -78,6 +78,7 @@ void undo_move(struct Position* const pos)
 		break;
 	case CASTLE:
 		{
+			pos->has_castled[pos->stm] = 0;
 			int rfrom, rto;
 			switch (to) {
 			case C1:
@@ -180,6 +181,7 @@ void do_move(struct Position* const pos, u32 const m)
 		break;
 	case CASTLE:
 		{
+			pos->has_castled[pos->stm] = 1;
 			int rfrom, rto;
 			switch (to) {
 			case C1:
