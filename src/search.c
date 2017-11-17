@@ -745,33 +745,6 @@ int begin_search(struct SearchUnit* const su)
 			    && ctlr->is_stopped)
 				goto end_search;
 
-			time = curr_time() - ctlr->search_start_time;
-			if (su->protocol == XBOARD) {
-				fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, total_nodes_searched());
-			} else if (su->protocol == UCI) {
-				fprintf(stdout, "info ");
-				fprintf(stdout, "depth %u ", depth);
-				fprintf(stdout, "seldepth %u ", su->max_searched_ply);
-				fprintf(stdout, "tbhits %llu ", su->sl.tb_hits);
-				fprintf(stdout, "score ");
-				if (abs(val) < MAX_MATE_VAL) {
-					fprintf(stdout, "cp %d ", val);
-				} else {
-					fprintf(stdout, "mate ");
-					if (val < 0)
-						fprintf(stdout, "%d ", (-val - MATE) / 2);
-					else
-						fprintf(stdout, "%d ", (-val + MATE + 1) / 2);
-				}
-				fprintf(stdout, "nodes %llu ", total_nodes_searched());
-				if (time > 1000ULL)
-					fprintf(stdout, "nps %llu ", total_nodes_searched() * 1000 / time);
-				fprintf(stdout, "time %llu ", time);
-				fprintf(stdout, "pv");
-			}
-			print_pv_line(ss);
-			fprintf(stdout, "\n");
-
 			if (val <= alpha) {
 				++alpha_delta;
 				alpha -= (alpha - val) + *alpha_delta;
@@ -782,6 +755,33 @@ int begin_search(struct SearchUnit* const su)
 				break;
 			}
 		}
+
+        time = curr_time() - ctlr->search_start_time;
+        if (su->protocol == XBOARD) {
+            fprintf(stdout, "%3d %5d %5llu %9llu", depth, val, time / 10, total_nodes_searched());
+        } else if (su->protocol == UCI) {
+            fprintf(stdout, "info ");
+            fprintf(stdout, "depth %u ", depth);
+            fprintf(stdout, "seldepth %u ", su->max_searched_ply);
+            fprintf(stdout, "tbhits %llu ", su->sl.tb_hits);
+            fprintf(stdout, "score ");
+            if (abs(val) < MAX_MATE_VAL) {
+                fprintf(stdout, "cp %d ", val);
+            } else {
+                fprintf(stdout, "mate ");
+                if (val < 0)
+                    fprintf(stdout, "%d ", (-val - MATE) / 2);
+                else
+                    fprintf(stdout, "%d ", (-val + MATE + 1) / 2);
+            }
+            fprintf(stdout, "nodes %llu ", total_nodes_searched());
+            if (time > 1000ULL)
+                fprintf(stdout, "nps %llu ", total_nodes_searched() * 1000 / time);
+            fprintf(stdout, "time %llu ", time);
+            fprintf(stdout, "pv");
+        }
+        print_pv_line(ss);
+        fprintf(stdout, "\n");
 
 		best_move = get_pv_move(ss);
 		if (legal_move(&su->pos, ss->pv[1]))
