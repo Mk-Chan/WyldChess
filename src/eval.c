@@ -145,8 +145,6 @@ int mobility[7]      = { 0, 0, 0, 8, 5, 5, 4 };
 int min_mob_count[7] = { 0, 0, 0, 4, 4, 4, 7 };
 
 // Miscellaneous terms
-int has_castled    = S(20, 20);
-int can_castle     = S(10, 10);
 int bishop_pair    = S(50, 80);
 int rook_on_7th    = S(40, 20);
 int rook_open_file = S(20, 20);
@@ -408,15 +406,6 @@ int evaluate(struct Position* const pos)
 
 	ev.eval[WHITE] = pos->piece_psq_eval[WHITE];
 	ev.eval[BLACK] = pos->piece_psq_eval[BLACK];
-
-	if (pos->has_castled[WHITE])
-		ev.eval[WHITE] += has_castled;
-	else if (pos->state->castling_rights & (WKC | WQC))
-		ev.eval[WHITE] += can_castle;
-	if (pos->has_castled[BLACK])
-		ev.eval[BLACK] += has_castled;
-	else if (pos->state->castling_rights & (BKC | BQC))
-		ev.eval[BLACK] += can_castle;
 
 	eval_pawns(pos, &ev);
 	eval_pieces(pos, &ev);
